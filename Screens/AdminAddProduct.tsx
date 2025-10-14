@@ -17,6 +17,8 @@ import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { launchImageLibrary } from 'react-native-image-picker';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import dayjs from 'dayjs';
+import DatePicker from 'react-native-date-picker';
 
 const { width, height } = Dimensions.get('window');
 
@@ -44,10 +46,47 @@ const AddProject: React.FC<Props> = ({ navigation }) => {
     'In Progress' | 'Material Pending' | 'Completed'
   >('In Progress');
   const [images, setImages] = useState<string[]>([]);
+
   const [menuVisible, setMenuVisible] = useState(false);
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
+
+  const [remainingDays, setRemainingDays] = useState('');
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+
+  const [timePickerVisible, setTimePickerVisible] = useState(false);
+  const [selectedTime, setSelectedTime] = useState<Date>(() => {
+    const now = new Date();
+    now.setHours(9, 0, 0, 0); // Default to 9:00 AM
+    return now;
+  });
+
+  const formatDate = (date: Date): string => {
+    return dayjs(date).format('DD-MM-YYYY');
+  };
+
+  const formatTime = (date: Date): string => {
+    return dayjs(date).format('h:mm A');
+  };
+
+  const handleDateConfirm = (date: Date) => {
+    setSelectedDate(date);
+    setDeliveryDate(formatDate(date));
+    setDatePickerVisible(false);
+
+    const today = new Date();
+    const diffTime = Math.abs(date.getTime() - today.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    setRemainingDays(`${diffDays} days remaining`);
+  };
+
+  const handleTimeConfirm = (time: Date) => {
+    setSelectedTime(time);
+    setCustomerTime(formatTime(time));
+    setTimePickerVisible(false);
+  };
 
   const pickImage = () => {
-    if (images.length >= 3) return;
+    if (images.length >= 5) return;
     launchImageLibrary({ mediaType: 'photo', quality: 1 }, response => {
       if (response.didCancel || response.errorCode || !response.assets) return;
       const uri = response.assets[0].uri;
@@ -127,6 +166,11 @@ const AddProject: React.FC<Props> = ({ navigation }) => {
                 background: 'white',
               },
             }}
+            right={
+              contactNumber.length === 10 && (
+                <TextInput.Icon icon="check-circle" color="green" />
+              )
+            }
           />
           <TextInput
             label="Location *"
@@ -143,24 +187,37 @@ const AddProject: React.FC<Props> = ({ navigation }) => {
               },
             }}
           />
-          <TextInput
-            label="Date of Delivery * (dd-mm-yyyy)"
-            value={deliveryDate}
-            onChangeText={setDeliveryDate}
-            mode="outlined"
-            style={styles.input}
-            theme={{
-              colors: {
-                primary: 'black',
-                onSurfaceVariant: 'black',
-                onSurface: '#000',
-                background: 'white',
-              },
-            }}
-          />
+          <TouchableOpacity
+            onPress={() => setDatePickerVisible(true)}
+            style={styles.dateInputContainer}
+          >
+            <TextInput
+              label="Date of Delivery *"
+              value={deliveryDate}
+              mode="outlined"
+              style={styles.input}
+              editable={false}
+              pointerEvents="none"
+              right={
+                <TextInput.Icon
+                  icon="calendar"
+                  onPress={() => setDatePickerVisible(true)}
+                />
+              }
+              theme={{
+                colors: {
+                  primary: 'black',
+                  onSurfaceVariant: 'black',
+                  onSurface: '#000',
+                  background: 'white',
+                },
+              }}
+            />
+          </TouchableOpacity>
+
           <TextInput
             label="Remaining Days"
-            value=""
+            value={remainingDays}
             disabled
             mode="outlined"
             style={styles.input}
@@ -175,20 +232,50 @@ const AddProject: React.FC<Props> = ({ navigation }) => {
               },
             }}
           />
-          <TextInput
-            label="Customer Time (e.g. 9:00 AM - 5:00 PM)"
-            value={customerTime}
-            onChangeText={setCustomerTime}
-            mode="outlined"
-            style={styles.input}
-            theme={{
-              colors: {
-                primary: 'black',
-                onSurfaceVariant: 'black',
-                onSurface: '#000',
-                background: 'white',
-              },
-            }}
+
+          <DatePicker
+            modal
+            open={datePickerVisible}
+            date={selectedDate}
+            mode="date"
+            onConfirm={handleDateConfirm}
+            onCancel={() => setDatePickerVisible(false)}
+          />
+          <TouchableOpacity
+            onPress={() => setTimePickerVisible(true)}
+            style={styles.dateInputContainer}
+          >
+            <TextInput
+              label="Customer Time *"
+              value={customerTime}
+              mode="outlined"
+              style={styles.input}
+              editable={false}
+              pointerEvents="none"
+              right={
+                <TextInput.Icon
+                  icon="clock-outline"
+                  onPress={() => setTimePickerVisible(true)}
+                />
+              }
+              theme={{
+                colors: {
+                  primary: 'black',
+                  onSurfaceVariant: 'black',
+                  onSurface: '#000',
+                  background: 'white',
+                },
+              }}
+            />
+          </TouchableOpacity>
+
+          <DatePicker
+            modal
+            open={timePickerVisible}
+            date={selectedTime}
+            mode="time"
+            onConfirm={handleTimeConfirm}
+            onCancel={() => setTimePickerVisible(false)}
           />
           <Menu
             visible={menuVisible}
@@ -235,7 +322,7 @@ const AddProject: React.FC<Props> = ({ navigation }) => {
               title="Completed"
             />
           </Menu>
-          <Text style={styles.imageLabel}>Site Images (Max 3)</Text>
+          <Text style={styles.imageLabel}>Site Images (Max 5)</Text>
           <View style={styles.imageContainer}>
             {images.map((uri, index) => (
               <View key={index} style={styles.imageWrapper}>
@@ -248,7 +335,7 @@ const AddProject: React.FC<Props> = ({ navigation }) => {
                 </TouchableOpacity>
               </View>
             ))}
-            {images.length < 3 && (
+            {images.length < 5 && (
               <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
                 <MaterialCommunityIcons
                   name="upload"
@@ -296,7 +383,10 @@ const styles = StyleSheet.create({
   imageContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: height * 0.03,
+    marginTop: 10,
+  },
+  dateInputContainer: {
+    marginBottom: 16,
   },
   imageWrapper: {
     position: 'relative',

@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Customer } from './AdminCustomerList';
+import { Formatwithcomma, RemoveComma } from '../utils/formatewithcomma';
 
 type Props = {
   navigation: NativeStackNavigationProp<rootStackParamList, 'AddCustomer'>;
@@ -16,18 +17,25 @@ const AddCustomer: React.FC<Props> = ({ navigation }) => {
   const [phone, setPhone] = useState('');
   const [location, setLocation] = useState('');
   const [address, setAddress] = useState('');
-  const [advance, setAdvance] = useState('0');
-  const [total, setTotal] = useState('0');
+  const [advance, setAdvance] = useState('');
+  const [budget, setBudget] = useState('');
 
   const handleAdd = async () => {
     if (!name || !phone || !location || !address) return;
-    const newCustomer: Customer = {
+    const newCustomer: Omit<Customer, 'id' | 'createdAt' | 'payments'> & {
+      id?: string;
+      createdAt?: string;
+      payments?: any[];
+    } = {
+      id: Date.now().toString(),
       name,
       phone,
       location,
       address,
-      advance: parseFloat(advance),
-      total: parseFloat(total),
+      advance: parseFloat(advance) || 0,
+      budget: parseFloat(budget) || 0,
+      payments: [],
+      createdAt: new Date().toISOString(),
     };
     try {
       const stored = await AsyncStorage.getItem('customers');
@@ -57,6 +65,12 @@ const AddCustomer: React.FC<Props> = ({ navigation }) => {
         mode="outlined"
         style={styles.input}
         keyboardType="phone-pad"
+        //disabled={phone.length === 10}
+        right={
+          phone.length === 10 && (
+            <TextInput.Icon icon="check-circle" color="green" />
+          )
+        }
       />
       <TextInput
         label="Location *"
@@ -76,19 +90,21 @@ const AddCustomer: React.FC<Props> = ({ navigation }) => {
       <View style={styles.amountRow}>
         <TextInput
           label="Advance Amount"
-          value={advance}
-          onChangeText={setAdvance}
+          value={Formatwithcomma(advance)}
+          onChangeText={text => setAdvance(RemoveComma(text))}
           mode="outlined"
           style={styles.amountInput}
           keyboardType="numeric"
+          left={<TextInput.Affix text="₹" />}
         />
         <TextInput
-          label="Total Amount"
-          value={total}
-          onChangeText={setTotal}
+          label="Budget"
+          value={Formatwithcomma(budget)}
+          onChangeText={text => setBudget(RemoveComma(text))}
           mode="outlined"
           style={styles.amountInput}
           keyboardType="numeric"
+          left={<TextInput.Affix text="₹" />}
         />
       </View>
       <Button

@@ -8,18 +8,28 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Card, TextInput } from 'react-native-paper';
+import { Card, TextInput, Button } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Formatwithcomma } from '../utils/formatewithcomma';
+
+export type Payment = {
+  id: string;
+  date: string;
+  amount: number;
+};
 
 export type Customer = {
+  id: string;
   name: string;
   phone: string;
   location: string;
   address: string;
   advance: number;
-  total: number;
+  budget: number;
+  payments: Payment[];
+  createdAt: string;
 };
 
 type Props = {
@@ -57,22 +67,76 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
       c.location.toLowerCase().includes(search.toLowerCase()),
   );
 
-  const renderItem = ({ item }: { item: Customer }) => (
-    <Card style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.name}>{item.name}</Text>
-        <Text style={styles.location}>{item.location}</Text>
-      </View>
-      <View style={styles.infoRow}>
-        <MaterialCommunityIcons name="phone" size={16} color="#2874b8" />
-        <Text style={styles.phone}>{item.phone}</Text>
-      </View>
-      <View style={styles.infoRow}>
-        <MaterialCommunityIcons name="map-marker" size={16} color="#2874b8" />
-        <Text style={styles.address}>{item.address}</Text>
-      </View>
-    </Card>
-  );
+  const calculateTotalPaid = (customer: Customer) => {
+    return (customer.payments || []).reduce(
+      (sum, payment) => sum + payment.amount,
+      0,
+    );
+  };
+
+  const renderItem = ({ item }: { item: Customer }) => {
+    const totalPaid = calculateTotalPaid(item);
+    const remaining = item.budget - totalPaid;
+    const status = remaining <= 0 ? 'Paid' : 'Pending';
+
+    return (
+      <Card style={styles.card}>
+        <Card.Content>
+          <View style={styles.cardHeader}>
+            <Text style={styles.name}>{item.name}</Text>
+            <View
+              style={[
+                styles.statusBadge,
+                { backgroundColor: status === 'Paid' ? '#27ae60' : '#f39c12' },
+              ]}
+            >
+              <Text style={styles.statusText}>{status}</Text>
+            </View>
+          </View>
+          <Text style={styles.phone}>{item.phone}</Text>
+          <Text style={styles.location}>{item.location}</Text>
+
+          <View style={styles.amountRow}>
+            <Text style={styles.amountLabel}>Budget:</Text>
+            <Text style={styles.amountValue}>
+              ₹{Formatwithcomma(item.budget)}
+            </Text>
+          </View>
+          <View style={styles.amountRow}>
+            <Text style={styles.amountLabel}>Paid:</Text>
+            <Text style={styles.amountValue}>
+              ₹{Formatwithcomma(totalPaid)}
+            </Text>
+          </View>
+          <View style={styles.amountRow}>
+            <Text style={styles.amountLabel}>Remaining:</Text>
+            <Text
+              style={[
+                styles.amountValue,
+                { color: remaining > 0 ? '#e74c3c' : '#27ae60' },
+              ]}
+            >
+              ₹{Formatwithcomma(Math.abs(remaining))}
+            </Text>
+          </View>
+
+          <View style={styles.buttonRow}>
+            <Button
+              mode="contained"
+              onPress={() =>
+                navigation.navigate('PaymentPage', { customer: item })
+              }
+              style={styles.paymentButton}
+              labelStyle={styles.buttonLabel}
+              icon="cash"
+            >
+              Add Payment
+            </Button>
+          </View>
+        </Card.Content>
+      </Card>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -104,22 +168,77 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5', padding: 16 },
   search: { marginBottom: 16 },
   card: {
-    marginBottom: 12,
-    padding: 16,
-    backgroundColor: '#fff',
+    marginBottom: 16,
     borderRadius: 8,
     elevation: 2,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 8,
   },
-  name: { fontSize: 18, fontWeight: '600', color: '#1a1a1a' },
-  location: { fontSize: 16, color: '#888' },
-  infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  phone: { marginLeft: 8, color: '#333' },
-  address: { marginLeft: 8, color: '#333' },
+  name: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  statusText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  phone: {
+    color: '#666',
+    marginBottom: 4,
+    fontSize: 14,
+  },
+  location: {
+    color: '#444',
+    marginBottom: 4,
+    fontWeight: '500',
+    fontSize: 14,
+  },
+  address: {
+    color: '#666',
+    marginBottom: 12,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  amountRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 2,
+    paddingVertical: 2,
+  },
+  amountLabel: {
+    color: '#555',
+    fontSize: 14,
+  },
+  amountValue: {
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  buttonRow: {
+    marginTop: 12,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  paymentButton: {
+    borderRadius: 6,
+    backgroundColor: '#2874b8',
+  },
+  buttonLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
   addButton: {
     position: 'absolute',
     bottom: 24,

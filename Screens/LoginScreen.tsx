@@ -30,7 +30,7 @@ const LoginScreen: React.FC<props> = ({ navigation }) => {
     if (email === 'admin@indiansteel.com' && password === 'admin123') {
       navigation.replace('AdminHome');
     } else if (email === 'worker@indiansteel.com' && password === 'worker123') {
-      navigation.navigate('WorkersHome');
+      navigation.replace('WorkersHome');
     } else
       Alert.alert('Invalid credentials', 'Email address or password is wrong');
     console.log('Sign In:', { email, password });

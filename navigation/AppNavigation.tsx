@@ -9,6 +9,7 @@ import AddCustomer from '../Screens/AdminAddCustomer';
 import AddProject from '../Screens/AdminAddProduct';
 import ProjectList from '../Screens/AdminProductList';
 import AdminPanel from '../Screens/Adminpanel';
+import PaymentPage from '../Screens/PaymentPage';
 
 export type rootStackParamList = {
   login: undefined;
@@ -19,6 +20,7 @@ export type rootStackParamList = {
   ProjectList: undefined;
   AddProject: undefined;
   AdminPanel: undefined;
+  PaymentPage: { customer: any }; // We'll use 'any' here to avoid type issues
 };
 
 const Stack = createNativeStackNavigator<rootStackParamList>();
@@ -119,6 +121,18 @@ const AppNavigation = () => {
           name="AdminPanel"
           component={AdminPanel}
           options={{
+            headerStyle: { backgroundColor: '#2874b8' },
+            headerTitleStyle: {
+              color: '#fff',
+            },
+            headerTintColor: '#fff',
+          }}
+        />
+        <Stack.Screen
+          name="PaymentPage"
+          component={PaymentPage}
+          options={{
+            title: 'Payments',
             headerStyle: { backgroundColor: '#2874b8' },
             headerTitleStyle: {
               color: '#fff',

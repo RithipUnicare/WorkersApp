@@ -138,7 +138,7 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
       {/* Optionally show thumbnails */}
       {item.images.length > 0 && (
         <View style={styles.imagePreview}>
-          {item.images.slice(0, 3).map((uri, index) => (
+          {item.images.slice(0).map((uri, index) => (
             <Image key={index} source={{ uri }} style={styles.thumbnail} />
           ))}
         </View>
