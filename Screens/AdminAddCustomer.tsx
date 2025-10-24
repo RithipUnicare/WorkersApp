@@ -19,6 +19,7 @@ const AddCustomer: React.FC<Props> = ({ navigation }) => {
   const [address, setAddress] = useState('');
   const [advance, setAdvance] = useState('');
   const [budget, setBudget] = useState('');
+  const [description, setDescription] = useState('');
 
   const handleAdd = async () => {
     if (!name || !phone || !location || !address) return;

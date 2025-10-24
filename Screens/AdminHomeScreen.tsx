@@ -15,6 +15,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonActions } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import initNotification from '../utils/pushNofication';
 
 type props = {
   navigation: NativeStackNavigationProp<rootStackParamList, 'AdminHome'>;
@@ -63,6 +64,15 @@ const AdminHomePage: React.FC<props> = ({ navigation }) => {
       iconColor: '#2874b8',
       iconBg: '#E3F2FD',
       onPress: () => navigation.navigate('AdminPanel'),
+    },
+    {
+      id: 5,
+      title: 'Testing',
+      description: 'Testing',
+      icon: 'cog',
+      iconColor: '#2874b8',
+      iconBg: '#E3F2FD',
+      onPress: () => navigation.navigate('TestingScreen'),
     },
   ];
 
@@ -150,7 +160,6 @@ const AdminHomePage: React.FC<props> = ({ navigation }) => {
             </TouchableOpacity>
           ))}
         </View>
-
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>

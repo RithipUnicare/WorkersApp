@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "367397290221",
+    "project_id": "indian-steels",
+    "storage_bucket": "indian-steels.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:367397290221:android:21b1b18f0141257af54ce4",
+        "android_client_info": {
+          "package_name": "com.workersapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAMbwuPfxtn5g2_4BXxjICBbUGVfYCoVhY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
