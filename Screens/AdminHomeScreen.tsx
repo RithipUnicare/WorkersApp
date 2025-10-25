@@ -65,14 +65,23 @@ const AdminHomePage: React.FC<props> = ({ navigation }) => {
       iconBg: '#E3F2FD',
       onPress: () => navigation.navigate('AdminPanel'),
     },
+    // {
+    //   id: 5,
+    //   title: 'Testing',
+    //   description: 'Testing',
+    //   icon: 'cog',
+    //   iconColor: '#2874b8',
+    //   iconBg: '#E3F2FD',
+    //   onPress: () => navigation.navigate('TestingScreen'),
+    // },
     {
-      id: 5,
-      title: 'Testing',
-      description: 'Testing',
-      icon: 'cog',
+      id: 6,
+      title: 'unAttended Customers',
+      description: 'View unAttended Customers',
+      icon: 'account-clock',
       iconColor: '#2874b8',
       iconBg: '#E3F2FD',
-      onPress: () => navigation.navigate('TestingScreen'),
+      onPress: () => console.log('UnAttended Customers'),
     },
   ];
 

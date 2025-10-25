@@ -88,61 +88,69 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
 
   const renderItem = ({ item }: { item: Project }) => (
     <Card style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.name}>{item.customerName}</Text>
-        <Chip
-          style={[
-            styles.statusChip,
-            { backgroundColor: getStatusColor(item.siteStatus) },
-          ]}
-          textStyle={styles.statusText}
-        >
-          {item.siteStatus}
-        </Chip>
-      </View>
-      <View style={styles.infoRow}>
-        <MaterialCommunityIcons
-          name="map-marker"
-          size={width * 0.04}
-          color="#2874b8"
-        />
-        <Text style={styles.infoText}>{item.location}</Text>
-      </View>
-      <View style={styles.infoRow}>
-        <MaterialCommunityIcons
-          name="phone"
-          size={width * 0.04}
-          color="#2874b8"
-        />
-        <Text style={styles.infoText}>{item.contactNumber}</Text>
-      </View>
-      <View style={styles.infoRow}>
-        <MaterialCommunityIcons
-          name="calendar"
-          size={width * 0.04}
-          color="#2874b8"
-        />
-        <Text style={styles.infoText}>Delivery: {item.deliveryDate}</Text>
-        <Text style={styles.daysLeft}>
-          {calculateDaysLeft(item.deliveryDate)}
-        </Text>
-      </View>
-      <View style={styles.infoRow}>
-        <MaterialCommunityIcons
-          name="clock"
-          size={width * 0.04}
-          color="#2874b8"
-        />
-        <Text style={styles.infoText}>Working Hours: {item.customerTime}</Text>
-      </View>
-      {/* Optionally show thumbnails */}
-      {item.images.length > 0 && (
-        <View style={styles.imagePreview}>
-          {item.images.slice(0).map((uri, index) => (
-            <Image key={index} source={{ uri }} style={styles.thumbnail} />
-          ))}
+      <TouchableOpacity
+        onPress={() => {
+          navigation.navigate('ProjectDetails', { project: item });
+        }}
+      >
+        <View style={styles.cardHeader}>
+          <Text style={styles.name}>{item.customerName}</Text>
+          <Chip
+            style={[
+              styles.statusChip,
+              { backgroundColor: getStatusColor(item.siteStatus) },
+            ]}
+            textStyle={styles.statusText}
+          >
+            {item.siteStatus}
+          </Chip>
         </View>
-      )}
+        <View style={styles.infoRow}>
+          <MaterialCommunityIcons
+            name="map-marker"
+            size={width * 0.04}
+            color="#2874b8"
+          />
+          <Text style={styles.infoText}>{item.location}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <MaterialCommunityIcons
+            name="phone"
+            size={width * 0.04}
+            color="#2874b8"
+          />
+          <Text style={styles.infoText}>{item.contactNumber}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <MaterialCommunityIcons
+            name="calendar"
+            size={width * 0.04}
+            color="#2874b8"
+          />
+          <Text style={styles.infoText}>Delivery: {item.deliveryDate}</Text>
+          <Text style={styles.daysLeft}>
+            {calculateDaysLeft(item.deliveryDate)}
+          </Text>
+        </View>
+        <View style={styles.infoRow}>
+          <MaterialCommunityIcons
+            name="clock"
+            size={width * 0.04}
+            color="#2874b8"
+          />
+          <Text style={styles.infoText}>
+            Working Hours: {item.customerTime}
+          </Text>
+        </View>
+        {/* Optionally show thumbnails */}
+        {item.images.length > 0 && (
+          <View style={styles.imagePreview}>
+            {item.images.slice(0).map((uri, index) => (
+              <Image key={index} source={{ uri }} style={styles.thumbnail} />
+            ))}
+          </View>
+        )}
+      </TouchableOpacity>
     </Card>
   );
 

@@ -11,6 +11,10 @@ import ProjectList from '../Screens/AdminProductList';
 import AdminPanel from '../Screens/Adminpanel';
 import PaymentPage from '../Screens/PaymentPage';
 import TestingScreen from '../Screens/testingscreen';
+import CustomerDetail from '../Screens/CustomerScreen';
+import ProjectDetails from '../Screens/ProductDetails';
+import { Project } from '../Screens/AdminProductList';
+import { Customer } from '../Screens/AdminCustomerList';
 
 export type rootStackParamList = {
   login: undefined;
@@ -19,10 +23,12 @@ export type rootStackParamList = {
   CustomerList: undefined;
   AddCustomer: undefined;
   ProjectList: undefined;
-  AddProject: undefined;
+  AddProject: { customer: Customer } | { projectToEdit: Project } | undefined;
   AdminPanel: undefined;
   PaymentPage: { customer: any }; // We'll use 'any' here to avoid type issues
   TestingScreen: undefined;
+  CustomerDetail: { customer: Customer };
+  ProjectDetails: { project: Project }; // We'll use 'any' here to avoid type issues
 };
 
 const Stack = createNativeStackNavigator<rootStackParamList>();
@@ -107,6 +113,18 @@ const AppNavigation = () => {
           }}
         />
         <Stack.Screen
+          name="ProjectDetails"
+          component={ProjectDetails}
+          options={{
+            title: 'Project Details',
+            headerStyle: { backgroundColor: '#2874b8' },
+            headerTitleStyle: {
+              color: '#fff',
+            },
+            headerTintColor: '#fff',
+          }}
+        />
+        <Stack.Screen
           name="AddProject"
           component={AddProject}
           options={{
@@ -135,6 +153,18 @@ const AppNavigation = () => {
           component={PaymentPage}
           options={{
             title: 'Payments',
+            headerStyle: { backgroundColor: '#2874b8' },
+            headerTitleStyle: {
+              color: '#fff',
+            },
+            headerTintColor: '#fff',
+          }}
+        />
+        <Stack.Screen
+          name="CustomerDetail"
+          component={CustomerDetail}
+          options={{
+            title: 'Customer Details',
             headerStyle: { backgroundColor: '#2874b8' },
             headerTitleStyle: {
               color: '#fff',

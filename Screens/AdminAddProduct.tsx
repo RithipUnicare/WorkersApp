@@ -1,5 +1,5 @@
-// screens/AddProject.tsx (updated with KeyboardAvoidingView)
-import React, { useState } from 'react';
+// screens/AddProject.tsx
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,18 +15,22 @@ import { TextInput, Button, Menu, Provider } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { launchImageLibrary } from 'react-native-image-picker';
+import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import dayjs from 'dayjs';
 import DatePicker from 'react-native-date-picker';
+import { RouteProp } from '@react-navigation/native';
+import { Customer } from './AdminCustomerList';
+import { getLocation } from '../utils/GeoLocation';
 
 const { width, height } = Dimensions.get('window');
 
 type Props = {
   navigation: NativeStackNavigationProp<rootStackParamList, 'AddProject'>;
+  route: RouteProp<rootStackParamList, 'AddProject'>;
 };
 
-type Project = {
+export type Project = {
   customerName: string;
   contactNumber: string;
   location: string;
@@ -36,7 +40,22 @@ type Project = {
   images: string[];
 };
 
-const AddProject: React.FC<Props> = ({ navigation }) => {
+export const GetLocation = async () => {
+  try {
+    const location = await getLocation();
+    return location;
+  } catch (error) {
+    console.error('Error getting location: ', error);
+    return null;
+  }
+};
+
+const AddProject: React.FC<Props> = ({ navigation, route }) => {
+  const customer: Customer | undefined = route.params?.customer;
+  const projectToEdit: Project | undefined = route.params?.projectToEdit;
+
+  const isEditMode = !!projectToEdit;
+
   const [customerName, setCustomerName] = useState('');
   const [contactNumber, setContactNumber] = useState('');
   const [location, setLocation] = useState('');
@@ -49,24 +68,59 @@ const AddProject: React.FC<Props> = ({ navigation }) => {
 
   const [menuVisible, setMenuVisible] = useState(false);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
+  const [timePickerVisible, setTimePickerVisible] = useState(false);
 
   const [remainingDays, setRemainingDays] = useState('');
-  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
-
-  const [timePickerVisible, setTimePickerVisible] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedTime, setSelectedTime] = useState<Date>(() => {
     const now = new Date();
-    now.setHours(9, 0, 0, 0); // Default to 9:00 AM
+    now.setHours(9, 0, 0, 0);
     return now;
   });
 
-  const formatDate = (date: Date): string => {
-    return dayjs(date).format('DD-MM-YYYY');
-  };
+  // === Pre-fill logic ===
+  useEffect(() => {
+    if (projectToEdit) {
+      // Edit mode: Fill from project
+      setCustomerName(projectToEdit.customerName);
+      setContactNumber(projectToEdit.contactNumber);
+      setLocation(projectToEdit.location);
+      setDeliveryDate(projectToEdit.deliveryDate);
+      setCustomerTime(projectToEdit.customerTime);
+      setSiteStatus(projectToEdit.siteStatus);
+      setImages(projectToEdit.images);
 
-  const formatTime = (date: Date): string => {
-    return dayjs(date).format('h:mm A');
-  };
+      // Parse delivery date
+      const [dd, mm, yyyy] = projectToEdit.deliveryDate.split('-').map(Number);
+      const delivery = new Date(yyyy, mm - 1, dd);
+      setSelectedDate(delivery);
+
+      // Parse time
+      const [time, ampm] = projectToEdit.customerTime.split(' ');
+      const [h, m] = time.split(':');
+      let hours = parseInt(h, 10);
+      if (ampm === 'PM' && hours !== 12) hours += 12;
+      if (ampm === 'AM' && hours === 12) hours = 0;
+      const timeDate = new Date();
+      timeDate.setHours(hours, parseInt(m, 10), 0, 0);
+      setSelectedTime(timeDate);
+
+      // Calculate remaining days
+      const today = new Date();
+      const diffTime = Math.abs(delivery.getTime() - today.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      setRemainingDays(`${diffDays} days remaining`);
+    } else if (customer) {
+      // Add from customer
+      setCustomerName(customer.name);
+      setContactNumber(customer.phone);
+      setLocation(customer.address || '');
+    }
+  }, [projectToEdit, customer]);
+
+  // === Date & Time Handlers ===
+  const formatDate = (date: Date): string => dayjs(date).format('DD-MM-YYYY');
+  const formatTime = (date: Date): string => dayjs(date).format('h:mm A');
 
   const handleDateConfirm = (date: Date) => {
     setSelectedDate(date);
@@ -85,9 +139,19 @@ const AddProject: React.FC<Props> = ({ navigation }) => {
     setTimePickerVisible(false);
   };
 
+  // === Image Picker ===
   const pickImage = () => {
-    if (images.length >= 5) return;
-    launchImageLibrary({ mediaType: 'photo', quality: 1 }, response => {
+    if (images.length >= 15) return;
+    launchImageLibrary({ mediaType: 'photo', quality: 0.5 }, response => {
+      if (response.didCancel || response.errorCode || !response.assets) return;
+      const uri = response.assets[0].uri;
+      if (uri) setImages(prev => [...prev, uri]);
+    });
+  };
+
+  const openCamera = () => {
+    if (images.length >= 15) return;
+    launchCamera({ mediaType: 'photo', quality: 0.5 }, response => {
       if (response.didCancel || response.errorCode || !response.assets) return;
       const uri = response.assets[0].uri;
       if (uri) setImages(prev => [...prev, uri]);
@@ -98,28 +162,43 @@ const AddProject: React.FC<Props> = ({ navigation }) => {
     setImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleAdd = async () => {
+  // === Save / Update Logic ===
+  const handleSave = async () => {
     if (
       !customerName ||
       !contactNumber ||
       !location ||
       !deliveryDate ||
       !customerTime
-    )
+    ) {
       return;
-    const newProject: Project = {
+    }
+
+    const projectData: Project = {
       customerName,
       contactNumber,
-      location,
       deliveryDate,
       customerTime,
       siteStatus,
-      images,
     };
+
     try {
       const stored = await AsyncStorage.getItem('projects');
-      const projects = stored ? JSON.parse(stored) : [];
-      projects.push(newProject);
+      let projects: Project[] = stored ? JSON.parse(stored) : [];
+
+      if (isEditMode && projectToEdit) {
+        // Remove old version
+        projects = projects.filter(
+          p =>
+            !(
+              p.customerName === projectToEdit.customerName &&
+              p.contactNumber === projectToEdit.contactNumber &&
+              p.deliveryDate === projectToEdit.deliveryDate
+            ),
+        );
+      }
+
+      projects.push(projectData);
       await AsyncStorage.setItem('projects', JSON.stringify(projects));
       navigation.goBack();
     } catch (e) {
@@ -135,22 +214,19 @@ const AddProject: React.FC<Props> = ({ navigation }) => {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -height * 0.1}
       >
         <ScrollView contentContainerStyle={styles.content}>
-          <Text style={styles.title}>Project Details</Text>
+          <Text style={styles.title}>
+            {isEditMode ? 'Edit Project' : 'Add New Project'}
+          </Text>
+
           <TextInput
             label="Customer Name *"
             value={customerName}
             onChangeText={setCustomerName}
             mode="outlined"
             style={styles.input}
-            theme={{
-              colors: {
-                primary: 'black',
-                onSurfaceVariant: 'black',
-                background: 'white',
-                onSurface: '#000',
-              },
-            }}
+            theme={theme}
           />
+
           <TextInput
             label="Contact Number *"
             value={contactNumber}
@@ -158,35 +234,33 @@ const AddProject: React.FC<Props> = ({ navigation }) => {
             mode="outlined"
             style={styles.input}
             keyboardType="phone-pad"
-            theme={{
-              colors: {
-                primary: 'black',
-                onSurfaceVariant: 'black',
-                onSurface: '#000',
-                background: 'white',
-              },
-            }}
+            theme={theme}
             right={
               contactNumber.length === 10 && (
                 <TextInput.Icon icon="check-circle" color="green" />
               )
             }
           />
+
           <TextInput
             label="Location *"
             value={location}
             onChangeText={setLocation}
             mode="outlined"
             style={styles.input}
-            theme={{
-              colors: {
-                primary: 'black',
-                onSurfaceVariant: 'black',
-                onSurface: '#000',
-                background: 'white',
-              },
-            }}
+            theme={theme}
+            right={
+              <TextInput.Icon
+                icon="map-marker"
+                onPress={async () => {
+                  const loc = await GetLocation();
+                  if (loc) setLocation(loc?.address);
+                }}
+              />
+            }
           />
+
+          {/* Date Picker */}
           <TouchableOpacity
             onPress={() => setDatePickerVisible(true)}
             style={styles.dateInputContainer}
@@ -204,14 +278,7 @@ const AddProject: React.FC<Props> = ({ navigation }) => {
                   onPress={() => setDatePickerVisible(true)}
                 />
               }
-              theme={{
-                colors: {
-                  primary: 'black',
-                  onSurfaceVariant: 'black',
-                  onSurface: '#000',
-                  background: 'white',
-                },
-              }}
+              theme={theme}
             />
           </TouchableOpacity>
 
@@ -221,16 +288,7 @@ const AddProject: React.FC<Props> = ({ navigation }) => {
             disabled
             mode="outlined"
             style={styles.input}
-            theme={{
-              colors: {
-                primary: 'black',
-                onSurfaceVariant: 'black',
-                onSurface: '#000',
-                background: 'white',
-                onSurfaceDisabled: 'grey',
-                disabled: 'black',
-              },
-            }}
+            theme={disabledTheme}
           />
 
           <DatePicker
@@ -241,6 +299,8 @@ const AddProject: React.FC<Props> = ({ navigation }) => {
             onConfirm={handleDateConfirm}
             onCancel={() => setDatePickerVisible(false)}
           />
+
+          {/* Time Picker */}
           <TouchableOpacity
             onPress={() => setTimePickerVisible(true)}
             style={styles.dateInputContainer}
@@ -258,14 +318,7 @@ const AddProject: React.FC<Props> = ({ navigation }) => {
                   onPress={() => setTimePickerVisible(true)}
                 />
               }
-              theme={{
-                colors: {
-                  primary: 'black',
-                  onSurfaceVariant: 'black',
-                  onSurface: '#000',
-                  background: 'white',
-                },
-              }}
+              theme={theme}
             />
           </TouchableOpacity>
 
@@ -277,6 +330,8 @@ const AddProject: React.FC<Props> = ({ navigation }) => {
             onConfirm={handleTimeConfirm}
             onCancel={() => setTimePickerVisible(false)}
           />
+
+          {/* Site Status Dropdown */}
           <Menu
             visible={menuVisible}
             onDismiss={() => setMenuVisible(false)}
@@ -284,45 +339,30 @@ const AddProject: React.FC<Props> = ({ navigation }) => {
               <TextInput
                 label="Site Status"
                 value={siteStatus}
-                onFocus={() => setMenuVisible(true)}
                 mode="outlined"
                 style={styles.input}
                 editable={false}
-                theme={{
-                  colors: {
-                    primary: 'black',
-                    onSurfaceVariant: 'black',
-                    onSurface: '#000',
-                    background: 'white',
-                    disabled: 'black',
-                  },
-                }}
+                onFocus={() => setMenuVisible(true)}
+                theme={theme}
               />
             }
           >
-            <Menu.Item
-              onPress={() => {
-                setSiteStatus('In Progress');
-                setMenuVisible(false);
-              }}
-              title="In Progress"
-            />
-            <Menu.Item
-              onPress={() => {
-                setSiteStatus('Material Pending');
-                setMenuVisible(false);
-              }}
-              title="Material Pending"
-            />
-            <Menu.Item
-              onPress={() => {
-                setSiteStatus('Completed');
-                setMenuVisible(false);
-              }}
-              title="Completed"
-            />
+            {(['In Progress', 'Material Pending', 'Completed'] as const).map(
+              status => (
+                <Menu.Item
+                  key={status}
+                  onPress={() => {
+                    setSiteStatus(status);
+                    setMenuVisible(false);
+                  }}
+                  title={status}
+                />
+              ),
+            )}
           </Menu>
-          <Text style={styles.imageLabel}>Site Images (Max 5)</Text>
+
+          {/* Images */}
+          <Text style={styles.imageLabel}>Site Images (Max 15)</Text>
           <View style={styles.imageContainer}>
             {images.map((uri, index) => (
               <View key={index} style={styles.imageWrapper}>
@@ -335,7 +375,7 @@ const AddProject: React.FC<Props> = ({ navigation }) => {
                 </TouchableOpacity>
               </View>
             ))}
-            {images.length < 5 && (
+            {images.length < 15 && (
               <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
                 <MaterialCommunityIcons
                   name="upload"
@@ -345,15 +385,37 @@ const AddProject: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.uploadText}>Upload</Text>
               </TouchableOpacity>
             )}
+            {images.length < 15 && (
+              <TouchableOpacity
+                style={styles.uploadButton}
+                onPress={openCamera}
+              >
+                <MaterialCommunityIcons
+                  name="camera"
+                  size={width * 0.08}
+                  color="#2874b8"
+                />
+                <Text style={styles.uploadText}>Camera</Text>
+              </TouchableOpacity>
+            )}
           </View>
+
+          {/* Submit Button */}
           <Button
             mode="contained"
-            onPress={handleAdd}
+            onPress={handleSave}
             style={styles.button}
             buttonColor="#2874b8"
             textColor="white"
+            disabled={
+              !customerName ||
+              !contactNumber ||
+              !location ||
+              !deliveryDate ||
+              !customerTime
+            }
           >
-            Add Project
+            {isEditMode ? 'Update Project' : 'Add Project'}
           </Button>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -361,6 +423,25 @@ const AddProject: React.FC<Props> = ({ navigation }) => {
   );
 };
 
+// === Shared Themes ===
+const theme = {
+  colors: {
+    primary: 'black',
+    onSurfaceVariant: 'black',
+    background: 'white',
+    onSurface: '#000',
+  },
+};
+
+const disabledTheme = {
+  colors: {
+    ...theme.colors,
+    onSurfaceDisabled: 'grey',
+    disabled: 'black',
+  },
+};
+
+// === Styles ===
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   content: { padding: width * 0.06 },
@@ -372,21 +453,20 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: height * 0.02,
-    // backgroundColor: '#FFFFFF',
-    // color: '#000',
+  },
+  dateInputContainer: {
+    marginBottom: 16,
   },
   imageLabel: {
     fontSize: width * 0.04,
     color: '#333',
     marginBottom: height * 0.01,
+    marginTop: height * 0.02,
   },
   imageContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginTop: 10,
-  },
-  dateInputContainer: {
-    marginBottom: 16,
   },
   imageWrapper: {
     position: 'relative',
@@ -427,7 +507,8 @@ const styles = StyleSheet.create({
   button: {
     borderRadius: width * 0.02,
     paddingVertical: height * 0.01,
-    marginTop: height * 0.02,
+    marginTop: height * 0.03,
+    marginBottom: height * 0.05,
   },
 });
 

@@ -30,6 +30,9 @@ export type Customer = {
   budget: number;
   payments: Payment[];
   createdAt: string;
+  description: string;
+  noOfDaysVisited: string;
+  status: 'enquired' | 'in-progress' | 'completed';
 };
 
 type Props = {
@@ -40,6 +43,7 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState('');
   const [role, setRole] = useState('');
+
   useEffect(() => {
     navigation.addListener('focus', () => {
       loadCustomers();
@@ -81,59 +85,53 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
 
     return (
       <Card style={styles.card}>
-        <Card.Content>
-          <View style={styles.cardHeader}>
-            <Text style={styles.name}>{item.name}</Text>
-            <View
-              style={[
-                styles.statusBadge,
-                { backgroundColor: status === 'Paid' ? '#27ae60' : '#f39c12' },
-              ]}
-            >
-              <Text style={styles.statusText}>{status}</Text>
+        <TouchableOpacity
+          onPress={() => {
+            navigation.navigate('CustomerDetail', { customer: item });
+          }}
+        >
+          <Card.Content>
+            <View style={styles.cardHeader}>
+              <Text style={styles.name}>{item.name}</Text>
+              <View
+                style={[
+                  styles.statusBadge,
+                  {
+                    backgroundColor: status === 'Paid' ? '#27ae60' : '#f39c12',
+                  },
+                ]}
+              >
+                <Text style={styles.statusText}>{status}</Text>
+              </View>
             </View>
-          </View>
-          <Text style={styles.phone}>{item.phone}</Text>
-          <Text style={styles.location}>{item.location}</Text>
+            <Text style={styles.phone}>{item.phone}</Text>
+            <Text style={styles.location}>{item.location}</Text>
 
-          <View style={styles.amountRow}>
-            <Text style={styles.amountLabel}>Budget:</Text>
-            <Text style={styles.amountValue}>
-              ₹{Formatwithcomma(item.budget)}
-            </Text>
-          </View>
-          <View style={styles.amountRow}>
-            <Text style={styles.amountLabel}>Paid:</Text>
-            <Text style={styles.amountValue}>
-              ₹{Formatwithcomma(totalPaid)}
-            </Text>
-          </View>
-          <View style={styles.amountRow}>
-            <Text style={styles.amountLabel}>Remaining:</Text>
-            <Text
-              style={[
-                styles.amountValue,
-                { color: remaining > 0 ? '#e74c3c' : '#27ae60' },
-              ]}
-            >
-              ₹{Formatwithcomma(Math.abs(remaining))}
-            </Text>
-          </View>
-
-          <View style={styles.buttonRow}>
-            <Button
-              mode="contained"
-              onPress={() =>
-                navigation.navigate('PaymentPage', { customer: item })
-              }
-              style={styles.paymentButton}
-              labelStyle={styles.buttonLabel}
-              icon="cash"
-            >
-              Add Payment
-            </Button>
-          </View>
-        </Card.Content>
+            <View style={styles.amountRow}>
+              <Text style={styles.amountLabel}>Budget:</Text>
+              <Text style={styles.amountValue}>
+                ₹{Formatwithcomma(item.budget)}
+              </Text>
+            </View>
+            <View style={styles.amountRow}>
+              <Text style={styles.amountLabel}>Paid:</Text>
+              <Text style={styles.amountValue}>
+                ₹{Formatwithcomma(totalPaid)}
+              </Text>
+            </View>
+            <View style={styles.amountRow}>
+              <Text style={styles.amountLabel}>Remaining:</Text>
+              <Text
+                style={[
+                  styles.amountValue,
+                  { color: remaining > 0 ? '#e74c3c' : '#27ae60' },
+                ]}
+              >
+                ₹{Formatwithcomma(Math.abs(remaining))}
+              </Text>
+            </View>
+          </Card.Content>
+        </TouchableOpacity>
       </Card>
     );
   };
@@ -171,6 +169,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderRadius: 8,
     elevation: 2,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -224,20 +227,6 @@ const styles = StyleSheet.create({
   amountValue: {
     fontWeight: '600',
     fontSize: 14,
-  },
-  buttonRow: {
-    marginTop: 12,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-  },
-  paymentButton: {
-    borderRadius: 6,
-    backgroundColor: '#2874b8',
-  },
-  buttonLabel: {
-    fontSize: 13,
-    fontWeight: '500',
   },
   addButton: {
     position: 'absolute',
