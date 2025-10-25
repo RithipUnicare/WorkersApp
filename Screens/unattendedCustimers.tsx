@@ -25,7 +25,7 @@ type Props = {
   navigation: NativeStackNavigationProp<rootStackParamList, 'CustomerList'>;
 };
 
-const unattendedCustomers: React.FC<Props> = ({ navigation }) => {
+const UnattendedCustomers: React.FC<Props> = ({ navigation }) => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState('');
   const [role, setRole] = useState('');
@@ -140,13 +140,13 @@ const unattendedCustomers: React.FC<Props> = ({ navigation }) => {
         keyExtractor={(_, index) => index.toString()}
         showsVerticalScrollIndicator={false}
       />
-      <TouchableOpacity
+      {/* <TouchableOpacity
         style={styles.addButton}
         onPress={() => navigation.navigate('AddCustomer')}
         disabled={role !== 'Admin'}
       >
         <MaterialCommunityIcons name="plus" size={24} color="#fff" />
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </View>
   );
 };
@@ -231,4 +231,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default unattendedCustomers;
+export default UnattendedCustomers;

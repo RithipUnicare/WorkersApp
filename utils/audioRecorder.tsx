@@ -11,6 +11,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { rootStackParamList } from '../navigation/AppNavigation';
+import { Project } from '../Screens/AdminAddProduct';
+import { ProjectAPI } from '../service/apiService';
 
 import Sound, {
   AudioSet,
@@ -19,10 +22,18 @@ import Sound, {
   PlaybackEndType,
 } from 'react-native-nitro-sound';
 import RNFS from 'react-native-fs';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RouteProp } from '@react-navigation/native';
+
+type props = {
+  navigation: NativeStackNavigationProp<rootStackParamList, 'RecoredAudio'>;
+  route: RouteProp<rootStackParamList, 'RecoredAudio'>;
+};
 
 const { width, height } = Dimensions.get('window');
 
-const recoredAudio = () => {
+const RecoredAudio: React.FC<props> = ({ navigation, route }) => {
+  const project: Project = route?.params?.project;
   const [recording, setRecording] = useState<boolean>(false);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [audioPath, setAudioPath] = useState<string>('');
@@ -111,6 +122,16 @@ const recoredAudio = () => {
       Alert.alert('Error', 'Failed to stop playback');
     }
   };
+  const uploadToAPI = async () => {
+    try {
+      const formData = new FormData();
+      formData.append('file', audioPath);
+      await ProjectAPI.updateVoice(project.id, formData);
+      Alert.alert('Success', 'Audio uploaded successfully');
+    } catch (err) {
+      Alert.alert('Error', 'Failed to upload audio');
+    }
+  };
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.body}>
@@ -148,10 +169,10 @@ const recoredAudio = () => {
               {playTime} / {duration}
             </Text>
 
-            {/* <TouchableOpacity style={styles.btn} onPress={uploadToAPI}>
-                <MaterialCommunityIcons name="upload" size={28} color="#fff" />
-                <Text style={styles.btnText}>Upload Audio</Text>
-              </TouchableOpacity> */}
+            <TouchableOpacity style={styles.btn} onPress={uploadToAPI}>
+              <MaterialCommunityIcons name="upload" size={28} color="#fff" />
+              <Text style={styles.btnText}>Upload Audio</Text>
+            </TouchableOpacity>
             <Text style={styles.result}>Path: {audioPath}</Text>
           </>
         ) : null}
@@ -205,4 +226,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default recoredAudio;
+export default RecoredAudio;

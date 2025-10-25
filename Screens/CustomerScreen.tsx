@@ -7,12 +7,12 @@ import {
   TouchableOpacity,
   Linking,
   ScrollView,
+  Alert,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { rootStackParamList } from '../navigation/AppNavigation';
-import { Customer } from './AdminCustomerList';
 import { Formatwithcomma } from '../utils/formatewithcomma';
 
 type Props = {
@@ -21,18 +21,43 @@ type Props = {
 };
 
 const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
-  const { customer } = route.params;
+  const { customer } = route.params as { customer: any }; // Using `any` as requested
 
-  const calculateTotalPaid = (customer: Customer) => {
-    return (customer.payments || []).reduce(
-      (sum, payment) => sum + payment.amount,
-      0,
-    );
+  // Safely extract values with fallbacks
+  const name = customer.name || 'Unknown Customer';
+  const contactNo = customer.contactNo;
+  const address = customer.address || 'No address provided';
+  const workDescription = customer.workDescription || 'No work description';
+  const noOfDaysToVisit = customer.noOfDaysToVisit || 0;
+  const date = customer.date
+    ? new Date(customer.date).toLocaleDateString()
+    : null;
+  const status = customer.status || 'UNKNOWN';
+  const createdAt = customer.createdAt
+    ? new Date(customer.createdAt).toLocaleDateString()
+    : 'N/A';
+
+  // Format status for display
+  const formattedStatus = status
+    .toLowerCase()
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (l: string) => l.toUpperCase());
+
+  // Status color logic
+  const getStatusColor = (status: string) => {
+    switch (status.toUpperCase()) {
+      case 'PAID':
+        return '#27ae60';
+      case 'INQUIRED':
+        return '#3498db';
+      case 'PENDING':
+        return '#f39c12';
+      case 'CANCELLED':
+        return '#e74c3c';
+      default:
+        return '#95a5a6';
+    }
   };
-
-  const totalPaid = calculateTotalPaid(customer);
-  const remaining = customer.budget - totalPaid;
-  const status = remaining <= 0 ? 'Paid' : 'Pending';
 
   return (
     <View style={styles.container}>
@@ -43,99 +68,95 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
         {/* Header Card */}
         <View style={styles.headerCard}>
           <View style={styles.headerTop}>
-            <Text style={styles.customerName}>{customer.name}</Text>
+            <Text style={styles.customerName}>{name}</Text>
             <View
               style={[
                 styles.statusBadge,
-                {
-                  backgroundColor: status === 'Paid' ? '#27ae60' : '#f39c12',
-                },
+                { backgroundColor: getStatusColor(status) },
               ]}
             >
-              <Text style={styles.statusText}>{status}</Text>
+              <Text style={styles.statusText}>{formattedStatus}</Text>
             </View>
           </View>
           <Text style={styles.location}>
             <MaterialCommunityIcons name="map-marker" size={16} color="#666" />
             {'  '}
-            {customer.location || customer.address}
+            {address}
           </Text>
-        </View>
-
-        {/* Budget Summary Card */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Budget Summary</Text>
-          <View style={styles.budgetRow}>
-            <View style={styles.budgetItem}>
-              <Text style={styles.budgetLabel}>Total Budget</Text>
-              <Text style={styles.budgetValue}>
-                ₹{Formatwithcomma(customer.budget)}
-              </Text>
-            </View>
-            <View style={styles.budgetDivider} />
-            <View style={styles.budgetItem}>
-              <Text style={styles.budgetLabel}>Paid</Text>
-              <Text style={[styles.budgetValue, { color: '#27ae60' }]}>
-                ₹{Formatwithcomma(totalPaid)}
-              </Text>
-            </View>
-            <View style={styles.budgetDivider} />
-            <View style={styles.budgetItem}>
-              <Text style={styles.budgetLabel}>Remaining</Text>
-              <Text
-                style={[
-                  styles.budgetValue,
-                  { color: remaining > 0 ? '#e74c3c' : '#27ae60' },
-                ]}
-              >
-                ₹{Formatwithcomma(Math.abs(remaining))}
-              </Text>
-            </View>
-          </View>
         </View>
 
         {/* Contact Information Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Contact Information</Text>
 
-          <TouchableOpacity
-            style={styles.infoRow}
-            onPress={async () => {
-              const url = `tel:${customer.phone}`;
-              await Linking.openURL(url);
-            }}
-          >
-            <View style={styles.iconContainer}>
-              <MaterialCommunityIcons name="phone" size={22} color="#2874b8" />
+          {/* Phone Number */}
+          {contactNo ? (
+            <TouchableOpacity
+              style={styles.infoRow}
+              onPress={async () => {
+                const url = `tel:${contactNo}`;
+                const supported = await Linking.canOpenURL(url);
+                if (supported) {
+                  await Linking.openURL(url);
+                } else {
+                  Alert.alert('Error', 'Cannot open phone dialer');
+                }
+              }}
+            >
+              <View style={styles.iconContainer}>
+                <MaterialCommunityIcons
+                  name="phone"
+                  size={22}
+                  color="#2874b8"
+                />
+              </View>
+              <View style={styles.infoTextContainer}>
+                <Text style={styles.infoLabel}>Phone Number</Text>
+                <Text style={styles.infoValue}>{contactNo}</Text>
+              </View>
+              <MaterialCommunityIcons
+                name="chevron-right"
+                size={24}
+                color="#ccc"
+              />
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.infoRow}>
+              <View style={styles.iconContainer}>
+                <MaterialCommunityIcons
+                  name="phone"
+                  size={22}
+                  color="#95a5a6"
+                />
+              </View>
+              <View style={styles.infoTextContainer}>
+                <Text style={styles.infoLabel}>Phone Number</Text>
+                <Text style={[styles.infoValue, { color: '#95a5a6' }]}>
+                  Not provided
+                </Text>
+              </View>
             </View>
-            <View style={styles.infoTextContainer}>
-              <Text style={styles.infoLabel}>Phone Number</Text>
-              <Text style={styles.infoValue}>{customer.phone}</Text>
-            </View>
-            <MaterialCommunityIcons
-              name="chevron-right"
-              size={24}
-              color="#ccc"
-            />
-          </TouchableOpacity>
+          )}
 
           <View style={styles.divider} />
 
+          {/* Address */}
           <View style={styles.infoRow}>
             <View style={styles.iconContainer}>
               <MaterialCommunityIcons name="home" size={22} color="#2874b8" />
             </View>
             <View style={styles.infoTextContainer}>
               <Text style={styles.infoLabel}>Address</Text>
-              <Text style={styles.infoValue}>{customer.address}</Text>
+              <Text style={styles.infoValue}>{address}</Text>
             </View>
           </View>
         </View>
 
-        {/* Project Details Card */}
+        {/* Inquiry Details Card */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Project Details</Text>
+          <Text style={styles.cardTitle}>Inquiry Details</Text>
 
+          {/* Work Description */}
           <View style={styles.infoRow}>
             <View style={styles.iconContainer}>
               <MaterialCommunityIcons
@@ -145,42 +166,65 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
               />
             </View>
             <View style={styles.infoTextContainer}>
-              <Text style={styles.infoLabel}>Description</Text>
-              <Text style={styles.infoValue}>
-                {customer.description || 'No description available'}
-              </Text>
+              <Text style={styles.infoLabel}>Work Description</Text>
+              <Text style={styles.infoValue}>{workDescription}</Text>
             </View>
           </View>
 
           <View style={styles.divider} />
 
+          {/* Days to Visit */}
           <View style={styles.infoRow}>
             <View style={styles.iconContainer}>
               <MaterialCommunityIcons
-                name="calendar-check"
+                name="calendar-clock"
                 size={22}
                 color="#2874b8"
               />
             </View>
             <View style={styles.infoTextContainer}>
-              <Text style={styles.infoLabel}>Days Visited</Text>
+              <Text style={styles.infoLabel}>Follow-up In</Text>
               <Text style={styles.infoValue}>
-                {customer.noOfDaysVisited || '0'} days
+                {noOfDaysToVisit > 0
+                  ? `${noOfDaysToVisit} day${noOfDaysToVisit > 1 ? 's' : ''}`
+                  : 'No follow-up scheduled'}
               </Text>
             </View>
           </View>
 
+          {date && (
+            <>
+              <View style={styles.divider} />
+              <View style={styles.infoRow}>
+                <View style={styles.iconContainer}>
+                  <MaterialCommunityIcons
+                    name="calendar"
+                    size={22}
+                    color="#2874b8"
+                  />
+                </View>
+                <View style={styles.infoTextContainer}>
+                  <Text style={styles.infoLabel}>Inquiry Date</Text>
+                  <Text style={styles.infoValue}>{date}</Text>
+                </View>
+              </View>
+            </>
+          )}
+
           <View style={styles.divider} />
 
+          {/* Created At */}
           <View style={styles.infoRow}>
             <View style={styles.iconContainer}>
-              <MaterialCommunityIcons name="cash" size={22} color="#2874b8" />
+              <MaterialCommunityIcons
+                name="clock-outline"
+                size={22}
+                color="#2874b8"
+              />
             </View>
             <View style={styles.infoTextContainer}>
-              <Text style={styles.infoLabel}>Advance Payment</Text>
-              <Text style={styles.infoValue}>
-                ₹{Formatwithcomma(customer.advance)}
-              </Text>
+              <Text style={styles.infoLabel}>Created On</Text>
+              <Text style={styles.infoValue}>{createdAt}</Text>
             </View>
           </View>
         </View>
@@ -194,13 +238,11 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
         <TouchableOpacity
           style={styles.addProjectButton}
           onPress={() => {
-            // Navigate to add project screen
             navigation.navigate('AddProject', { customer });
-            //console.log('Add project for customer:', customer.name);
           }}
         >
           <MaterialCommunityIcons name="plus-circle" size={24} color="#fff" />
-          <Text style={styles.addProjectButtonText}>Add Project</Text>
+          <Text style={styles.addProjectButtonText}>Convert to Project</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -266,29 +308,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 16,
-  },
-  budgetRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  budgetItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  budgetDivider: {
-    width: 1,
-    backgroundColor: '#e0e0e0',
-    marginHorizontal: 8,
-  },
-  budgetLabel: {
-    fontSize: 13,
-    color: '#888',
-    marginBottom: 8,
-  },
-  budgetValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
   },
   infoRow: {
     flexDirection: 'row',

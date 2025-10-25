@@ -13,6 +13,8 @@ import PaymentPage from '../Screens/PaymentPage';
 import TestingScreen from '../Screens/testingscreen';
 import CustomerDetail from '../Screens/CustomerScreen';
 import ProjectDetails from '../Screens/ProductDetails';
+import UnattendedCustomers from '../Screens/unattendedCustimers';
+import RecoredAudio from '../utils/audioRecorder';
 import { Project } from '../Screens/AdminProductList';
 import { Customer } from '../Screens/AdminCustomerList';
 
@@ -25,10 +27,12 @@ export type rootStackParamList = {
   ProjectList: undefined;
   AddProject: { customer: Customer } | { projectToEdit: Project } | undefined;
   AdminPanel: undefined;
-  PaymentPage: { customer: any }; // We'll use 'any' here to avoid type issues
+  PaymentPage: { project: Project }; // We'll use 'any' here to avoid type issues
   TestingScreen: undefined;
   CustomerDetail: { customer: Customer };
   ProjectDetails: { project: Project }; // We'll use 'any' here to avoid type issues
+  unattendedCustomers: undefined;
+  RecoredAudio: { project: Project };
 };
 
 const Stack = createNativeStackNavigator<rootStackParamList>();
@@ -165,6 +169,30 @@ const AppNavigation = () => {
           component={CustomerDetail}
           options={{
             title: 'Customer Details',
+            headerStyle: { backgroundColor: '#2874b8' },
+            headerTitleStyle: {
+              color: '#fff',
+            },
+            headerTintColor: '#fff',
+          }}
+        />
+        <Stack.Screen
+          name="unattendedCustomers"
+          component={UnattendedCustomers}
+          options={{
+            title: 'Unattended Customers',
+            headerStyle: { backgroundColor: '#2874b8' },
+            headerTitleStyle: {
+              color: '#fff',
+            },
+            headerTintColor: '#fff',
+          }}
+        />
+        <Stack.Screen
+          name="RecoredAudio"
+          component={RecoredAudio}
+          options={{
+            title: 'Recored Audio',
             headerStyle: { backgroundColor: '#2874b8' },
             headerTitleStyle: {
               color: '#fff',

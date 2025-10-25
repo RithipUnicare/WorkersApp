@@ -10,17 +10,19 @@ import {
   Platform,
 } from 'react-native';
 import { TextInput, Button } from 'react-native-paper';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Customer } from './AdminCustomerList';
 import { Formatwithcomma, RemoveComma } from '../utils/formatewithcomma';
+import { CustomerAPI } from '../service/apiService';
+import DatePicker from 'react-native-date-picker';
+import dayjs from 'dayjs';
 
 type Props = {
   navigation: NativeStackNavigationProp<rootStackParamList, 'AddCustomer'>;
 };
 
-const { width, height } = Dimensions.get('window');
+const { height } = Dimensions.get('window');
 
 const AddCustomer: React.FC<Props> = ({ navigation }) => {
   const [name, setName] = useState('');
@@ -31,34 +33,32 @@ const AddCustomer: React.FC<Props> = ({ navigation }) => {
   const [budget, setBudget] = useState('');
   const [description, setDescription] = useState('');
   const [noOfDaysVisited, setNoOfDaysVisited] = useState('');
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [open, setOpen] = useState(false);
 
   const handleAdd = async () => {
-    //if (!name || !phone || !location || !address) return;
-    const newCustomer: Omit<Customer, 'id' | 'createdAt' | 'payments'> & {
+    const newCustomer: Customer & {
       id?: string;
       createdAt?: string;
       payments?: any[];
+      date?: string;
+      contactNo?: string;
+      workDescription?: string;
     } = {
-      id: Date.now().toString(),
       name,
-      phone,
-      description,
+      contactNo: phone,
+      workDescription: description,
       location,
       noOfDaysVisited,
       address,
       advance: parseFloat(advance) || 0,
       budget: parseFloat(budget) || 0,
-      payments: [],
-      createdAt: new Date().toISOString(),
-      status: 'enquired',
+      status: 'INQUIRED',
+      date: dayjs(selectedDate).format('YYYY-MM-DD'), // Add formatted date here
     };
+
     try {
-      console;
-      const stored = await AsyncStorage.getItem('customers');
-      const customers = stored ? JSON.parse(stored) : [];
-      customers.push(newCustomer);
-      console.log('New customer added:', newCustomer);
-      await AsyncStorage.setItem('customers', JSON.stringify(customers));
+      await CustomerAPI.create(newCustomer as any);
       navigation.goBack();
     } catch (e) {
       console.error(e);
@@ -76,6 +76,7 @@ const AddCustomer: React.FC<Props> = ({ navigation }) => {
         contentContainerStyle={styles.content}
       >
         <Text style={styles.title}>Customer Details</Text>
+
         <TextInput
           label="Customer Name *"
           value={name}
@@ -83,6 +84,7 @@ const AddCustomer: React.FC<Props> = ({ navigation }) => {
           mode="outlined"
           style={styles.input}
         />
+
         <TextInput
           label="Phone Number *"
           value={phone}
@@ -97,13 +99,7 @@ const AddCustomer: React.FC<Props> = ({ navigation }) => {
             )
           }
         />
-        {/* <TextInput
-          label="Location *"
-          value={location}
-          onChangeText={setLocation}
-          mode="outlined"
-          style={styles.input}
-        /> */}
+
         <TextInput
           label="Address *"
           value={address}
@@ -112,8 +108,9 @@ const AddCustomer: React.FC<Props> = ({ navigation }) => {
           style={styles.input}
           multiline
         />
+
         <TextInput
-          label={'Description'}
+          label="Description"
           value={description}
           onChangeText={setDescription}
           mode="outlined"
@@ -123,6 +120,7 @@ const AddCustomer: React.FC<Props> = ({ navigation }) => {
           ]}
           multiline
         />
+
         <TextInput
           label="No. of Days Visited"
           value={noOfDaysVisited}
@@ -131,26 +129,32 @@ const AddCustomer: React.FC<Props> = ({ navigation }) => {
           style={styles.input}
           keyboardType="numeric"
         />
-        <View style={styles.amountRow}>
-          <TextInput
-            label="Advance Amount"
-            value={Formatwithcomma(advance)}
-            onChangeText={text => setAdvance(RemoveComma(text))}
+
+        {/* Date Picker Section */}
+        <View style={{ marginBottom: 16 }}>
+          <Text style={styles.label}>Select Date</Text>
+          <Button
             mode="outlined"
-            style={styles.amountInput}
-            keyboardType="numeric"
-            left={<TextInput.Affix text="₹" />}
-          />
-          <TextInput
-            label="Budget"
-            value={Formatwithcomma(budget)}
-            onChangeText={text => setBudget(RemoveComma(text))}
-            mode="outlined"
-            style={styles.amountInput}
-            keyboardType="numeric"
-            left={<TextInput.Affix text="₹" />}
-          />
+            onPress={() => setOpen(true)}
+            style={{ borderRadius: 8, borderColor: '#2874b8' }}
+            textColor="#2874b8"
+          >
+            {dayjs(selectedDate).format('DD-MM-YYYY')}
+          </Button>
         </View>
+
+        <DatePicker
+          modal
+          open={open}
+          date={selectedDate}
+          mode="date"
+          onConfirm={date => {
+            setOpen(false);
+            setSelectedDate(date);
+          }}
+          onCancel={() => setOpen(false)}
+        />
+
         <Button
           mode="contained"
           onPress={handleAdd}
@@ -174,12 +178,12 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   input: { marginBottom: 16 },
-  amountRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
   },
-  amountInput: { flex: 0.48 },
   button: { borderRadius: 8, paddingVertical: 8 },
 });
 

@@ -81,7 +81,7 @@ const AdminHomePage: React.FC<props> = ({ navigation }) => {
       icon: 'account-clock',
       iconColor: '#2874b8',
       iconBg: '#E3F2FD',
-      onPress: () => console.log('UnAttended Customers'),
+      onPress: () => navigation.navigate('unattendedCustomers'),
     },
   ];
 

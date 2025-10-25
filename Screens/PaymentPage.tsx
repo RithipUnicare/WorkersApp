@@ -7,28 +7,25 @@ import { rootStackParamList } from '../navigation/AppNavigation';
 import { Customer, Payment } from './AdminCustomerList';
 import DatePicker from 'react-native-date-picker';
 import { Formatwithcomma, RemoveComma } from '../utils/formatewithcomma';
+import { RouteProp } from '@react-navigation/native';
 
 type Props = {
-  route: {
-    params: {
-      customer: Customer;
-    };
-  };
+  route: RouteProp<rootStackParamList, 'PaymentPage'>;
   navigation: NativeStackNavigationProp<rootStackParamList, 'PaymentPage'>;
 };
 
 const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
-  const { customer } = route.params;
+  const { project } = route.params?.project;
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [customerData, setCustomerData] = useState<Customer>(customer);
+  const [customerData, setCustomerData] = useState<Customer>(project);
 
   useEffect(() => {
     navigation.setOptions({
-      title: `Payments - ${customer.name}`,
+      title: `Payments - ${project.name}`,
     });
-  }, [customer.name, navigation]);
+  }, [project.name, navigation]);
 
   const calculateTotalPaid = (payments: Payment[]) => {
     return payments.reduce((sum, payment) => sum + payment.amount, 0);
@@ -58,7 +55,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
       const storedCustomers = await AsyncStorage.getItem('customers');
       if (storedCustomers) {
         const customers: Customer[] = JSON.parse(storedCustomers);
-        const customerIndex = customers.findIndex(c => c.id === customer.id);
+        const customerIndex = customers.findIndex(c => c.id === project.id);
         if (customerIndex !== -1) {
           customers[customerIndex] = updatedCustomer;
           await AsyncStorage.setItem('customers', JSON.stringify(customers));
@@ -174,7 +171,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
       <Text style={[styles.sectionTitle, { marginTop: 32 }]}>
         Payment History
       </Text>
-      {customerData.payments?.length ? (
+      {customerData?.payments?.length ? (
         customerData.payments.map(payment => (
           <Card key={payment.id} style={styles.paymentCard}>
             <Card.Content style={styles.paymentCardContent}>
