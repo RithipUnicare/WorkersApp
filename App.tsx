@@ -1,6 +1,7 @@
 import { NewAppScreen } from '@react-native/new-app-screen';
 import {
   Alert,
+  AppState,
   StatusBar,
   StyleSheet,
   useColorScheme,
@@ -12,9 +13,9 @@ import {
 } from 'react-native-safe-area-context';
 import { DefaultTheme, Provider as PaperProvider } from 'react-native-paper';
 import { initNotification, triggerTestAlert } from './utils/pushNofication';
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import AppNavigator from './navigation/AppNavigation';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 const theme = {
   ...DefaultTheme,
   colors: {
@@ -27,11 +28,26 @@ const theme = {
 };
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
+  const appState = useRef(AppState.currentState);
 
   useEffect(() => {
     initNotification().then(success => {
       if (success) console.log('Notification initialized');
     });
+    const subscription = AppState.addEventListener(
+      'change',
+      async nextAppState => {
+        if (appState.current.match(/active/) && nextAppState === 'background') {
+          console.log('App going to background — clearing storage...');
+          await AsyncStorage.clear();
+        }
+        appState.current = nextAppState;
+      },
+    );
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   return (

@@ -1,5 +1,5 @@
 // screens/CustomerDetail.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,9 @@ import { RouteProp } from '@react-navigation/native';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { Formatwithcomma } from '../utils/formatewithcomma';
 
+// ---- NEW IMPORTS ----
+import { FAB, Portal } from 'react-native-paper';
+
 type Props = {
   navigation: NativeStackNavigationProp<rootStackParamList, 'CustomerDetail'>;
   route: RouteProp<rootStackParamList, 'CustomerDetail'>;
@@ -22,6 +25,9 @@ type Props = {
 
 const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
   const { customer } = route.params as { customer: any }; // Using `any` as requested
+
+  // ---- FAB STATE ----
+  const [fabOpen, setFabOpen] = useState(false);
 
   // Safely extract values with fallbacks
   const name = customer.name || 'Unknown Customer';
@@ -59,12 +65,43 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
     }
   };
 
+  // ---- DELETE HANDLER (replace with real API) ----
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Customer',
+      `Are you sure you want to delete ${name}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            // TODO: Call your delete API / Redux / Context here
+            // e.g. await api.deleteCustomer(customer.id);
+            Alert.alert('Deleted', `${name} has been removed.`);
+            navigation.goBack(); // or navigate to list
+          },
+        },
+      ],
+      { cancelable: true },
+    );
+    setFabOpen(false);
+  };
+
+  // ---- EDIT NAVIGATION ----
+  const handleEdit = () => {
+    // Assuming you have an EditCustomer screen that receives the customer object
+    navigation.navigate('AddCustomer' as any, { customer });
+    setFabOpen(false);
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
       >
+        {/* ==== Existing UI (unchanged) ==== */}
         {/* Header Card */}
         <View style={styles.headerCard}>
           <View style={styles.headerTop}>
@@ -233,7 +270,7 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Bottom Button */}
+      {/* Bottom Convert-to-Project Button (unchanged) */}
       <View style={styles.bottomButtonContainer}>
         <TouchableOpacity
           style={styles.addProjectButton}
@@ -245,10 +282,37 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
           <Text style={styles.addProjectButtonText}>Convert to Project</Text>
         </TouchableOpacity>
       </View>
+
+      {/* ==== NEW FAB GROUP ==== */}
+      <Portal>
+        <FAB.Group
+          open={fabOpen}
+          visible
+          icon={fabOpen ? 'close' : 'pencil'}
+          actions={[
+            {
+              icon: 'pencil',
+              label: 'Edit',
+              onPress: handleEdit,
+              style: { backgroundColor: '#2874b8' },
+            },
+            {
+              icon: 'delete',
+              label: 'Delete',
+              onPress: handleDelete,
+              style: { backgroundColor: '#e74c3c' },
+            },
+          ]}
+          onStateChange={({ open }) => setFabOpen(open)}
+          fabStyle={{ backgroundColor: '#2874b8' }}
+          style={{ paddingBottom: 80 }} // avoid overlap with bottom button
+        />
+      </Portal>
     </View>
   );
 };
 
+/* ------------------- Styles (unchanged) ------------------- */
 const styles = StyleSheet.create({
   container: {
     flex: 1,

@@ -10,10 +10,10 @@ import AddProject from '../Screens/AdminAddProduct';
 import ProjectList from '../Screens/AdminProductList';
 import AdminPanel from '../Screens/Adminpanel';
 import PaymentPage from '../Screens/PaymentPage';
-import TestingScreen from '../Screens/testingscreen';
 import CustomerDetail from '../Screens/CustomerScreen';
 import ProjectDetails from '../Screens/ProductDetails';
 import UnattendedCustomers from '../Screens/unattendedCustimers';
+import SplashScreen from '../Screens/SplashScreen';
 import RecoredAudio from '../utils/audioRecorder';
 import { Project } from '../Screens/AdminProductList';
 import { Customer } from '../Screens/AdminCustomerList';
@@ -23,7 +23,7 @@ export type rootStackParamList = {
   AdminHome: undefined;
   WorkersHome: undefined;
   CustomerList: undefined;
-  AddCustomer: undefined;
+  AddCustomer: { customer: Customer } | undefined;
   ProjectList: undefined;
   AddProject: { customer: Customer } | { projectToEdit: Project } | undefined;
   AdminPanel: undefined;
@@ -33,6 +33,7 @@ export type rootStackParamList = {
   ProjectDetails: { project: Project }; // We'll use 'any' here to avoid type issues
   unattendedCustomers: undefined;
   RecoredAudio: { project: Project };
+  splash: undefined;
 };
 
 const Stack = createNativeStackNavigator<rootStackParamList>();
@@ -43,7 +44,7 @@ const AppNavigation = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName="login"
+        initialRouteName="splash"
         screenOptions={{
           headerStyle: {
             backgroundColor: theme ? '#1C2526' : '#FFFFFF',
@@ -54,6 +55,13 @@ const AppNavigation = () => {
           },
         }}
       >
+        <Stack.Screen
+          name="splash"
+          component={SplashScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
         <Stack.Screen
           name="login"
           component={LoginScreen}
@@ -193,18 +201,6 @@ const AppNavigation = () => {
           component={RecoredAudio}
           options={{
             title: 'Recored Audio',
-            headerStyle: { backgroundColor: '#2874b8' },
-            headerTitleStyle: {
-              color: '#fff',
-            },
-            headerTintColor: '#fff',
-          }}
-        />
-        <Stack.Screen
-          name="TestingScreen"
-          component={TestingScreen}
-          options={{
-            title: 'Testing',
             headerStyle: { backgroundColor: '#2874b8' },
             headerTitleStyle: {
               color: '#fff',

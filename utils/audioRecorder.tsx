@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { rootStackParamList } from '../navigation/AppNavigation';
-import { Project } from '../Screens/AdminAddProduct';
+import { Project } from '../Screens/AdminProductList';
 import { ProjectAPI } from '../service/apiService';
 
 import Sound, {
@@ -125,9 +125,10 @@ const RecoredAudio: React.FC<props> = ({ navigation, route }) => {
   const uploadToAPI = async () => {
     try {
       const formData = new FormData();
-      formData.append('file', audioPath);
-      await ProjectAPI.updateVoice(project.id, formData);
+      // formData.append('file', audioPath);
+      await ProjectAPI.updateVoice(project.id, audioPath);
       Alert.alert('Success', 'Audio uploaded successfully');
+      navigation.goBack();
     } catch (err) {
       Alert.alert('Error', 'Failed to upload audio');
     }

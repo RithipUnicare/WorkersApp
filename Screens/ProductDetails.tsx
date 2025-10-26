@@ -1,5 +1,5 @@
 // screens/ProjectDetails.tsx
-import React, { useEffect, useState } from 'react';
+import React, { use, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -20,8 +20,6 @@ import {
   Modal,
   Portal,
   FAB,
-  Dialog,
-  TextInput,
   IconButton,
 } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -30,6 +28,9 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import dayjs from 'dayjs';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { ProjectAPI } from '../service/apiService';
+
+// SAME IMPORT AS YOUR RECORDER
+import Sound, { PlayBackType, PlaybackEndType } from 'react-native-nitro-sound';
 
 const { width, height } = Dimensions.get('window');
 
@@ -74,6 +75,7 @@ type Project = {
     paymentDate: string;
     paymentMode: string;
   }[];
+  voiceRecordingUrl?: string;
 };
 
 const openGoogleMaps = (
@@ -93,14 +95,38 @@ const openGoogleMaps = (
 const ProjectDetails: React.FC = () => {
   const route = useRoute<ProjectDetailsRouteProp>();
   const navigation = useNavigation<ProjectDetailsNavProp>();
-  const project: Project = route.params.project;
-
+  const projects: Project = route.params.project;
+  console.log('ProjectDetails route params', route.params);
+  const [project, setProject] = useState<Project>(projects);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [open, setOpen] = useState(false);
+  const [openModal, setOpenModal] = useState(false);
+
+  // Playback state
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playTime, setPlayTime] = useState('00:00:00');
+  const [duration, setDuration] = useState('00:00:00');
+  const [url, setUrl] = useState<string>('');
 
   const formatTime = (time: string) => dayjs(time, 'HH:mm:ss').format('h:mm A');
   const formatDate = (date: string) => dayjs(date).format('DD-MM-YYYY');
+
+  useEffect(() => {
+    navigation.addListener('focus', () => {
+      // Reload or refresh if needed
+      const loadProject = async () => {
+        try {
+          const res = await ProjectAPI.getById(project.id);
+          if (res && res.data) {
+            setProject(res.data);
+          }
+        } catch (e) {}
+      };
+      loadProject();
+      setOpenModal(true);
+    });
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -117,6 +143,50 @@ const ProjectDetails: React.FC = () => {
 
   const displayStatus = project.siteStatus || project.status;
 
+  // === PLAYBACK LOGIC ===
+  useEffect(() => {
+    if (!project.voiceRecordingUrl) return;
+
+    setUrl(project.voiceRecordingUrl);
+
+    // Add listeners
+    Sound.addPlayBackListener((e: PlayBackType) => {
+      setPlayTime(Sound.mmssss(Math.floor(e.currentPosition)));
+      if (e.duration > 0) {
+        setDuration(Sound.mmssss(Math.floor(e.duration)));
+      }
+    });
+
+    Sound.addPlaybackEndListener(() => {
+      setIsPlaying(false);
+      setPlayTime('00:00:00');
+    });
+
+    return () => {
+      Sound.removePlayBackListener();
+      Sound.removePlaybackEndListener();
+      if (isPlaying) {
+        Sound.stopPlayer().catch(() => {});
+      }
+    };
+  }, [project.voiceRecordingUrl, isPlaying]);
+
+  const togglePlayback = async () => {
+    if (!url) return;
+
+    try {
+      if (isPlaying) {
+        await Sound.stopPlayer();
+        setIsPlaying(false);
+      } else {
+        await Sound.startPlayer(url);
+        setIsPlaying(true);
+      }
+    } catch (err) {
+      Alert.alert('Playback Error', 'Could not play audio');
+    }
+  };
+
   const handleEdit = () => {
     navigation.navigate('AddProject', { projectToEdit: project });
   };
@@ -129,8 +199,7 @@ const ProjectDetails: React.FC = () => {
         style: 'destructive',
         onPress: async () => {
           try {
-            const res = await ProjectAPI.delete(project.id);
-            console.log(res);
+            await ProjectAPI.delete(project.id);
             navigation.goBack();
           } catch (e) {
             Alert.alert('Error', 'Failed to delete');
@@ -164,9 +233,16 @@ const ProjectDetails: React.FC = () => {
     </View>
   );
 
+  // Helper to convert mm:ss to seconds
+  const parseTime = (time: string): number => {
+    const parts = time.split(':').map(Number);
+    return parts[0] * 60 + parts[1];
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
+        {/* Header */}
         <Card style={styles.headerCard}>
           <View style={styles.headerRow}>
             <Text style={styles.name}>{project.customerName}</Text>
@@ -182,6 +258,7 @@ const ProjectDetails: React.FC = () => {
           </View>
         </Card>
 
+        {/* Details */}
         <Card style={styles.detailsCard}>
           <View style={styles.infoRow}>
             <MaterialCommunityIcons
@@ -199,7 +276,7 @@ const ProjectDetails: React.FC = () => {
                 openGoogleMaps(
                   project?.location?.latitude || 0,
                   project?.location?.longitude || 0,
-                  project?.location?.address || '',
+                  project.location?.address,
                 )
               }
             >
@@ -239,7 +316,7 @@ const ProjectDetails: React.FC = () => {
             </Text>
           </View>
 
-          <View style={styles.infoRow}>
+          {/* <View style={styles.infoRow}>
             <MaterialCommunityIcons
               name="clock-outline"
               size={width * 0.05}
@@ -249,7 +326,7 @@ const ProjectDetails: React.FC = () => {
             <Text style={styles.infoValue}>
               {formatTime(project.customerTime)}
             </Text>
-          </View>
+          </View> */}
 
           <View style={styles.infoRow}>
             <MaterialCommunityIcons
@@ -271,6 +348,7 @@ const ProjectDetails: React.FC = () => {
           </View>
         </Card>
 
+        {/* Amount */}
         <Card style={styles.amountCard}>
           <View style={styles.amountRow}>
             <View>
@@ -306,13 +384,15 @@ const ProjectDetails: React.FC = () => {
           </View>
         </Card>
 
-        {project.projectDescription ? (
+        {/* Description */}
+        {project.projectDescription && (
           <Card style={styles.descCard}>
             <Text style={styles.descTitle}>Project Description</Text>
             <Text style={styles.descText}>{project.projectDescription}</Text>
           </Card>
-        ) : null}
+        )}
 
+        {/* Site Images */}
         {project.siteImages.length > 0 && (
           <Card style={styles.imagesCard}>
             <View style={styles.sectionHeader}>
@@ -355,6 +435,7 @@ const ProjectDetails: React.FC = () => {
           </Card>
         )}
 
+        {/* Items */}
         <Card style={styles.itemsCard}>
           <Text style={styles.sectionTitle}>
             Items ({project.projectItems.length})
@@ -376,6 +457,7 @@ const ProjectDetails: React.FC = () => {
           )}
         </Card>
 
+        {/* Payments */}
         {project.advancePayments.length > 0 && (
           <Card style={styles.paymentsCard}>
             <Text style={styles.sectionTitle}>Advance Payments</Text>
@@ -396,8 +478,68 @@ const ProjectDetails: React.FC = () => {
             ))}
           </Card>
         )}
+
+        {/* VOICE RECORDING PLAYER */}
+        {project.voiceRecordingUrl && (
+          <Card style={styles.voiceCard}>
+            <View style={styles.voiceHeader}>
+              <MaterialCommunityIcons
+                name="microphone"
+                size={24}
+                color="#2874b8"
+              />
+              <Text style={styles.voiceTitle}>Voice Recording</Text>
+            </View>
+
+            <View style={styles.playerContainer}>
+              <IconButton
+                icon={isPlaying ? 'pause' : 'play'}
+                size={28}
+                // color="#2874b8"
+                onPress={togglePlayback}
+                style={styles.playButton}
+              />
+              <View style={styles.progressContainer}>
+                <View style={styles.progressBar}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      {
+                        width:
+                          duration !== '00:00:00' && playTime !== '00:00:00'
+                            ? `${
+                                (parseTime(playTime) / parseTime(duration)) *
+                                100
+                              }%`
+                            : '0%',
+                      },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.timeText}>
+                  {playTime} / {duration}
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => Linking.openURL(project.voiceRecordingUrl!)}
+              style={styles.downloadLink}
+            >
+              <MaterialCommunityIcons
+                name="download"
+                size={20}
+                color="#2874b8"
+              />
+              <Text style={styles.downloadText}>Download Audio</Text>
+            </TouchableOpacity>
+          </Card>
+        )}
+
+        <View style={{ height: 100 }} />
       </ScrollView>
 
+      {/* Image Modal */}
       <Portal>
         <Modal
           visible={modalVisible}
@@ -428,19 +570,43 @@ const ProjectDetails: React.FC = () => {
           </View>
         </Modal>
 
+        {/* FAB */}
         <FAB.Group
           open={open}
-          visible
+          visible={openModal}
           icon={open ? 'close' : 'menu'}
           onStateChange={({ open }) => setOpen(open)}
           actions={[
-            { icon: 'pencil', label: 'Edit Project', onPress: handleEdit },
-            { icon: 'delete', label: 'Delete Project', onPress: handleDelete },
+            {
+              icon: 'pencil',
+              label: 'Edit Project',
+              onPress: () => {
+                setOpenModal(false);
+                handleEdit();
+              },
+            },
+            {
+              icon: 'delete',
+              label: 'Delete Project',
+              onPress: () => {
+                setOpenModal(false);
+                handleDelete();
+              },
+            },
             {
               icon: 'microphone',
               label: 'Voice',
               onPress: () => {
-                navigation.navigate('RecoredAudio', { project: project });
+                setOpenModal(false);
+                navigation.navigate('RecoredAudio', { project });
+              },
+            },
+            {
+              icon: 'cash',
+              label: 'Add Payment',
+              onPress: () => {
+                setOpenModal(false);
+                navigation.navigate('PaymentPage', { project });
               },
             },
           ]}
@@ -451,8 +617,14 @@ const ProjectDetails: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F5' },
-  content: { padding: width * 0.04, paddingBottom: height * 0.15 },
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+  },
+  content: {
+    padding: width * 0.04,
+    paddingBottom: height * 0.15,
+  },
   headerCard: {
     marginBottom: height * 0.02,
     padding: width * 0.04,
@@ -476,7 +648,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: width * 0.02,
   },
-  statusText: { color: '#fff', fontSize: width * 0.032, fontWeight: '600' },
+  statusText: {
+    color: '#fff',
+    fontSize: width * 0.032,
+    fontWeight: '600',
+  },
   detailsCard: {
     padding: width * 0.04,
     backgroundColor: '#fff',
@@ -499,7 +675,11 @@ const styles = StyleSheet.create({
     color: '#555',
     fontWeight: '500',
   },
-  infoValue: { flex: 1, fontSize: width * 0.036, color: '#000' },
+  infoValue: {
+    flex: 1,
+    fontSize: width * 0.036,
+    color: '#000',
+  },
   amountCard: {
     padding: width * 0.04,
     backgroundColor: '#fff',
@@ -514,7 +694,11 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#eee',
   },
-  amountLabel: { fontSize: width * 0.032, color: '#888', textAlign: 'center' },
+  amountLabel: {
+    fontSize: width * 0.032,
+    color: '#888',
+    textAlign: 'center',
+  },
   amountValue: {
     fontSize: width * 0.038,
     fontWeight: 'bold',
@@ -558,9 +742,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: height * 0.015,
   },
-  sectionTitle: { fontSize: width * 0.042, fontWeight: '600', color: '#333' },
-  viewAllText: { fontSize: width * 0.032, color: '#2874b8', fontWeight: '600' },
-  imageScroll: { marginTop: height * 0.01 },
+  sectionTitle: {
+    fontSize: width * 0.042,
+    fontWeight: '600',
+    color: '#333',
+  },
+  viewAllText: {
+    fontSize: width * 0.032,
+    color: '#2874b8',
+    fontWeight: '600',
+  },
+  imageScroll: {
+    marginTop: height * 0.01,
+  },
   thumbnail: {
     width: width * 0.28,
     height: width * 0.28,
@@ -590,8 +784,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
-  itemName: { fontWeight: '600', fontSize: width * 0.038 },
-  itemDetails: { color: '#666', fontSize: width * 0.034, marginTop: 2 },
+  itemName: {
+    fontWeight: '600',
+    fontSize: width * 0.038,
+  },
+  itemDetails: {
+    color: '#666',
+    fontSize: width * 0.034,
+    marginTop: 2,
+  },
   emptyText: {
     textAlign: 'center',
     color: '#999',
@@ -613,11 +814,84 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
-  paymentAmount: { fontWeight: '600', fontSize: width * 0.038 },
-  paymentDate: { color: '#666', fontSize: width * 0.032 },
-  chipText: { fontSize: width * 0.03 },
-  modalContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)' },
-  modalContent: { flex: 1 },
+  paymentAmount: {
+    fontWeight: '600',
+    fontSize: width * 0.038,
+  },
+  paymentDate: {
+    color: '#666',
+    fontSize: width * 0.032,
+  },
+  chipText: {
+    fontSize: width * 0.03,
+  },
+
+  // Voice Player
+  voiceCard: {
+    padding: width * 0.04,
+    backgroundColor: '#fff',
+    borderRadius: width * 0.03,
+    elevation: 2,
+    marginBottom: height * 0.02,
+  },
+  voiceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: height * 0.015,
+  },
+  voiceTitle: {
+    fontSize: width * 0.04,
+    fontWeight: '600',
+    color: '#333',
+    marginLeft: 8,
+  },
+  playerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: height * 0.01,
+  },
+  playButton: {
+    margin: 0,
+    backgroundColor: '#E3F2FD',
+  },
+  progressContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  progressBar: {
+    height: 6,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#2874b8',
+  },
+  timeText: {
+    fontSize: width * 0.03,
+    color: '#666',
+    marginTop: 4,
+  },
+  downloadLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: height * 0.01,
+  },
+  downloadText: {
+    color: '#2874b8',
+    fontSize: width * 0.035,
+    marginLeft: 4,
+  },
+
+  // Modal
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+  },
+  modalContent: {
+    flex: 1,
+  },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -626,9 +900,20 @@ const styles = StyleSheet.create({
     paddingVertical: height * 0.02,
     backgroundColor: 'rgba(40,116,184,0.9)',
   },
-  modalTitle: { fontSize: width * 0.045, fontWeight: '700', color: '#fff' },
-  carouselItem: { width, justifyContent: 'center', alignItems: 'center' },
-  carouselImage: { width: width * 0.9, height: height * 0.7 },
+  modalTitle: {
+    fontSize: width * 0.045,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  carouselItem: {
+    width,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  carouselImage: {
+    width: width * 0.9,
+    height: height * 0.7,
+  },
   imageCounter: {
     position: 'absolute',
     bottom: height * 0.05,

@@ -81,6 +81,9 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   const [itemDesc, setItemDesc] = useState('');
   const [itemQty, setItemQty] = useState('');
   const [itemRate, setItemRate] = useState('');
+  const [status, setStatus] = useState('');
+  const [time, setTime] = useState('');
+  const [timePickerOpen, setTimePickerOpen] = useState(false);
 
   const [advanceModalOpen, setAdvanceModalOpen] = useState(false);
   const [advanceAmount, setAdvanceAmount] = useState('');
@@ -117,6 +120,12 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       setSelectedDateObj(new Date(rawProject.deliveryDate));
       setProjectDescription(rawProject.projectDescription || '');
       setTotalAmount(String(rawProject.totalAmount || ''));
+      setStatus(rawProject.status || '');
+      setFullLocation({
+        address: rawProject.location?.address || '',
+        latitude: rawProject.location?.latitude || 0,
+        longitude: rawProject.location?.longitude || 0,
+      });
 
       if (rawProject.siteImages && Array.isArray(rawProject.siteImages)) {
         setImages(
@@ -241,7 +250,9 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       deliveryDate: dayjs(deliveryDate, 'DD-MM-YYYY').format('YYYY-MM-DD'),
       projectDescription,
       totalAmount: Number(totalAmount),
+      status,
       items: items.map(i => ({
+        projectId: rawProject?.id,
         itemName: i.itemName,
         itemDescription: i.itemDescription,
         rateMrp: i.rateMrp,
@@ -254,12 +265,18 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
 
       if (isEditMode && rawProject?.id) {
         const updated: any = await ProjectAPI.update(rawProject.id, payload);
-        console.log(updated);
+        console.log(updated, payload);
         projectId = rawProject.id;
 
         if (images.length) await uploadImages(projectId);
+        if (fullLocation)
+          await ProjectAPI.updateGps(projectId, {
+            address: fullLocation.address,
+            latitude: fullLocation.latitude,
+            longitude: fullLocation.longitude,
+          });
+        if (status) await ProjectAPI.updateStatus(projectId, status);
       } else {
-        console.log('new');
         const created: any = await ProjectAPI.create(payload);
         projectId = created.data.id || created.data.projectId;
         setCreatedProjectId(projectId);
@@ -297,6 +314,8 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
     setAdvanceModalOpen(false);
     navigation.goBack();
   };
+
+  const statuses = ['CREATED', 'IN_PROGRESS', 'DISCONTINUED', 'COMPLETED'];
 
   return (
     <KeyboardAvoidingView
@@ -372,6 +391,34 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           editable={false}
           style={styles.input}
           right={<TextInput.Icon icon="map-marker" onPress={fetchLocation} />}
+        />
+        <TextInput
+          label="Time"
+          value={dayjs(time).format('hh:mm A')}
+          mode="outlined"
+          editable={false}
+          style={styles.input}
+          right={
+            <TextInput.Icon
+              icon="clock-outline"
+              onPress={() => setTimePickerOpen(true)}
+            />
+          }
+        />
+
+        <Dropdown
+          style={styles.dropdown}
+          placeholderStyle={styles.placeholderStyle}
+          selectedTextStyle={styles.selectedTextStyle}
+          data={statuses.map(s => ({ label: s, value: s }))}
+          maxHeight={height * 0.4}
+          labelField="label"
+          valueField="value"
+          placeholder="Select Status"
+          value={status}
+          onChange={item => {
+            setStatus(item.value);
+          }}
         />
 
         <Text style={styles.imageLabel}>Site Images (max 15)</Text>
@@ -552,6 +599,17 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           setDatePickerOpen(false);
         }}
         onCancel={() => setDatePickerOpen(false)}
+      />
+      <DatePicker
+        modal
+        open={timePickerOpen}
+        date={time ? dayjs(time, 'HH:mm').toDate() : new Date()}
+        mode="time"
+        onConfirm={d => {
+          setTime(dayjs(d).toISOString());
+          setTimePickerOpen(false);
+        }}
+        onCancel={() => setTimePickerOpen(false)}
       />
     </KeyboardAvoidingView>
   );

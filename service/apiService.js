@@ -1,3 +1,4 @@
+import { get } from 'react-native/Libraries/TurboModule/TurboModuleRegistry';
 import { BASE_URL, endpoints, buildUrl } from './configuration';
 
 async function handleResponse(res, parse = 'json') {
@@ -49,19 +50,17 @@ async function deleteRequest(path) {
 }
 
 async function multipartRequest(method, path, formData) {
-  console.log(formData, buildUrl(path));
   const res = await fetch(buildUrl(path), {
     method,
     body: formData,
     headers: {},
   });
-  console.log(res);
   return handleResponse(res, 'json');
 }
 
 export const CustomerAPI = {
   create: payload => jsonRequest('POST', endpoints.customers, payload),
-  getById: id => queryRequest(`${endpoints.customers}/${String(id)}`),
+  getById: id => queryRequest(`${endpoints.customers}/${id}`),
   getAll: () => queryRequest(endpoints.customers),
   getByStatus: status => queryRequest(endpoints.customersByStatus(status)),
   searchByName: name => queryRequest(endpoints.customersSearch, { name }),
@@ -75,29 +74,34 @@ export const CustomerAPI = {
 
 export const ProjectAPI = {
   create: payload => jsonRequest('POST', endpoints.projects, payload),
-  getById: id => queryRequest(endpoints.projectById(String(id))),
+  getById: id => queryRequest(endpoints.projectById(id)),
   getAll: () => queryRequest(endpoints.projects),
   getByStatus: status => queryRequest(endpoints.projectsByStatus(status)),
   getByDate: date => queryRequest(endpoints.projectsByDate(date)),
   getByCustomerId: customerId =>
-    queryRequest(endpoints.projectsByCustomer(String(customerId))),
+    queryRequest(endpoints.projectsByCustomer(customerId)),
   searchByCustomerName: customerName =>
     queryRequest(endpoints.projectsSearch, { customerName }),
   searchByCustomerContactNo: customerContactNo =>
     queryRequest(endpoints.projectsSearch, { customerContactNo }),
   update: (id, payload) =>
-    jsonRequest('PUT', endpoints.projectById(String(id)), payload),
+    jsonRequest('PUT', endpoints.projectById(id), payload),
   delete: id => deleteRequest(endpoints.projectById(id)),
   updateGps: (id, payload) =>
-    jsonRequest('PUT', endpoints.projectGps(String(id)), payload),
+    jsonRequest('PUT', endpoints.projectGps(id), payload),
   updateVoice: (id, file) => {
     const formData = new FormData();
-    formData.append('file', file);
-    return multipartRequest(
-      'PUT',
-      endpoints.projectVoice(String(id)),
-      formData,
-    );
+    if (file.startsWith('file://') || file.includes('cache')) {
+      const filename = file.split('/').pop() || `voice_note_${id}.mp3`;
+      const type = 'audio/mpeg';
+      formData.append('file', {
+        uri: file,
+        name: filename,
+        type,
+      });
+    }
+    // formData.append('file', file);
+    return multipartRequest('PUT', endpoints.projectVoice(id), formData);
   },
   addSiteImages: async (projectId, imageUris = []) => {
     const formData = new FormData();
@@ -115,7 +119,7 @@ export const ProjectAPI = {
       });
     });
 
-    if ([...formData._parts].length === 0) return; // no new images
+    if ([...formData._parts].length === 0) return;
 
     return multipartRequest(
       'POST',
@@ -125,7 +129,7 @@ export const ProjectAPI = {
   },
   getSiteImages: id => queryRequest(endpoints.projectImages(id)),
   updateStatus: (id, status) =>
-    jsonRequest('PUT', endpoints.projectStatus(id), { status }),
+    jsonRequest('PUT', endpoints.projectStatus(id), status),
   getInvoicePdf: async id => {
     const res = await fetch(buildUrl(endpoints.projectInvoice(id)));
     return handleResponse(res, 'blob');
@@ -141,9 +145,11 @@ export const ProjectAPI = {
   createPaymentIn: payload =>
     jsonRequest('POST', endpoints.paymentsIn, payload),
   getPaymentsIn: projectId =>
-    queryRequest(endpoints.paymentsInByProject(String(projectId))),
+    queryRequest(endpoints.paymentsInByProject(projectId)),
   createPaymentOut: payload =>
     jsonRequest('POST', endpoints.paymentsOut, payload),
   getPaymentsOut: projectId =>
-    queryRequest(endpoints.paymentsOutByProject(String(projectId))),
+    queryRequest(endpoints.paymentsOutByProject(projectId)),
+  getProjectItems: projectId =>
+    queryRequest(endpoints.itemsByProject(projectId)),
 };

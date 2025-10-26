@@ -14,6 +14,7 @@ import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Formatwithcomma } from '../utils/formatewithcomma';
 import { Customer } from './AdminCustomerList';
+import { CustomerAPI } from '../service/apiService';
 
 export type Payment = {
   id: string;
@@ -38,13 +39,14 @@ const UnattendedCustomers: React.FC<Props> = ({ navigation }) => {
 
   const loadCustomers = async () => {
     try {
-      const stored = await AsyncStorage.getItem('customers');
+      const remainder = await CustomerAPI.getReminder();
+      console.log(remainder.data);
       const role = await AsyncStorage.getItem('role');
-      if (stored) {
-        const unattended_customers = JSON.parse(stored).filter(
-          (c: Customer) => c.status === 'enquired',
-        );
-        setCustomers(unattended_customers);
+      if (remainder && Array.isArray(remainder.data)) {
+        // const unattended_customers = JSON.parse(stored).filter(
+        //   (c: Customer) => c.status === 'enquired',
+        // );
+        setCustomers(remainder.data);
       }
       if (role) {
         setRole(role);

@@ -15,6 +15,7 @@ import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ProjectAPI } from '../service/apiService';
 import dayjs from 'dayjs';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -62,6 +63,7 @@ type Props = {
 const ProjectList: React.FC<Props> = ({ navigation }) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [search, setSearch] = useState('');
+  const [role, setRole] = useState('');
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', loadProjects);
@@ -74,6 +76,10 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
       const res = await ProjectAPI.getAll();
       if (res.success && Array.isArray(res.data)) {
         setProjects(res.data);
+      }
+      const role = await AsyncStorage.getItem('role');
+      if (role) {
+        setRole(role);
       }
     } catch (e) {}
   };
@@ -102,126 +108,121 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
   };
 
   const renderItem = ({ item }: { item: Project }) => (
-    console.log(item),
-    (
-      <Card style={styles.card}>
-        <TouchableOpacity
-          onPress={() =>
-            navigation.navigate('ProjectDetails', { project: item })
-          }
-        >
-          <View style={styles.cardHeader}>
-            <Text style={styles.name}>{item.customerName}</Text>
-            <Chip
-              style={[
-                styles.statusChip,
-                { backgroundColor: getStatusColor(item.status) },
-              ]}
-              textStyle={styles.statusText}
-            >
-              {item.siteStatus || item.status}
-            </Chip>
-          </View>
+    <Card style={styles.card}>
+      <TouchableOpacity
+        onPress={() => navigation.navigate('ProjectDetails', { project: item })}
+      >
+        <View style={styles.cardHeader}>
+          <Text style={styles.name}>{item.customerName}</Text>
+          <Chip
+            style={[
+              styles.statusChip,
+              { backgroundColor: getStatusColor(item.status) },
+            ]}
+            textStyle={styles.statusText}
+          >
+            {item.siteStatus || item.status}
+          </Chip>
+        </View>
 
-          <View style={styles.infoRow}>
-            <MaterialCommunityIcons
-              name="map-marker"
-              size={width * 0.04}
-              color="#2874b8"
-            />
-            <Text style={styles.infoText} numberOfLines={1}>
-              {item.location?.address || 'No location'}
+        <View style={styles.infoRow}>
+          <MaterialCommunityIcons
+            name="map-marker"
+            size={width * 0.04}
+            color="#2874b8"
+          />
+          <Text style={styles.infoText} numberOfLines={1}>
+            {item.location?.address || 'No location'}
+          </Text>
+        </View>
+
+        <View style={styles.infoRow}>
+          <MaterialCommunityIcons
+            name="phone"
+            size={width * 0.04}
+            color="#2874b8"
+          />
+          <Text style={styles.infoText}>{item.customerContactNo}</Text>
+        </View>
+
+        <View style={styles.infoRow}>
+          <MaterialCommunityIcons
+            name="calendar"
+            size={width * 0.04}
+            color="#2874b8"
+          />
+          <Text style={styles.infoText}>
+            Delivery: {dayjs(item.deliveryDate).format('DD-MM-YYYY')}
+          </Text>
+          <Text style={styles.daysLeft}>
+            {item.remainingDays > 0
+              ? `${item.remainingDays} days left`
+              : 'Overdue'}
+          </Text>
+        </View>
+
+        <View style={styles.infoRow}>
+          <MaterialCommunityIcons
+            name="clock"
+            size={width * 0.04}
+            color="#2874b8"
+          />
+          <Text style={styles.infoText}>
+            Time: {formatTime(item.customerTime)}
+          </Text>
+        </View>
+
+        <View style={styles.amountRow}>
+          <View>
+            <Text style={styles.amountLabel}>Total</Text>
+            <Text style={styles.amountValue}>
+              ₹{item.totalAmount.toLocaleString('en-IN')}
             </Text>
           </View>
-
-          <View style={styles.infoRow}>
-            <MaterialCommunityIcons
-              name="phone"
-              size={width * 0.04}
-              color="#2874b8"
-            />
-            <Text style={styles.infoText}>{item.customerContactNo}</Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <MaterialCommunityIcons
-              name="calendar"
-              size={width * 0.04}
-              color="#2874b8"
-            />
-            <Text style={styles.infoText}>
-              Delivery: {dayjs(item.deliveryDate).format('DD-MM-YYYY')}
-            </Text>
-            <Text style={styles.daysLeft}>
-              {item.remainingDays > 0
-                ? `${item.remainingDays} days left`
-                : 'Overdue'}
-            </Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <MaterialCommunityIcons
-              name="clock"
-              size={width * 0.04}
-              color="#2874b8"
-            />
-            <Text style={styles.infoText}>
-              Time: {formatTime(item.customerTime)}
-            </Text>
-          </View>
-
-          <View style={styles.amountRow}>
-            <View>
-              <Text style={styles.amountLabel}>Total</Text>
-              <Text style={styles.amountValue}>
-                ₹{item.totalAmount.toLocaleString('en-IN')}
-              </Text>
-            </View>
-            <View style={styles.amountDivider} />
-            <View>
-              <Text style={styles.amountLabel}>Paid</Text>
-              <Text style={[styles.amountValue, { color: '#27ae60' }]}>
-                ₹
-                {(item.totalAmount - item.remainingAmount).toLocaleString(
-                  'en-IN',
-                )}
-              </Text>
-            </View>
-            <View style={styles.amountDivider} />
-            <View>
-              <Text style={styles.amountLabel}>Remaining</Text>
-              <Text
-                style={[
-                  styles.amountValue,
-                  { color: item.remainingAmount > 0 ? '#e74c3c' : '#27ae60' },
-                ]}
-              >
-                ₹{item.remainingAmount.toLocaleString('en-IN')}
-              </Text>
-            </View>
-          </View>
-
-          {item.siteImages.length > 0 && (
-            <View style={styles.imagePreview}>
-              {item.siteImages.slice(0, 4).map(img => (
-                <Image
-                  key={img.id}
-                  source={{ uri: img.imageUrl }}
-                  style={styles.thumbnail}
-                />
-              ))}
-              {item.siteImages.length > 4 && (
-                <View style={styles.moreImages}>
-                  <Text style={styles.moreText}>
-                    +{item.siteImages.length - 4}
-                  </Text>
-                </View>
+          <View style={styles.amountDivider} />
+          <View>
+            <Text style={styles.amountLabel}>Paid</Text>
+            <Text style={[styles.amountValue, { color: '#27ae60' }]}>
+              ₹
+              {(item.totalAmount - item.remainingAmount).toLocaleString(
+                'en-IN',
               )}
-            </View>
-          )}
-        </TouchableOpacity>
-      </Card>
-    )
+            </Text>
+          </View>
+          <View style={styles.amountDivider} />
+          <View>
+            <Text style={styles.amountLabel}>Remaining</Text>
+            <Text
+              style={[
+                styles.amountValue,
+                { color: item.remainingAmount > 0 ? '#e74c3c' : '#27ae60' },
+              ]}
+            >
+              ₹{item.remainingAmount.toLocaleString('en-IN')}
+            </Text>
+          </View>
+        </View>
+
+        {item.siteImages.length > 0 && (
+          <View style={styles.imagePreview}>
+            {item.siteImages.slice(0, 4).map(img => (
+              <Image
+                key={img.id}
+                source={{ uri: img.imageUrl }}
+                style={styles.thumbnail}
+              />
+            ))}
+            {item.siteImages.length > 4 && (
+              <View style={styles.moreImages}>
+                <Text style={styles.moreText}>
+                  +{item.siteImages.length - 4}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+      </TouchableOpacity>
+    </Card>
   );
 
   return (
@@ -244,6 +245,7 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
       <TouchableOpacity
         style={styles.addButton}
         onPress={() => navigation.navigate('AddProject')}
+        disabled={role !== 'Admin'}
       >
         <MaterialCommunityIcons name="plus" size={width * 0.07} color="#fff" />
       </TouchableOpacity>

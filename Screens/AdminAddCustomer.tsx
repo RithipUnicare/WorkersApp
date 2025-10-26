@@ -1,5 +1,5 @@
 // screens/AddCustomer.tsx
-import React, { useState } from 'react';
+import React, { use, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -17,14 +17,17 @@ import { Formatwithcomma, RemoveComma } from '../utils/formatewithcomma';
 import { CustomerAPI } from '../service/apiService';
 import DatePicker from 'react-native-date-picker';
 import dayjs from 'dayjs';
+import { RouteProp } from '@react-navigation/native';
 
 type Props = {
   navigation: NativeStackNavigationProp<rootStackParamList, 'AddCustomer'>;
+  route: RouteProp<rootStackParamList, 'AddCustomer'>;
 };
 
 const { height } = Dimensions.get('window');
 
-const AddCustomer: React.FC<Props> = ({ navigation }) => {
+const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
+  const existingCustomer = route.params?.customer;
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [location, setLocation] = useState('');
@@ -34,6 +37,7 @@ const AddCustomer: React.FC<Props> = ({ navigation }) => {
   const [description, setDescription] = useState('');
   const [noOfDaysVisited, setNoOfDaysVisited] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [isEditMode, setIsEditMode] = useState(false);
   const [open, setOpen] = useState(false);
 
   const handleAdd = async () => {
@@ -44,26 +48,46 @@ const AddCustomer: React.FC<Props> = ({ navigation }) => {
       date?: string;
       contactNo?: string;
       workDescription?: string;
+      noOfDaysToVisit?: number;
     } = {
       name,
       contactNo: phone,
       workDescription: description,
       location,
-      noOfDaysVisited,
+      noOfDaysToVisit: noOfDaysVisited,
       address,
       advance: parseFloat(advance) || 0,
       budget: parseFloat(budget) || 0,
-      status: 'INQUIRED',
+      status: isEditMode ? existingCustomer?.status! : 'INQUIRED',
       date: dayjs(selectedDate).format('YYYY-MM-DD'), // Add formatted date here
     };
 
     try {
-      await CustomerAPI.create(newCustomer as any);
+      if (!isEditMode) await CustomerAPI.create(newCustomer as any);
+      else
+        await CustomerAPI.update(
+          existingCustomer?.id || '',
+          newCustomer as any,
+        );
       navigation.goBack();
     } catch (e) {
       console.error(e);
     }
   };
+
+  useEffect(() => {
+    if (existingCustomer) {
+      setName(existingCustomer.name || '');
+      setPhone(existingCustomer.phone || '');
+      setLocation(existingCustomer.location || '');
+      setAddress(existingCustomer.address || '');
+      setDescription(existingCustomer.description || '');
+      setNoOfDaysVisited(existingCustomer.noOfDaysVisited || '');
+      setAdvance(String(existingCustomer.advance || ''));
+      setBudget(String(existingCustomer.budget || ''));
+      setIsEditMode(true);
+    }
+  }, [existingCustomer]);
 
   return (
     <KeyboardAvoidingView
@@ -161,7 +185,7 @@ const AddCustomer: React.FC<Props> = ({ navigation }) => {
           style={styles.button}
           buttonColor="#2874b8"
         >
-          Add Customer
+          {isEditMode ? 'Update Customer' : 'Add Customer'}
         </Button>
       </ScrollView>
     </KeyboardAvoidingView>

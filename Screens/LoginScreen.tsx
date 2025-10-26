@@ -41,7 +41,7 @@ const LoginScreen: React.FC<props> = ({ navigation }) => {
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -height * 0.1} // Adjust offset as needed
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 100} // Adjust offset as needed
       >
         <Card style={styles.card}>
           <Card.Content>
@@ -102,7 +102,7 @@ const LoginScreen: React.FC<props> = ({ navigation }) => {
             </Button>
 
             {/* Demo Credentials */}
-            <View style={styles.demoContainer}>
+            {/* <View style={styles.demoContainer}>
               <Text style={styles.demoTitle}>Demo Credentials:</Text>
               <Text style={styles.demoText}>
                 Admin: admin@indiansteel.com / admin123
@@ -110,7 +110,7 @@ const LoginScreen: React.FC<props> = ({ navigation }) => {
               <Text style={styles.demoText}>
                 Worker: worker@indiansteel.com / worker123
               </Text>
-            </View>
+            </View> */}
           </Card.Content>
         </Card>
       </KeyboardAvoidingView>
