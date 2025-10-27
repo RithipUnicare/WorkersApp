@@ -76,8 +76,8 @@ const AdminHomePage: React.FC<props> = ({ navigation }) => {
     // },
     {
       id: 6,
-      title: 'unAttended Customers',
-      description: 'View unAttended Customers',
+      title: 'Unattended Customers',
+      description: 'View Unattended Customers',
       icon: 'account-clock',
       iconColor: '#2874b8',
       iconBg: '#E3F2FD',
