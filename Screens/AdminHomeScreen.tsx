@@ -9,6 +9,7 @@ import {
   Alert,
   Animated,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { Card, FAB, Portal } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -101,13 +102,6 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
     },
     {
       id: 6,
-      title: 'Add Quotation',
-      description: 'Add new quotation',
-      icon: 'file-document-edit',
-      onPress: () => navigation.navigate('AddQuotation'),
-    },
-    {
-      id: 7,
       title: 'Unattended Customers',
       description: 'View customers needing follow-up',
       icon: 'account-clock',
@@ -146,10 +140,10 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={styles.logoContainer}>
-              <MaterialCommunityIcons
-                name="factory"
-                size={wp(9)}
-                color="#FFFFFF"
+              <Image
+                source={require('../assets/logo.jpg')}
+                style={{ width: wp(16), height: wp(14), borderRadius: wp(3) }}
+                resizeMode="center"
               />
             </View>
             <View style={styles.headerText}>

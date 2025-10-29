@@ -18,8 +18,10 @@ import RecoredAudio from '../utils/audioRecorder';
 import { Project } from '../Screens/AdminProductList';
 import { Customer } from '../Screens/AdminCustomerList';
 import { QuotationItem } from '../Screens/AddQuotationScreen';
+import { Quotation } from '../Screens/QuotationDetail';
 import AddQuotation from '../Screens/AddQuotationScreen';
 import QuotationList from '../Screens/QuotationList';
+import QuotationDetail from '../Screens/QuotationDetail';
 
 export type rootStackParamList = {
   login: undefined;
@@ -39,9 +41,10 @@ export type rootStackParamList = {
   splash: undefined;
   AddQuotation:
     | { customer: Customer }
-    | { quotationToEdit: QuotationItem }
+    | { quotationToEdit: Quotation }
     | undefined;
   QuotationList: undefined;
+  QuotationDetail: { quotation: Quotation };
 };
 
 const Stack = createNativeStackNavigator<rootStackParamList>();
@@ -233,6 +236,18 @@ const AppNavigation = () => {
           component={QuotationList}
           options={{
             title: 'Quotations',
+            headerStyle: { backgroundColor: '#2874b8' },
+            headerTitleStyle: {
+              color: '#fff',
+            },
+            headerTintColor: '#fff',
+          }}
+        />
+        <Stack.Screen
+          name="QuotationDetail"
+          component={QuotationDetail}
+          options={{
+            title: 'Quotation Details',
             headerStyle: { backgroundColor: '#2874b8' },
             headerTitleStyle: {
               color: '#fff',

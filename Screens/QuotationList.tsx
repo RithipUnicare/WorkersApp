@@ -15,28 +15,28 @@ import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import dayjs from 'dayjs';
 import { QuotationAPI } from '../service/apiService'; // Replace with your actual API
-
+import { Quotation } from './QuotationList';
 const { width, height } = Dimensions.get('window');
 
-export type Quotation = {
-  id: number;
-  customerName: string;
-  customerContactNo: string;
-  address: string;
-  projectDescription: string;
-  deliveryDate: string;
-  budget: number;
-  status: string;
-  items: {
-    id: number;
-    name: string;
-    qty: number;
-    unit: string;
-    mrp: number;
-    tax: number;
-    amount: number;
-  }[];
-};
+// export type Quotation = {
+//   id: number;
+//   customerName: string;
+//   customerContactNo: string;
+//   address: string;
+//   projectDescription: string;
+//   deliveryDate: string;
+//   totalBudget: number;
+//   status: string;
+//   items: {
+//     id: number;
+//     name: string;
+//     qty: number;
+//     unit: string;
+//     mrp: number;
+//     tax: number;
+//     amount: number;
+//   }[];
+// };
 
 type Props = {
   navigation: NativeStackNavigationProp<rootStackParamList, 'QuotationList'>;
@@ -62,7 +62,7 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
         setQuotations(res.data);
       }
     } catch (e) {
-      console.error('Failed to load quotations', e);
+      console.log('Failed to load quotations', e);
     } finally {
       setRefreshing(false);
     }
@@ -94,7 +94,7 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
     <Card style={styles.card}>
       <TouchableOpacity
         onPress={() =>
-          navigation.navigate('QuotationDetails', { quotation: item })
+          navigation.navigate('QuotationDetail', { quotation: item })
         }
       >
         <View style={styles.cardHeader}>
@@ -156,7 +156,7 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
           <View>
             <Text style={styles.amountLabel}>Budget</Text>
             <Text style={styles.amountValue}>
-              ₹{item.budget.toLocaleString('en-IN')}
+              ₹{item.totalBudget?.toLocaleString('en-IN') || 0}
             </Text>
           </View>
           <View style={styles.itemCount}>

@@ -187,3 +187,27 @@ export const UnitAPI = {
   update: (id, payload) => jsonRequest('PUT', endpoints.unitById(id), payload),
   delete: id => deleteRequest(endpoints.unitById(id)),
 };
+
+export const UserAPI = {
+  // Basic CRUD operations
+  create: payload => jsonRequest('POST', endpoints.users, payload),
+  getById: id => queryRequest(endpoints.userById(id)),
+  getAll: () => queryRequest(endpoints.users),
+  update: (id, payload) => jsonRequest('PUT', endpoints.userById(id), payload),
+  delete: id => deleteRequest(endpoints.userById(id)),
+  bulkDelete: ids => deleteRequest(`${endpoints.users}?ids=${ids.join(',')}`),
+
+  // Role operations
+  getRoleById: id => queryRequest(endpoints.userRole(id)),
+  updateRoleById: (id, payload) =>
+    jsonRequest('PUT', endpoints.userRole(id), payload),
+  getRoleByUsername: username =>
+    queryRequest(endpoints.userRoleByUsername(username)),
+
+  // Password operations
+  getPasswordById: id => queryRequest(endpoints.userPassword(id)),
+  updatePasswordById: (id, payload) =>
+    jsonRequest('PUT', endpoints.userPassword(id), payload),
+  getPasswordByUsername: username =>
+    queryRequest(endpoints.userPasswordByUsername(username)),
+};

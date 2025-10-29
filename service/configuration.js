@@ -46,7 +46,8 @@ export const endpoints = {
   quotationById: id => `/api/v1/quotations/${id}`,
   quotationItemsByQuotation: id => `/api/v1/quotations/${id}/items`,
   quotationsSearch: '/api/v1/quotations/search',
-  quotationsByCustomerId: customerId => `/api/v1/quotations/customer/${customerId}`,
+  quotationsByCustomerId: customerId =>
+    `/api/v1/quotations/customer/${customerId}`,
   quotationItems: '/api/v1/quotations/items',
   quotationItemById: itemId => `/api/v1/quotations/items/${itemId}`,
 
@@ -56,6 +57,15 @@ export const endpoints = {
   unitCreate: '/api/v1/units',
   unitUpdate: id => `/api/v1/units/${id}`,
   unitDelete: id => `/api/v1/units/${id}`,
+
+  // User endpoints
+  users: '/api/v1/users',
+  userById: id => `/api/v1/users/${id}`,
+  userRole: id => `/api/v1/users/role/${id}`,
+  userPassword: id => `/api/v1/users/password/${id}`,
+  userRoleByUsername: username => `/api/v1/users/role/username/${username}`,
+  userPasswordByUsername: username =>
+    `/api/v1/users/password/username/${username}`,
 };
 
 export function buildUrl(path, queryParams) {

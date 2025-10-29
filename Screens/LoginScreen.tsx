@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, TextInput, Button } from 'react-native-paper';
@@ -53,10 +54,14 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
               {/* Logo */}
               <View style={styles.logoContainer}>
                 <View style={styles.iconBox}>
-                  <MaterialCommunityIcons
-                    name="factory"
-                    size={wp(14)}
-                    color="#FFFFFF"
+                  <Image
+                    source={require('../assets/logo.jpg')}
+                    style={{
+                      width: wp(28),
+                      height: wp(28),
+                      borderRadius: wp(3),
+                    }}
+                    resizeMode="contain"
                   />
                 </View>
               </View>
