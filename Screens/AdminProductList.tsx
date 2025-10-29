@@ -1,5 +1,4 @@
-// screens/ProjectList.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,8 +7,11 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
-import { Card, TextInput, Chip } from 'react-native-paper';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Card, TextInput, Chip, FAB, Portal } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -18,6 +20,10 @@ import dayjs from 'dayjs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
+
+// Responsive helpers
+const wp = (percentage: number) => (width * percentage) / 100;
+const hp = (percentage: number) => (height * percentage) / 100;
 
 export type Project = {
   id: number;
@@ -62,9 +68,14 @@ type Props = {
 
 const ProjectList: React.FC<Props> = ({ navigation }) => {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
   const [search, setSearch] = useState('');
-  const [role, setRole] = useState('');
+  const [role, setRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
 
+  // Load projects on mount & focus
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', loadProjects);
     loadProjects();
@@ -73,22 +84,47 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
 
   const loadProjects = async () => {
     try {
-      const res = await ProjectAPI.getAll();
+      setLoading(true);
+      const [res, storedRole] = await Promise.all([
+        ProjectAPI.getAll(),
+        AsyncStorage.getItem('role'),
+      ]);
+
       if (res.success && Array.isArray(res.data)) {
         setProjects(res.data);
+        setFilteredProjects(res.data);
       }
-      const role = await AsyncStorage.getItem('role');
-      if (role) {
-        setRole(role);
-      }
-    } catch (e) {}
+
+      setRole(storedRole);
+    } catch (e) {
+      console.error('Failed to load projects', e);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const filteredProjects = projects.filter(
-    p =>
-      p.customerName.toLowerCase().includes(search.toLowerCase()) ||
-      (p.location?.address || '').toLowerCase().includes(search.toLowerCase()),
-  );
+  // Pull-to-refresh
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadProjects();
+    setRefreshing(false);
+  }, []);
+
+  // Search with debounce
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      const query = search.toLowerCase().trim();
+      const filtered = projects.filter(
+        p =>
+          p.customerName.toLowerCase().includes(query) ||
+          (p.location?.address || '').toLowerCase().includes(query) ||
+          p.customerContactNo.includes(query),
+      );
+      setFilteredProjects(filtered);
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [search, projects]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -103,17 +139,18 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  const formatTime = (time: string) => {
-    return dayjs(time, 'HH:mm:ss').format('h:mm A');
-  };
+  const formatTime = (time: string) => dayjs(time, 'HH:mm:ss').format('h:mm A');
 
   const renderItem = ({ item }: { item: Project }) => (
-    <Card style={styles.card}>
+    <Card style={styles.card} elevation={3}>
       <TouchableOpacity
         onPress={() => navigation.navigate('ProjectDetails', { project: item })}
+        activeOpacity={0.8}
       >
         <View style={styles.cardHeader}>
-          <Text style={styles.name}>{item.customerName}</Text>
+          <Text style={styles.name} numberOfLines={1}>
+            {item.customerName}
+          </Text>
           <Chip
             style={[
               styles.statusChip,
@@ -128,7 +165,7 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
         <View style={styles.infoRow}>
           <MaterialCommunityIcons
             name="map-marker"
-            size={width * 0.04}
+            size={wp(4.5)}
             color="#2874b8"
           />
           <Text style={styles.infoText} numberOfLines={1}>
@@ -137,24 +174,25 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
         </View>
 
         <View style={styles.infoRow}>
-          <MaterialCommunityIcons
-            name="phone"
-            size={width * 0.04}
-            color="#2874b8"
-          />
+          <MaterialCommunityIcons name="phone" size={wp(4.5)} color="#2874b8" />
           <Text style={styles.infoText}>{item.customerContactNo}</Text>
         </View>
 
         <View style={styles.infoRow}>
           <MaterialCommunityIcons
             name="calendar"
-            size={width * 0.04}
+            size={wp(4.5)}
             color="#2874b8"
           />
           <Text style={styles.infoText}>
-            Delivery: {dayjs(item.deliveryDate).format('DD-MM-YYYY')}
+            Delivery: {dayjs(item.deliveryDate).format('DD MMM YYYY')}
           </Text>
-          <Text style={styles.daysLeft}>
+          <Text
+            style={[
+              styles.daysLeft,
+              { color: item.remainingDays > 0 ? '#e67e22' : '#e74c3c' },
+            ]}
+          >
             {item.remainingDays > 0
               ? `${item.remainingDays} days left`
               : 'Overdue'}
@@ -162,25 +200,21 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
         </View>
 
         <View style={styles.infoRow}>
-          <MaterialCommunityIcons
-            name="clock"
-            size={width * 0.04}
-            color="#2874b8"
-          />
+          <MaterialCommunityIcons name="clock" size={wp(4.5)} color="#2874b8" />
           <Text style={styles.infoText}>
             Time: {formatTime(item.customerTime)}
           </Text>
         </View>
 
         <View style={styles.amountRow}>
-          <View>
+          <View style={styles.amountBlock}>
             <Text style={styles.amountLabel}>Total</Text>
             <Text style={styles.amountValue}>
               ₹{item.totalAmount.toLocaleString('en-IN')}
             </Text>
           </View>
           <View style={styles.amountDivider} />
-          <View>
+          <View style={styles.amountBlock}>
             <Text style={styles.amountLabel}>Paid</Text>
             <Text style={[styles.amountValue, { color: '#27ae60' }]}>
               ₹
@@ -190,7 +224,7 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
             </Text>
           </View>
           <View style={styles.amountDivider} />
-          <View>
+          <View style={styles.amountBlock}>
             <Text style={styles.amountLabel}>Remaining</Text>
             <Text
               style={[
@@ -205,11 +239,12 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
 
         {item.siteImages.length > 0 && (
           <View style={styles.imagePreview}>
-            {item.siteImages.slice(0, 4).map(img => (
+            {item.siteImages.slice(0, 4).map((img, idx) => (
               <Image
                 key={img.id}
                 source={{ uri: img.imageUrl }}
                 style={styles.thumbnail}
+                resizeMode="cover"
               />
             ))}
             {item.siteImages.length > 4 && (
@@ -225,146 +260,225 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
     </Card>
   );
 
-  return (
-    <View style={styles.container}>
-      <TextInput
-        placeholder="Search by name or location..."
-        value={search}
-        onChangeText={setSearch}
-        mode="outlined"
-        style={styles.search}
-        left={<TextInput.Icon icon="magnify" />}
-      />
-      <FlatList
-        data={filteredProjects}
-        renderItem={renderItem}
-        keyExtractor={item => item.id.toString()}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: height * 0.1 }}
-      />
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => navigation.navigate('AddProject')}
-        disabled={role !== 'Admin'}
-      >
-        <MaterialCommunityIcons name="plus" size={width * 0.07} color="#fff" />
-      </TouchableOpacity>
+  const renderEmpty = () => (
+    <View style={styles.emptyContainer}>
+      <MaterialCommunityIcons name="folder-open" size={wp(20)} color="#ccc" />
+      <Text style={styles.emptyText}>No projects found</Text>
+      <Text style={styles.emptySubtext}>
+        {search
+          ? 'Try a different search term'
+          : 'Start by adding a new project'}
+      </Text>
     </View>
+  );
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <View style={styles.container}>
+        {/* Search Bar */}
+        <TextInput
+          placeholder="Search by name, location or phone..."
+          value={search}
+          onChangeText={setSearch}
+          mode="outlined"
+          style={styles.search}
+          theme={{ roundness: wp(2.5) }}
+          contentStyle={styles.searchContent}
+          outlineColor="#ddd"
+          activeOutlineColor="#2874b8"
+          left={<TextInput.Icon icon="magnify" size={wp(6)} />}
+          right={
+            search ? (
+              <TextInput.Icon
+                icon="close"
+                size={wp(6)}
+                onPress={() => setSearch('')}
+                color="#999"
+              />
+            ) : null
+          }
+        />
+
+        {/* Project List */}
+        {loading ? (
+          <View style={styles.loader}>
+            <ActivityIndicator size="large" color="#2874b8" />
+          </View>
+        ) : (
+          <FlatList
+            data={filteredProjects}
+            renderItem={renderItem}
+            keyExtractor={item => item.id.toString()}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContent}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+            ListEmptyComponent={renderEmpty}
+          />
+        )}
+
+        {/* FAB Group */}
+        {role === 'Admin' && (
+          <Portal>
+            <FAB.Group
+              open={fabOpen}
+              visible
+              icon={fabOpen ? 'close' : 'plus'}
+              actions={[
+                {
+                  icon: 'plus',
+                  label: 'Add Project',
+                  onPress: () => navigation.navigate('AddProject'),
+                  style: { backgroundColor: '#2874b8' },
+                },
+              ]}
+              onStateChange={({ open }) => setFabOpen(open)}
+              fabStyle={styles.fab}
+            />
+          </Portal>
+        )}
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F5', padding: width * 0.04 },
-  search: { marginBottom: height * 0.02 },
-  card: {
-    marginBottom: height * 0.025,
-    padding: width * 0.04,
+  safeArea: { flex: 1, backgroundColor: '#F5F5F5' },
+  container: { flex: 1, marginTop: hp(-4) },
+  search: {
+    marginHorizontal: wp(4),
+    marginTop: hp(1),
+    marginBottom: hp(1),
     backgroundColor: '#fff',
-    borderRadius: width * 0.03,
-    elevation: 3,
+  },
+  searchContent: { fontSize: wp(4) },
+  listContent: {
+    paddingHorizontal: wp(4),
+    paddingBottom: hp(15),
+  },
+  card: {
+    marginBottom: hp(2),
+    padding: wp(4),
+    backgroundColor: '#fff',
+    borderRadius: wp(3),
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: height * 0.015,
+    marginBottom: hp(1.5),
   },
   name: {
-    fontSize: width * 0.048,
+    fontSize: wp(5),
     fontWeight: '600',
     color: '#1a1a1a',
     flex: 1,
+    marginRight: wp(2),
   },
   statusChip: {
-    height: height * 0.038,
+    height: hp(4.2),
     justifyContent: 'center',
-    paddingHorizontal: width * 0.02,
+    paddingHorizontal: wp(2.5),
   },
   statusText: {
     color: '#fff',
-    fontSize: width * 0.032,
-    fontWeight: '500',
+    fontSize: wp(3.2),
+    fontWeight: '600',
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: height * 0.008,
+    marginBottom: hp(0.8),
   },
   infoText: {
-    marginLeft: width * 0.02,
+    marginLeft: wp(2),
     color: '#333',
-    fontSize: width * 0.036,
+    fontSize: wp(3.8),
     flex: 1,
   },
   daysLeft: {
     marginLeft: 'auto',
-    color: '#e67e22',
-    fontSize: width * 0.032,
-    fontWeight: '500',
+    fontSize: wp(3.4),
+    fontWeight: '600',
   },
   amountRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: height * 0.015,
-    paddingTop: height * 0.015,
+    marginTop: hp(1.5),
+    paddingTop: hp(1.5),
     borderTopWidth: 1,
     borderTopColor: '#eee',
   },
+  amountBlock: { alignItems: 'center', flex: 1 },
   amountLabel: {
-    fontSize: width * 0.032,
+    fontSize: wp(3.2),
     color: '#888',
-    textAlign: 'center',
   },
   amountValue: {
-    fontSize: width * 0.038,
+    fontSize: wp(4),
     fontWeight: 'bold',
     color: '#333',
-    textAlign: 'center',
-    marginTop: 2,
+    marginTop: hp(0.3),
   },
   amountDivider: {
     width: 1,
     backgroundColor: '#ddd',
-    marginHorizontal: width * 0.02,
+    marginHorizontal: wp(2),
   },
   imagePreview: {
     flexDirection: 'row',
-    marginTop: height * 0.015,
+    marginTop: hp(1.5),
     flexWrap: 'wrap',
   },
   thumbnail: {
-    width: width * 0.16,
-    height: width * 0.16,
-    borderRadius: width * 0.02,
-    marginRight: width * 0.015,
-    marginBottom: height * 0.008,
+    width: wp(18),
+    height: wp(18),
+    borderRadius: wp(2),
+    marginRight: wp(2),
+    marginBottom: hp(1),
   },
   moreImages: {
-    width: width * 0.16,
-    height: width * 0.16,
-    borderRadius: width * 0.02,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    width: wp(18),
+    height: wp(18),
+    borderRadius: wp(2),
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: width * 0.015,
-    marginBottom: height * 0.008,
+    marginRight: wp(2),
+    marginBottom: hp(1),
   },
   moreText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: width * 0.04,
+    fontSize: wp(4),
   },
-  addButton: {
-    position: 'absolute',
-    bottom: height * 0.06,
-    right: width * 0.06,
-    backgroundColor: '#2874b8',
-    borderRadius: width * 0.08,
-    width: width * 0.16,
-    height: width * 0.16,
+  loader: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 6,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: hp(10),
+  },
+  emptyText: {
+    fontSize: wp(5),
+    color: '#999',
+    marginTop: hp(2),
+    fontWeight: '600',
+  },
+  emptySubtext: {
+    fontSize: wp(3.8),
+    color: '#bbb',
+    marginTop: hp(1),
+    textAlign: 'center',
+    paddingHorizontal: wp(10),
+  },
+  fab: {
+    backgroundColor: '#2874b8',
   },
 });
 

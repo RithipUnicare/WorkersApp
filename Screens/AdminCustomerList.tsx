@@ -1,39 +1,46 @@
-// screens/CustomerList.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   FlatList,
   StyleSheet,
   TouchableOpacity,
+  Dimensions,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Card, TextInput, Button } from 'react-native-paper';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Card, TextInput, FAB, Portal, Chip } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Formatwithcomma } from '../utils/formatewithcomma';
 import { CustomerAPI } from '../service/apiService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export type Payment = {
-  id: string;
-  date: string;
-  amount: number;
-};
+const { width, height } = Dimensions.get('window');
+
+// Responsive helpers
+const wp = (percentage: number) => (width * percentage) / 100;
+const hp = (percentage: number) => (height * percentage) / 100;
 
 export type Customer = {
   id: string;
   name: string;
-  phone: string;
-  location: string;
-  address: string;
-  advance: number;
-  budget: number;
-  payments: Payment[];
-  createdAt: string;
-  description: string;
-  noOfDaysVisited: string;
-  status: 'enquired' | 'in-progress' | 'completed' | 'INQUIRED';
+  contactNo?: string;
+  address?: string;
+  workDescription?: string;
+  noOfDaysToVisit?: number;
+  date?: string;
+  status:
+    | 'enquired'
+    | 'in-progress'
+    | 'completed'
+    | 'INQUIRED'
+    | 'PAID'
+    | 'PENDING'
+    | 'CANCELLED'
+    | 'REJECTED';
+  createdAt?: string;
 };
 
 type Props = {
@@ -42,233 +49,344 @@ type Props = {
 
 const CustomerList: React.FC<Props> = ({ navigation }) => {
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState('');
-  const [role, setRole] = useState('');
+  const [role, setRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
+  const [fabVisible, setFabVisible] = useState(false);
 
+  // Load on focus
   useEffect(() => {
-    navigation.addListener('focus', () => {
-      loadCustomers();
-    });
-  }, []);
+    const unsubscribe = navigation.addListener('focus', loadCustomers);
+    loadCustomers();
+    setFabVisible(true);
+    return unsubscribe;
+  }, [navigation]);
 
   const loadCustomers = async () => {
     try {
-      const list = await CustomerAPI.getAll();
-      console.log(list.data);
-      if (Array.isArray(list.data)) setCustomers(list?.data);
-      const role = await AsyncStorage.getItem('role');
-      if (role) {
-        setRole(role);
+      setLoading(true);
+      const [res, storedRole] = await Promise.all([
+        CustomerAPI.getAll(),
+        AsyncStorage.getItem('role'),
+      ]);
+
+      if (res.success && Array.isArray(res.data)) {
+        setCustomers(res.data);
+        setFilteredCustomers(res.data);
       }
+
+      setRole(storedRole);
     } catch (e) {
       console.error('Failed to load customers', e);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const filteredCustomers = customers.filter(
-    c =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.location.toLowerCase().includes(search.toLowerCase()),
-  );
+  // Pull-to-refresh
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadCustomers();
+    setRefreshing(false);
+  }, []);
 
-  const calculateTotalPaid = (customer: Customer) => {
-    return (customer.payments || []).reduce(
-      (sum, payment) => sum + payment.amount,
-      0,
-    );
+  // Debounced search
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      const query = search.toLowerCase().trim();
+      const filtered = customers.filter(
+        c =>
+          c.name.toLowerCase().includes(query) ||
+          (c.contactNo || '').toLowerCase().includes(query) ||
+          (c.address || '').toLowerCase().includes(query),
+      );
+      setFilteredCustomers(filtered);
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [search, customers]);
+
+  // Status color & label
+  const getStatusInfo = (status: string) => {
+    const s = status.toUpperCase();
+    switch (s) {
+      case 'PAID':
+        return { color: '#27ae60', label: 'Paid' };
+      case 'INQUIRED':
+        return { color: '#3498db', label: 'Inquired' };
+      case 'PENDING':
+        return { color: '#f39c12', label: 'Pending' };
+      case 'CANCELLED':
+        return { color: '#e74c3c', label: 'Cancelled' };
+      case 'REJECTED':
+        return { color: '#95a5a6', label: 'Rejected' };
+      default:
+        return {
+          color: '#95a5a6',
+          label: status.charAt(0) + status.slice(1).toLowerCase(),
+        };
+    }
   };
 
-  const renderItem = ({ item }: { item: any }) => {
-    const totalPaid = calculateTotalPaid(item);
-    const remaining = item.budget - totalPaid;
-    const status = remaining <= 0 ? 'Paid' : 'Pending';
+  const renderItem = ({ item }: { item: Customer }) => {
+    const statusInfo = getStatusInfo(item.status);
 
     return (
-      <Card style={styles.card}>
+      <Card style={styles.card} elevation={3}>
         <TouchableOpacity
           onPress={() => {
+            setFabVisible(false);
             navigation.navigate('CustomerDetail', { customer: item });
           }}
+          activeOpacity={0.8}
         >
-          <Card.Content>
-            <View style={styles.cardHeader}>
-              <Text style={styles.name}>{item.name}</Text>
-              <View
+          <View style={styles.cardContent}>
+            <View style={styles.headerRow}>
+              <Text style={styles.name} numberOfLines={1}>
+                {item.name}
+              </Text>
+              <Chip
                 style={[
-                  styles.statusBadge,
-                  {
-                    backgroundColor:
-                      item.status === 'PAID'
-                        ? '#27ae60'
-                        : item.status === 'INQUIRED'
-                        ? '#3498db'
-                        : item.status === 'PENDING'
-                        ? '#f39c12'
-                        : item.status === 'CANCELLED'
-                        ? '#e74c3c'
-                        : '#95a5a6', // default
-                  },
+                  styles.statusChip,
+                  { backgroundColor: statusInfo.color },
                 ]}
+                textStyle={styles.statusText}
               >
-                <Text style={styles.statusText}>
-                  {item.status.charAt(0) + item.status.slice(1).toLowerCase()}
-                </Text>
-              </View>
+                {statusInfo.label}
+              </Chip>
             </View>
 
-            {/* Contact Number */}
-            <Text style={styles.phone}>
-              {item.contactNo ? item.contactNo : 'No contact number'}
-            </Text>
-
-            {/* Address */}
-            <Text style={styles.location}>
-              {item.address || 'No address provided'}
-            </Text>
-
-            {/* Optional: Show Work Description if available */}
-            {item.workDescription && (
-              <Text style={styles.workDescription}>{item.workDescription}</Text>
+            {item.contactNo && (
+              <View style={styles.infoRow}>
+                <MaterialCommunityIcons
+                  name="phone"
+                  size={wp(4.5)}
+                  color="#2874b8"
+                />
+                <Text style={styles.infoText}>{item.contactNo}</Text>
+              </View>
             )}
 
-            {/* Optional: Show Visit Days */}
-            {item.noOfDaysToVisit > 0 && (
+            {item.address && (
+              <View style={styles.infoRow}>
+                <MaterialCommunityIcons
+                  name="map-marker"
+                  size={wp(4.5)}
+                  color="#2874b8"
+                />
+                <Text style={styles.infoText} numberOfLines={1}>
+                  {item.address}
+                </Text>
+              </View>
+            )}
+
+            {item.workDescription && (
+              <Text style={styles.description} numberOfLines={2}>
+                {item.workDescription}
+              </Text>
+            )}
+
+            {item.noOfDaysToVisit !== undefined && item.noOfDaysToVisit > 0 && (
               <Text style={styles.visitInfo}>
-                Visit in: {item.noOfDaysToVisit} day
+                Follow-up in {item.noOfDaysToVisit} day
                 {item.noOfDaysToVisit > 1 ? 's' : ''}
               </Text>
             )}
 
-            {/* Optional: Show Date if available */}
             {item.date && (
               <Text style={styles.date}>
-                Date: {new Date(item.date).toLocaleDateString()}
+                {new Date(item.date).toLocaleDateString('en-IN')}
               </Text>
             )}
-          </Card.Content>
+          </View>
         </TouchableOpacity>
       </Card>
     );
   };
 
-  return (
-    <View style={styles.container}>
-      <TextInput
-        placeholder="Search customers..."
-        value={search}
-        onChangeText={setSearch}
-        mode="outlined"
-        style={styles.search}
-      />
-      <FlatList
-        data={filteredCustomers}
-        renderItem={renderItem}
-        keyExtractor={(_, index) => index.toString()}
-        showsVerticalScrollIndicator={false}
-      />
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => navigation.navigate('AddCustomer')}
-        //disabled={role !== 'Admin'}
-      >
-        <MaterialCommunityIcons name="plus" size={24} color="#fff" />
-      </TouchableOpacity>
+  const renderEmpty = () => (
+    <View style={styles.emptyContainer}>
+      <MaterialCommunityIcons name="account-off" size={wp(20)} color="#ccc" />
+      <Text style={styles.emptyText}>No customers found</Text>
+      <Text style={styles.emptySubtext}>
+        {search ? 'Try a different search term' : 'Add your first customer'}
+      </Text>
     </View>
+  );
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <View style={styles.container}>
+        {/* Search Bar */}
+        <TextInput
+          placeholder="Search by name, phone or address..."
+          value={search}
+          onChangeText={setSearch}
+          mode="outlined"
+          style={styles.search}
+          theme={{ roundness: wp(2.5) }}
+          contentStyle={styles.searchContent}
+          outlineColor="#ddd"
+          activeOutlineColor="#2874b8"
+          left={<TextInput.Icon icon="magnify" size={wp(6)} />}
+          right={
+            search ? (
+              <TextInput.Icon
+                icon="close"
+                size={wp(6)}
+                onPress={() => setSearch('')}
+                color="#999"
+              />
+            ) : null
+          }
+        />
+
+        {/* Customer List */}
+        {loading ? (
+          <View style={styles.loader}>
+            <ActivityIndicator size="large" color="#2874b8" />
+          </View>
+        ) : (
+          <FlatList
+            data={filteredCustomers}
+            renderItem={renderItem}
+            keyExtractor={item => item.id}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContent}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+            ListEmptyComponent={renderEmpty}
+          />
+        )}
+
+        {/* FAB */}
+        {role === 'Admin' && (
+          <Portal>
+            <FAB.Group
+              open={fabOpen}
+              visible={fabVisible}
+              icon={fabOpen ? 'close' : 'plus'}
+              actions={[
+                {
+                  icon: 'account-plus',
+                  label: 'Add Customer',
+                  onPress: () => navigation.navigate('AddCustomer'),
+                  style: { backgroundColor: '#2874b8' },
+                },
+              ]}
+              onStateChange={({ open }) => setFabOpen(open)}
+              fabStyle={styles.fab}
+            />
+          </Portal>
+        )}
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F5', padding: 16 },
-  search: { marginBottom: 16 },
-  card: {
-    marginBottom: 16,
-    borderRadius: 8,
-    elevation: 2,
-    padding: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+  safeArea: { flex: 1, backgroundColor: '#F5F5F5' },
+  container: { flex: 1, marginTop: hp(-4) },
+  search: {
+    marginHorizontal: wp(4),
+    marginTop: hp(1),
+    marginBottom: hp(1),
+    backgroundColor: '#fff',
   },
-  cardHeader: {
+  searchContent: { fontSize: wp(4) },
+  listContent: {
+    paddingHorizontal: wp(4),
+    paddingBottom: hp(15),
+  },
+  card: {
+    marginBottom: hp(2),
+    backgroundColor: '#fff',
+    borderRadius: wp(3),
+  },
+  cardContent: {
+    padding: wp(4),
+  },
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
-  },
-  workDescription: {
-    fontSize: 14,
-    color: '#7f8c8d',
-    marginTop: 6,
-  },
-  visitInfo: {
-    fontSize: 13,
-    color: '#2980b9',
-    marginTop: 4,
-  },
-  date: {
-    fontSize: 12,
-    color: '#95a5a6',
-    marginTop: 4,
+    marginBottom: hp(1),
   },
   name: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: wp(5),
+    fontWeight: '600',
+    color: '#1a1a1a',
     flex: 1,
+    marginRight: wp(2),
   },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginLeft: 8,
+  statusChip: {
+    height: hp(4),
+    justifyContent: 'center',
+    paddingHorizontal: wp(2.5),
   },
   statusText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: wp(3),
     fontWeight: '600',
   },
-  phone: {
-    color: '#666',
-    marginBottom: 4,
-    fontSize: 14,
-  },
-  location: {
-    color: '#444',
-    marginBottom: 4,
-    fontWeight: '500',
-    fontSize: 14,
-  },
-  address: {
-    color: '#666',
-    marginBottom: 12,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  amountRow: {
+  infoRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginVertical: 2,
-    paddingVertical: 2,
+    alignItems: 'center',
+    marginBottom: hp(0.8),
   },
-  amountLabel: {
-    color: '#555',
-    fontSize: 14,
+  infoText: {
+    marginLeft: wp(2),
+    color: '#444',
+    fontSize: wp(3.8),
+    flex: 1,
   },
-  amountValue: {
-    fontWeight: '600',
-    fontSize: 14,
+  description: {
+    fontSize: wp(3.6),
+    color: '#666',
+    marginTop: hp(1),
+    lineHeight: wp(5),
   },
-  addButton: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    backgroundColor: '#2874b8',
-    borderRadius: 28,
-    width: 56,
-    height: 56,
+  visitInfo: {
+    fontSize: wp(3.4),
+    color: '#2874b8',
+    marginTop: hp(0.8),
+    fontWeight: '500',
+  },
+  date: {
+    fontSize: wp(3.2),
+    color: '#999',
+    marginTop: hp(0.5),
+  },
+  loader: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 4,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: hp(10),
+  },
+  emptyText: {
+    fontSize: wp(5),
+    color: '#999',
+    marginTop: hp(2),
+    fontWeight: '600',
+  },
+  emptySubtext: {
+    fontSize: wp(3.8),
+    color: '#bbb',
+    marginTop: hp(1),
+    textAlign: 'center',
+    paddingHorizontal: wp(10),
+  },
+  fab: {
+    backgroundColor: '#2874b8',
   },
 });
 

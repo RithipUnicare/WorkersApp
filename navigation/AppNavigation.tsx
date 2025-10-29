@@ -17,6 +17,9 @@ import SplashScreen from '../Screens/SplashScreen';
 import RecoredAudio from '../utils/audioRecorder';
 import { Project } from '../Screens/AdminProductList';
 import { Customer } from '../Screens/AdminCustomerList';
+import { QuotationItem } from '../Screens/AddQuotationScreen';
+import AddQuotation from '../Screens/AddQuotationScreen';
+import QuotationList from '../Screens/QuotationList';
 
 export type rootStackParamList = {
   login: undefined;
@@ -27,13 +30,18 @@ export type rootStackParamList = {
   ProjectList: undefined;
   AddProject: { customer: Customer } | { projectToEdit: Project } | undefined;
   AdminPanel: undefined;
-  PaymentPage: { project: Project }; // We'll use 'any' here to avoid type issues
+  PaymentPage: { project: Project };
   TestingScreen: undefined;
   CustomerDetail: { customer: Customer };
-  ProjectDetails: { project: Project }; // We'll use 'any' here to avoid type issues
+  ProjectDetails: { project: Project };
   unattendedCustomers: undefined;
   RecoredAudio: { project: Project };
   splash: undefined;
+  AddQuotation:
+    | { customer: Customer }
+    | { quotationToEdit: QuotationItem }
+    | undefined;
+  QuotationList: undefined;
 };
 
 const Stack = createNativeStackNavigator<rootStackParamList>();
@@ -201,6 +209,30 @@ const AppNavigation = () => {
           component={RecoredAudio}
           options={{
             title: 'Recored Audio',
+            headerStyle: { backgroundColor: '#2874b8' },
+            headerTitleStyle: {
+              color: '#fff',
+            },
+            headerTintColor: '#fff',
+          }}
+        />
+        <Stack.Screen
+          name="AddQuotation"
+          component={AddQuotation}
+          options={{
+            title: 'Add Quotation',
+            headerStyle: { backgroundColor: '#2874b8' },
+            headerTitleStyle: {
+              color: '#fff',
+            },
+            headerTintColor: '#fff',
+          }}
+        />
+        <Stack.Screen
+          name="QuotationList"
+          component={QuotationList}
+          options={{
+            title: 'Quotations',
             headerStyle: { backgroundColor: '#2874b8' },
             headerTitleStyle: {
               color: '#fff',

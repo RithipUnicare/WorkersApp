@@ -1,5 +1,4 @@
-// screens/AddCustomer.tsx
-import React, { use, useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,207 +7,362 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
-import { TextInput, Button } from 'react-native-paper';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  TextInput,
+  Button,
+  Portal,
+  Snackbar,
+  FAB,
+  HelperText,
+} from 'react-native-paper';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Customer } from './AdminCustomerList';
-import { Formatwithcomma, RemoveComma } from '../utils/formatewithcomma';
 import { CustomerAPI } from '../service/apiService';
 import DatePicker from 'react-native-date-picker';
 import dayjs from 'dayjs';
 import { RouteProp } from '@react-navigation/native';
+
+const { width, height } = Dimensions.get('window');
+
+// Responsive helpers
+const wp = (percentage: number) => (width * percentage) / 100;
+const hp = (percentage: number) => (height * percentage) / 100;
 
 type Props = {
   navigation: NativeStackNavigationProp<rootStackParamList, 'AddCustomer'>;
   route: RouteProp<rootStackParamList, 'AddCustomer'>;
 };
 
-const { height } = Dimensions.get('window');
-
 const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
   const existingCustomer = route.params?.customer;
+  const isEditMode = !!existingCustomer;
+
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [location, setLocation] = useState('');
   const [address, setAddress] = useState('');
-  const [advance, setAdvance] = useState('');
-  const [budget, setBudget] = useState('');
   const [description, setDescription] = useState('');
   const [noOfDaysVisited, setNoOfDaysVisited] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
-  const handleAdd = async () => {
-    const newCustomer: Customer & {
-      id?: string;
-      createdAt?: string;
-      payments?: any[];
-      date?: string;
-      contactNo?: string;
-      workDescription?: string;
-      noOfDaysToVisit?: number;
-    } = {
-      name,
-      contactNo: phone,
-      workDescription: description,
-      location,
-      noOfDaysToVisit: noOfDaysVisited,
-      address,
-      advance: parseFloat(advance) || 0,
-      budget: parseFloat(budget) || 0,
-      status: isEditMode ? existingCustomer?.status! : 'INQUIRED',
-      date: dayjs(selectedDate).format('YYYY-MM-DD'), // Add formatted date here
-    };
+  const [loading, setLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
 
-    try {
-      if (!isEditMode) await CustomerAPI.create(newCustomer as any);
-      else
-        await CustomerAPI.update(
-          existingCustomer?.id || '',
-          newCustomer as any,
-        );
-      navigation.goBack();
-    } catch (e) {
-      console.error(e);
-    }
-  };
+  // Form validation
+  const isValidPhone = phone.length === 10 && /^\d+$/.test(phone);
+  const isFormValid =
+    name.trim().length > 0 && isValidPhone && address.trim().length > 0;
 
   useEffect(() => {
     if (existingCustomer) {
       setName(existingCustomer.name || '');
-      setPhone(existingCustomer.phone || '');
-      setLocation(existingCustomer.location || '');
+      setPhone(existingCustomer.contactNo || '');
       setAddress(existingCustomer.address || '');
-      setDescription(existingCustomer.description || '');
-      setNoOfDaysVisited(existingCustomer.noOfDaysVisited || '');
-      setAdvance(String(existingCustomer.advance || ''));
-      setBudget(String(existingCustomer.budget || ''));
-      setIsEditMode(true);
+      setDescription(existingCustomer.workDescription || '');
+      setNoOfDaysVisited(String(existingCustomer.noOfDaysToVisit || ''));
+      setSelectedDate(
+        existingCustomer.date ? new Date(existingCustomer.date) : new Date(),
+      );
     }
   }, [existingCustomer]);
 
+  const handleSave = async () => {
+    if (!isFormValid) {
+      setSnackbar({
+        visible: true,
+        message: 'Please fill all required fields correctly',
+      });
+      return;
+    }
+
+    setLoading(true);
+    const customerData: any = {
+      name: name.trim(),
+      contactNo: phone,
+      address: address.trim(),
+      workDescription: description.trim(),
+      noOfDaysToVisit: Number(noOfDaysVisited) || 0,
+      date: dayjs(selectedDate).format('YYYY-MM-DD'),
+      status: isEditMode ? existingCustomer?.status : 'INQUIRED',
+    };
+
+    try {
+      if (isEditMode && existingCustomer?.id) {
+        await CustomerAPI.update(existingCustomer.id, customerData);
+        setSnackbar({
+          visible: true,
+          message: 'Customer updated successfully!',
+        });
+      } else {
+        await CustomerAPI.create(customerData);
+        setSnackbar({ visible: true, message: 'Customer added successfully!' });
+      }
+      setTimeout(() => navigation.goBack(), 800);
+    } catch (e: any) {
+      setSnackbar({ visible: true, message: e?.message || 'Operation failed' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 100}
-      style={{ flex: 1 }}
-    >
-      <ScrollView
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <KeyboardAvoidingView
         style={styles.container}
-        contentContainerStyle={styles.content}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : hp(10)}
       >
-        <Text style={styles.title}>Customer Details</Text>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.title}>
+            {isEditMode ? 'Edit Customer' : 'Add New Customer'}
+          </Text>
 
-        <TextInput
-          label="Customer Name *"
-          value={name}
-          onChangeText={setName}
-          mode="outlined"
-          style={styles.input}
-        />
-
-        <TextInput
-          label="Phone Number *"
-          value={phone}
-          onChangeText={setPhone}
-          mode="outlined"
-          style={styles.input}
-          keyboardType="phone-pad"
-          disabled={phone.length === 10}
-          right={
-            phone.length === 10 && (
-              <TextInput.Icon icon="check-circle" color="green" />
-            )
-          }
-        />
-
-        <TextInput
-          label="Address *"
-          value={address}
-          onChangeText={setAddress}
-          mode="outlined"
-          style={styles.input}
-          multiline
-        />
-
-        <TextInput
-          label="Description"
-          value={description}
-          onChangeText={setDescription}
-          mode="outlined"
-          style={[
-            styles.input,
-            { maxHeight: height * 0.4, minHeight: height * 0.15 },
-          ]}
-          multiline
-        />
-
-        <TextInput
-          label="No. of Days Visited"
-          value={noOfDaysVisited}
-          onChangeText={setNoOfDaysVisited}
-          mode="outlined"
-          style={styles.input}
-          keyboardType="numeric"
-        />
-
-        {/* Date Picker Section */}
-        <View style={{ marginBottom: 16 }}>
-          <Text style={styles.label}>Select Date</Text>
-          <Button
+          {/* Name */}
+          <TextInput
+            label="Customer Name *"
+            value={name}
+            onChangeText={setName}
             mode="outlined"
-            onPress={() => setOpen(true)}
-            style={{ borderRadius: 8, borderColor: '#2874b8' }}
-            textColor="#2874b8"
-          >
-            {dayjs(selectedDate).format('DD-MM-YYYY')}
-          </Button>
-        </View>
+            style={styles.input}
+            theme={{ roundness: wp(2.5) }}
+            contentStyle={styles.inputContent}
+            outlineColor="#ddd"
+            activeOutlineColor="#2874b8"
+            left={<TextInput.Icon icon="account" size={wp(6)} />}
+            error={name.trim().length === 0}
+          />
+          {name.trim().length === 0 && (
+            <HelperText type="error">Name is required</HelperText>
+          )}
 
+          {/* Phone */}
+          <TextInput
+            label="Phone Number *"
+            value={phone}
+            onChangeText={text =>
+              setPhone(text.replace(/[^0-9]/g, '').slice(0, 10))
+            }
+            mode="outlined"
+            style={styles.input}
+            theme={{ roundness: wp(2.5) }}
+            keyboardType="numeric"
+            maxLength={10}
+            contentStyle={styles.inputContent}
+            outlineColor="#ddd"
+            activeOutlineColor={isValidPhone ? '#27ae60' : '#2874b8'}
+            left={<TextInput.Icon icon="phone" size={wp(6)} />}
+            right={
+              phone.length > 0 && (
+                <TextInput.Icon
+                  icon={isValidPhone ? 'check-circle' : 'alert-circle'}
+                  color={isValidPhone ? '#27ae60' : '#e74c3c'}
+                  size={wp(6)}
+                />
+              )
+            }
+            error={phone.length > 0 && !isValidPhone}
+          />
+          {phone.length > 0 && !isValidPhone && (
+            <HelperText type="error">Enter a valid 10-digit number</HelperText>
+          )}
+
+          {/* Address */}
+          <TextInput
+            label="Address *"
+            value={address}
+            onChangeText={setAddress}
+            mode="outlined"
+            multiline
+            numberOfLines={3}
+            style={[styles.input, styles.textArea]}
+            theme={{ roundness: wp(2.5) }}
+            contentStyle={styles.inputContent}
+            outlineColor="#ddd"
+            activeOutlineColor="#2874b8"
+            left={<TextInput.Icon icon="map-marker" size={wp(6)} />}
+            error={address.trim().length === 0}
+          />
+          {address.trim().length === 0 && (
+            <HelperText type="error">Address is required</HelperText>
+          )}
+
+          {/* Description */}
+          <TextInput
+            label="Work Description"
+            value={description}
+            onChangeText={setDescription}
+            mode="outlined"
+            multiline
+            numberOfLines={4}
+            style={[styles.input, styles.textArea]}
+            theme={{ roundness: wp(2.5) }}
+            contentStyle={styles.inputContent}
+            outlineColor="#ddd"
+            activeOutlineColor="#2874b8"
+            left={<TextInput.Icon icon="text" size={wp(6)} />}
+            error={description.trim().length === 0}
+          />
+
+          {/* Days Visited */}
+          <TextInput
+            label="No. of Days to Visit"
+            value={noOfDaysVisited}
+            onChangeText={text =>
+              setNoOfDaysVisited(text.replace(/[^0-9]/g, ''))
+            }
+            mode="outlined"
+            style={styles.input}
+            theme={{ roundness: wp(2.5) }}
+            keyboardType="numeric"
+            contentStyle={styles.inputContent}
+            outlineColor="#ddd"
+            activeOutlineColor="#2874b8"
+            left={<TextInput.Icon icon="calendar-clock" size={wp(6)} />}
+          />
+
+          {/* Date Picker */}
+          <View style={styles.dateSection}>
+            <Text style={styles.dateLabel}>Visit Date</Text>
+            <Button
+              mode="outlined"
+              onPress={() => setDatePickerOpen(true)}
+              style={styles.dateButton}
+              contentStyle={styles.dateButtonContent}
+              theme={{ roundness: wp(2.5) }}
+              icon="calendar"
+            >
+              {dayjs(selectedDate).format('DD MMM YYYY')}
+            </Button>
+          </View>
+
+          {/* Save Button */}
+          <Button
+            mode="contained"
+            onPress={handleSave}
+            style={styles.saveButton}
+            contentStyle={styles.saveButtonContent}
+            buttonColor="#2874b8"
+            loading={loading}
+            disabled={loading || !isFormValid}
+            icon="content-save"
+          >
+            {isEditMode ? 'Update Customer' : 'Save Customer'}
+          </Button>
+        </ScrollView>
+
+        {/* FAB */}
+        <Portal>
+          <FAB
+            icon="check"
+            style={styles.fab}
+            onPress={handleSave}
+            color="#fff"
+            visible={isFormValid}
+          />
+        </Portal>
+
+        {/* Date Picker Modal */}
         <DatePicker
           modal
-          open={open}
+          open={datePickerOpen}
           date={selectedDate}
           mode="date"
+          minimumDate={new Date()}
           onConfirm={date => {
-            setOpen(false);
             setSelectedDate(date);
+            setDatePickerOpen(false);
           }}
-          onCancel={() => setOpen(false)}
+          onCancel={() => setDatePickerOpen(false)}
         />
 
-        <Button
-          mode="contained"
-          onPress={handleAdd}
-          style={styles.button}
-          buttonColor="#2874b8"
+        {/* Snackbar */}
+        <Snackbar
+          visible={snackbar.visible}
+          onDismiss={() => setSnackbar({ ...snackbar, visible: false })}
+          duration={3000}
+          style={[
+            styles.snackbar,
+            snackbar.message.includes('success')
+              ? styles.snackbarSuccess
+              : styles.snackbarError,
+          ]}
         >
-          {isEditMode ? 'Update Customer' : 'Add Customer'}
-        </Button>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          {snackbar.message}
+        </Snackbar>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  content: { padding: 24 },
+  safeArea: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, marginTop: hp(-4) },
+  content: {
+    padding: wp(5),
+    paddingBottom: hp(20),
+  },
   title: {
-    fontSize: 24,
+    fontSize: wp(6.5),
     fontWeight: '700',
     color: '#1a1a1a',
-    marginBottom: 24,
+    marginBottom: hp(3),
+    textAlign: 'center',
   },
-  input: { marginBottom: 16 },
-  label: {
-    fontSize: 16,
+  input: {
+    marginBottom: hp(1),
+    backgroundColor: '#fff',
+  },
+  inputContent: { fontSize: wp(4) },
+  textArea: {
+    minHeight: hp(12),
+  },
+  dateSection: {
+    marginBottom: hp(2),
+  },
+  dateLabel: {
+    fontSize: wp(4),
     fontWeight: '600',
     color: '#333',
-    marginBottom: 8,
+    marginBottom: hp(1),
+    marginLeft: wp(1),
   },
-  button: { borderRadius: 8, paddingVertical: 8 },
+  dateButton: {
+    borderColor: '#2874b8',
+    borderWidth: 1.5,
+  },
+  dateButtonContent: {
+    height: hp(7),
+    justifyContent: 'flex-start',
+  },
+  saveButton: {
+    marginTop: hp(3),
+    borderRadius: wp(3),
+  },
+  saveButtonContent: {
+    height: hp(7),
+  },
+  fab: {
+    position: 'absolute',
+    right: wp(5),
+    bottom: hp(10),
+    backgroundColor: '#27ae60',
+  },
+  snackbar: {
+    margin: wp(4),
+    borderRadius: wp(2),
+  },
+  snackbarSuccess: {
+    backgroundColor: '#27ae60',
+  },
+  snackbarError: {
+    backgroundColor: '#e74c3c',
+  },
 });
 
 export default AddCustomer;

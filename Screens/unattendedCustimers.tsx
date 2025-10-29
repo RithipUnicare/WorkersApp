@@ -1,4 +1,3 @@
-// screens/CustomerList.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -6,14 +5,21 @@ import {
   FlatList,
   StyleSheet,
   TouchableOpacity,
+  Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Card, TextInput, Button } from 'react-native-paper';
+import { Card, TextInput } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Formatwithcomma } from '../utils/formatewithcomma';
 import { CustomerAPI } from '../service/apiService';
+
+const { width, height } = Dimensions.get('window');
+
+// Responsive helpers
+const wp = (percentage: number) => (width * percentage) / 100;
+const hp = (percentage: number) => (height * percentage) / 100;
 
 export type Payment = {
   id: string;
@@ -33,7 +39,19 @@ export type Customer = {
   createdAt: string;
   description: string;
   noOfDaysVisited: string;
-  status: 'enquired' | 'in-progress' | 'completed' | 'INQUIRED';
+  status:
+    | 'enquired'
+    | 'in-progress'
+    | 'completed'
+    | 'INQUIRED'
+    | 'PAID'
+    | 'CANCELLED'
+    | 'PENDING'
+    | 'REJECTED';
+  contactNo?: string;
+  workDescription?: string;
+  noOfDaysToVisit?: number;
+  date?: string;
 };
 
 type Props = {
@@ -46,20 +64,19 @@ const UnattendedCustomers: React.FC<Props> = ({ navigation }) => {
   const [role, setRole] = useState('');
 
   useEffect(() => {
-    navigation.addListener('focus', () => {
+    const unsubscribe = navigation.addListener('focus', () => {
       loadCustomers();
     });
-  }, []);
+    return unsubscribe;
+  }, [navigation]);
 
   const loadCustomers = async () => {
     try {
       const list = await CustomerAPI.getReminder();
       console.log(list.data);
-      if (Array.isArray(list.data)) setCustomers(list?.data);
-      const role = await AsyncStorage.getItem('role');
-      if (role) {
-        setRole(role);
-      }
+      if (Array.isArray(list.data)) setCustomers(list.data);
+      const storedRole = await AsyncStorage.getItem('role');
+      if (storedRole) setRole(storedRole);
     } catch (e) {
       console.error('Failed to load customers', e);
     }
@@ -78,7 +95,7 @@ const UnattendedCustomers: React.FC<Props> = ({ navigation }) => {
     );
   };
 
-  const renderItem = ({ item }: { item: any }) => {
+  const renderItem = ({ item }: { item: Customer }) => {
     const totalPaid = calculateTotalPaid(item);
     const remaining = item.budget - totalPaid;
     const status = remaining <= 0 ? 'Paid' : 'Pending';
@@ -89,10 +106,13 @@ const UnattendedCustomers: React.FC<Props> = ({ navigation }) => {
           onPress={() => {
             navigation.navigate('CustomerDetail', { customer: item });
           }}
+          activeOpacity={0.8}
         >
           <Card.Content>
             <View style={styles.cardHeader}>
-              <Text style={styles.name}>{item.name}</Text>
+              <Text style={styles.name} numberOfLines={1}>
+                {item.name}
+              </Text>
               <View
                 style={[
                   styles.statusBadge,
@@ -106,7 +126,7 @@ const UnattendedCustomers: React.FC<Props> = ({ navigation }) => {
                         ? '#f39c12'
                         : item.status === 'CANCELLED'
                         ? '#e74c3c'
-                        : '#95a5a6', // default
+                        : '#95a5a6',
                   },
                 ]}
               >
@@ -116,35 +136,32 @@ const UnattendedCustomers: React.FC<Props> = ({ navigation }) => {
               </View>
             </View>
 
-            {/* Contact Number */}
             <Text style={styles.phone}>
-              {item.contactNo ? item.contactNo : 'No contact number'}
+              {item.contactNo || 'No contact number'}
             </Text>
 
-            {/* Address */}
-            <Text style={styles.location}>
+            <Text style={styles.location} numberOfLines={2}>
               {item.address || 'No address provided'}
             </Text>
 
-            {/* Optional: Show Work Description if available */}
-            {item.workDescription && (
-              <Text style={styles.workDescription}>{item.workDescription}</Text>
-            )}
+            {item.workDescription ? (
+              <Text style={styles.workDescription} numberOfLines={2}>
+                {item.workDescription}
+              </Text>
+            ) : null}
 
-            {/* Optional: Show Visit Days */}
-            {item.noOfDaysToVisit > 0 && (
+            {item.noOfDaysToVisit && item.noOfDaysToVisit > 0 ? (
               <Text style={styles.visitInfo}>
                 Visit in: {item.noOfDaysToVisit} day
                 {item.noOfDaysToVisit > 1 ? 's' : ''}
               </Text>
-            )}
+            ) : null}
 
-            {/* Optional: Show Date if available */}
-            {item.date && (
+            {item.date ? (
               <Text style={styles.date}>
                 Date: {new Date(item.date).toLocaleDateString()}
               </Text>
-            )}
+            ) : null}
           </Card.Content>
         </TouchableOpacity>
       </Card>
@@ -152,123 +169,128 @@ const UnattendedCustomers: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <TextInput
-        placeholder="Search customers..."
-        value={search}
-        onChangeText={setSearch}
-        mode="outlined"
-        style={styles.search}
-      />
-      <FlatList
-        data={filteredCustomers}
-        renderItem={renderItem}
-        keyExtractor={(_, index) => index.toString()}
-        showsVerticalScrollIndicator={false}
-      />
-      {/* <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => navigation.navigate('AddCustomer')}
-        //disabled={role !== 'Admin'}
-      >
-        <MaterialCommunityIcons name="plus" size={24} color="#fff" />
-      </TouchableOpacity> */}
-    </View>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <View style={styles.container}>
+        <TextInput
+          placeholder="Search customers..."
+          value={search}
+          onChangeText={setSearch}
+          mode="outlined"
+          style={styles.search}
+          theme={{ roundness: wp(2) }}
+        />
+
+        <FlatList
+          data={filteredCustomers}
+          renderItem={renderItem}
+          keyExtractor={(_, index) => index.toString()}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+        />
+
+        {/* Uncomment if needed */}
+        {/* <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => navigation.navigate('AddCustomer')}
+          disabled={role !== 'Admin'}
+        >
+          <MaterialCommunityIcons name="plus" size={wp(7)} color="#fff" />
+        </TouchableOpacity> */}
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F5', padding: 16 },
-  search: { marginBottom: 16 },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+  },
+  container: {
+    flex: 1,
+    paddingHorizontal: wp(4),
+    paddingTop: hp(1),
+  },
+  search: {
+    marginBottom: hp(2),
+    fontSize: wp(4),
+  },
+  listContent: {
+    paddingBottom: hp(10),
+  },
   card: {
-    marginBottom: 16,
-    borderRadius: 8,
-    elevation: 2,
-    padding: 12,
+    marginBottom: hp(2),
+    borderRadius: wp(2.5),
+    elevation: 3,
+    padding: wp(3),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.12,
+    shadowRadius: 5,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
-  },
-  workDescription: {
-    fontSize: 14,
-    color: '#7f8c8d',
-    marginTop: 6,
-  },
-  visitInfo: {
-    fontSize: 13,
-    color: '#2980b9',
-    marginTop: 4,
-  },
-  date: {
-    fontSize: 12,
-    color: '#95a5a6',
-    marginTop: 4,
+    marginBottom: hp(1),
   },
   name: {
-    fontSize: 18,
+    fontSize: wp(4.8),
     fontWeight: 'bold',
     flex: 1,
+    marginRight: wp(2),
   },
   statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginLeft: 8,
+    paddingHorizontal: wp(2.5),
+    paddingVertical: wp(1),
+    borderRadius: wp(3),
   },
   statusText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: wp(3),
     fontWeight: '600',
   },
   phone: {
     color: '#666',
-    marginBottom: 4,
-    fontSize: 14,
+    marginBottom: hp(0.5),
+    fontSize: wp(3.8),
   },
   location: {
     color: '#444',
-    marginBottom: 4,
+    marginBottom: hp(0.5),
     fontWeight: '500',
-    fontSize: 14,
+    fontSize: wp(3.8),
   },
-  address: {
-    color: '#666',
-    marginBottom: 12,
-    fontSize: 13,
-    lineHeight: 18,
+  workDescription: {
+    fontSize: wp(3.5),
+    color: '#7f8c8d',
+    marginTop: hp(0.5),
   },
-  amountRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginVertical: 2,
-    paddingVertical: 2,
+  visitInfo: {
+    fontSize: wp(3.4),
+    color: '#2980b9',
+    marginTop: hp(0.5),
   },
-  amountLabel: {
-    color: '#555',
-    fontSize: 14,
-  },
-  amountValue: {
-    fontWeight: '600',
-    fontSize: 14,
+  date: {
+    fontSize: wp(3.2),
+    color: '#95a5a6',
+    marginTop: hp(0.5),
   },
   addButton: {
     position: 'absolute',
-    bottom: 24,
-    right: 24,
+    bottom: hp(3),
+    right: wp(6),
     backgroundColor: '#2874b8',
-    borderRadius: 28,
-    width: 56,
-    height: 56,
+    borderRadius: wp(14),
+    width: wp(14),
+    height: wp(14),
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 4,
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
   },
 });
 

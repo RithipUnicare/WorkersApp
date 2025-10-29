@@ -4,7 +4,7 @@ import { BASE_URL, endpoints, buildUrl } from './configuration';
 async function handleResponse(res, parse = 'json') {
   if (!res.ok) {
     const text = await res.text().catch(() => '');
-
+    console.log(res);
     let errorData;
     try {
       errorData = text ? JSON.parse(text) : {};
@@ -152,4 +152,38 @@ export const ProjectAPI = {
     queryRequest(endpoints.paymentsOutByProject(projectId)),
   getProjectItems: projectId =>
     queryRequest(endpoints.itemsByProject(projectId)),
+};
+
+export const QuotationAPI = {
+  // Quotations CRUD
+  create: payload => jsonRequest('POST', endpoints.quotations, payload),
+  getById: id => queryRequest(endpoints.quotationById(id)),
+  getAll: () => queryRequest(endpoints.quotations),
+  update: (id, payload) =>
+    jsonRequest('PUT', endpoints.quotationById(id), payload),
+  delete: id => deleteRequest(endpoints.quotationById(id)),
+
+  // Items
+  createItem: payload => jsonRequest('POST', endpoints.quotationItems, payload),
+  updateItem: (itemId, payload) =>
+    jsonRequest('PUT', endpoints.quotationItemById(itemId), payload),
+  deleteItem: itemId => deleteRequest(endpoints.quotationItemById(itemId)),
+  getItems: quotationId =>
+    queryRequest(endpoints.quotationItemsByQuotation(quotationId)),
+
+  // Search and filters
+  searchByCustomerName: customerName =>
+    queryRequest(endpoints.quotationsSearch, { customerName }),
+  searchByCustomerContactNo: customerContactNo =>
+    queryRequest(endpoints.quotationsSearch, { customerContactNo }),
+  getByCustomerId: customerId =>
+    queryRequest(endpoints.quotationsByCustomerId(customerId)),
+};
+
+export const UnitAPI = {
+  create: payload => jsonRequest('POST', endpoints.units, payload),
+  getById: id => queryRequest(endpoints.unitById(id)),
+  getAll: () => queryRequest(endpoints.units),
+  update: (id, payload) => jsonRequest('PUT', endpoints.unitById(id), payload),
+  delete: id => deleteRequest(endpoints.unitById(id)),
 };

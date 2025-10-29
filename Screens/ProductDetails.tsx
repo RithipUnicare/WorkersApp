@@ -1,5 +1,4 @@
-// screens/ProjectDetails.tsx
-import React, { use, useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,6 +12,7 @@ import {
   FlatList,
   Linking,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Card,
   Chip,
@@ -28,11 +28,13 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import dayjs from 'dayjs';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { ProjectAPI } from '../service/apiService';
-
-// SAME IMPORT AS YOUR RECORDER
-import Sound, { PlayBackType, PlaybackEndType } from 'react-native-nitro-sound';
+import Sound, { PlayBackType } from 'react-native-nitro-sound';
 
 const { width, height } = Dimensions.get('window');
+
+// Responsive helpers
+const wp = (percentage: number) => (width * percentage) / 100;
+const hp = (percentage: number) => (height * percentage) / 100;
 
 type ProjectDetailsRouteProp = RouteProp<rootStackParamList, 'ProjectDetails'>;
 type ProjectDetailsNavProp = NativeStackNavigationProp<
@@ -95,15 +97,14 @@ const openGoogleMaps = (
 const ProjectDetails: React.FC = () => {
   const route = useRoute<ProjectDetailsRouteProp>();
   const navigation = useNavigation<ProjectDetailsNavProp>();
-  const projects: Project = route.params.project;
-  console.log('ProjectDetails route params', route.params);
-  const [project, setProject] = useState<Project>(projects);
+  const initialProject: Project = route.params.project;
+
+  const [project, setProject] = useState<Project>(initialProject);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [open, setOpen] = useState(false);
-  const [openModal, setOpenModal] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
 
-  // Playback state
+  // Audio state
   const [isPlaying, setIsPlaying] = useState(false);
   const [playTime, setPlayTime] = useState('00:00:00');
   const [duration, setDuration] = useState('00:00:00');
@@ -112,21 +113,18 @@ const ProjectDetails: React.FC = () => {
   const formatTime = (time: string) => dayjs(time, 'HH:mm:ss').format('h:mm A');
   const formatDate = (date: string) => dayjs(date).format('DD-MM-YYYY');
 
+  // Reload project on focus
   useEffect(() => {
-    navigation.addListener('focus', () => {
-      // Reload or refresh if needed
-      const loadProject = async () => {
-        try {
-          const res = await ProjectAPI.getById(project.id);
-          if (res && res.data) {
-            setProject(res.data);
-          }
-        } catch (e) {}
-      };
-      loadProject();
-      setOpenModal(true);
+    const unsubscribe = navigation.addListener('focus', async () => {
+      try {
+        const res = await ProjectAPI.getById(initialProject.id);
+        if (res?.data) setProject(res.data);
+      } catch (e) {
+        console.error('Failed to reload project', e);
+      }
     });
-  }, []);
+    return unsubscribe;
+  }, [navigation, initialProject.id]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -143,31 +141,28 @@ const ProjectDetails: React.FC = () => {
 
   const displayStatus = project.siteStatus || project.status;
 
-  // === PLAYBACK LOGIC ===
+  // === AUDIO PLAYBACK ===
   useEffect(() => {
     if (!project.voiceRecordingUrl) return;
 
     setUrl(project.voiceRecordingUrl);
 
-    // Add listeners
-    Sound.addPlayBackListener((e: PlayBackType) => {
+    const playbackListener = Sound.addPlayBackListener((e: PlayBackType) => {
       setPlayTime(Sound.mmssss(Math.floor(e.currentPosition)));
       if (e.duration > 0) {
         setDuration(Sound.mmssss(Math.floor(e.duration)));
       }
     });
 
-    Sound.addPlaybackEndListener(() => {
+    const endListener = Sound.addPlaybackEndListener(() => {
       setIsPlaying(false);
       setPlayTime('00:00:00');
     });
 
     return () => {
-      Sound.removePlayBackListener();
-      Sound.removePlaybackEndListener();
-      if (isPlaying) {
-        Sound.stopPlayer().catch(() => {});
-      }
+      // if (playbackListener) playbackListener.remove();
+      // if (endListener) endListener.remove();
+      if (isPlaying) Sound.stopPlayer().catch(() => {});
     };
   }, [project.voiceRecordingUrl, isPlaying]);
 
@@ -188,6 +183,7 @@ const ProjectDetails: React.FC = () => {
   };
 
   const handleEdit = () => {
+    setFabOpen(false);
     navigation.navigate('AddProject', { projectToEdit: project });
   };
 
@@ -233,404 +229,393 @@ const ProjectDetails: React.FC = () => {
     </View>
   );
 
-  // Helper to convert mm:ss to seconds
   const parseTime = (time: string): number => {
-    const parts = time.split(':').map(Number);
-    return parts[0] * 60 + parts[1];
+    const [m, s] = time.split(':').map(Number);
+    return m * 60 + s;
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* Header */}
-        <Card style={styles.headerCard}>
-          <View style={styles.headerRow}>
-            <Text style={styles.name}>{project.customerName}</Text>
-            <Chip
-              style={[
-                styles.statusChip,
-                { backgroundColor: getStatusColor(project.status) },
-              ]}
-              textStyle={styles.statusText}
-            >
-              {displayStatus}
-            </Chip>
-          </View>
-        </Card>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <View style={styles.container}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <Card style={styles.headerCard}>
+            <View style={styles.headerRow}>
+              <Text style={styles.name} numberOfLines={1}>
+                {project.customerName}
+              </Text>
+              <Chip
+                style={[
+                  styles.statusChip,
+                  { backgroundColor: getStatusColor(project.status) },
+                ]}
+                textStyle={styles.statusText}
+              >
+                {displayStatus}
+              </Chip>
+            </View>
+          </Card>
 
-        {/* Details */}
-        <Card style={styles.detailsCard}>
-          <View style={styles.infoRow}>
-            <MaterialCommunityIcons
-              name="phone"
-              size={width * 0.05}
-              color="#2874b8"
-            />
-            <Text style={styles.infoLabel}>Contact</Text>
-            <Text style={styles.infoValue}>{project.customerContactNo}</Text>
-          </View>
-
-          {project.location ? (
-            <TouchableOpacity
-              onPress={() =>
-                openGoogleMaps(
-                  project?.location?.latitude || 0,
-                  project?.location?.longitude || 0,
-                  project.location?.address,
-                )
-              }
-            >
-              <View style={styles.infoRow}>
-                <MaterialCommunityIcons
-                  name="map-marker"
-                  size={width * 0.05}
-                  color="#2874b8"
-                />
-                <Text style={styles.infoLabel}>Location</Text>
-                <Text style={styles.infoValue} numberOfLines={1}>
-                  {project.location.address}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ) : (
+          {/* Details */}
+          <Card style={styles.detailsCard}>
             <View style={styles.infoRow}>
               <MaterialCommunityIcons
-                name="map-marker-off"
-                size={width * 0.05}
-                color="#999"
+                name="phone"
+                size={wp(5)}
+                color="#2874b8"
               />
-              <Text style={styles.infoLabel}>Location</Text>
-              <Text style={styles.infoValue}>Not set</Text>
+              <Text style={styles.infoLabel}>Contact</Text>
+              <Text style={styles.infoValue}>{project.customerContactNo}</Text>
             </View>
-          )}
 
-          <View style={styles.infoRow}>
-            <MaterialCommunityIcons
-              name="calendar"
-              size={width * 0.05}
-              color="#2874b8"
-            />
-            <Text style={styles.infoLabel}>Delivery</Text>
-            <Text style={styles.infoValue}>
-              {formatDate(project.deliveryDate)}
-            </Text>
-          </View>
+            {project.location ? (
+              <TouchableOpacity
+                onPress={() =>
+                  openGoogleMaps(
+                    project?.location?.latitude || 0,
+                    project?.location?.longitude || 0,
+                    project?.location?.address || '',
+                  )
+                }
+                activeOpacity={0.8}
+              >
+                <View style={styles.infoRow}>
+                  <MaterialCommunityIcons
+                    name="map-marker"
+                    size={wp(5)}
+                    color="#2874b8"
+                  />
+                  <Text style={styles.infoLabel}>Location</Text>
+                  <Text style={styles.infoValue} numberOfLines={1}>
+                    {project.location.address}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.infoRow}>
+                <MaterialCommunityIcons
+                  name="map-marker-off"
+                  size={wp(5)}
+                  color="#999"
+                />
+                <Text style={styles.infoLabel}>Location</Text>
+                <Text style={styles.infoValue}>Not set</Text>
+              </View>
+            )}
 
-          {/* <View style={styles.infoRow}>
-            <MaterialCommunityIcons
-              name="clock-outline"
-              size={width * 0.05}
-              color="#2874b8"
-            />
-            <Text style={styles.infoLabel}>Time</Text>
-            <Text style={styles.infoValue}>
-              {formatTime(project.customerTime)}
-            </Text>
-          </View> */}
-
-          <View style={styles.infoRow}>
-            <MaterialCommunityIcons
-              name="timer"
-              size={width * 0.05}
-              color="#2874b8"
-            />
-            <Text style={styles.infoLabel}>Days Left</Text>
-            <Text
-              style={[
-                styles.infoValue,
-                { color: project.remainingDays > 0 ? '#e67e22' : '#e74c3c' },
-              ]}
-            >
-              {project.remainingDays > 0
-                ? `${project.remainingDays} days left`
-                : 'Overdue'}
-            </Text>
-          </View>
-        </Card>
-
-        {/* Amount */}
-        <Card style={styles.amountCard}>
-          <View style={styles.amountRow}>
-            <View>
-              <Text style={styles.amountLabel}>Total</Text>
-              <Text style={styles.amountValue}>
-                ₹{project.totalAmount.toLocaleString('en-IN')}
+            <View style={styles.infoRow}>
+              <MaterialCommunityIcons
+                name="calendar"
+                size={wp(5)}
+                color="#2874b8"
+              />
+              <Text style={styles.infoLabel}>Delivery</Text>
+              <Text style={styles.infoValue}>
+                {formatDate(project.deliveryDate)}
               </Text>
             </View>
-            <View style={styles.divider} />
-            <View>
-              <Text style={styles.amountLabel}>Paid</Text>
-              <Text style={[styles.amountValue, { color: '#27ae60' }]}>
-                ₹
-                {(project.totalAmount - project.remainingAmount).toLocaleString(
-                  'en-IN',
-                )}
-              </Text>
-            </View>
-            <View style={styles.divider} />
-            <View>
-              <Text style={styles.amountLabel}>Remaining</Text>
+
+            <View style={styles.infoRow}>
+              <MaterialCommunityIcons
+                name="timer"
+                size={wp(5)}
+                color="#2874b8"
+              />
+              <Text style={styles.infoLabel}>Days Left</Text>
               <Text
                 style={[
-                  styles.amountValue,
-                  {
-                    color: project.remainingAmount > 0 ? '#e74c3c' : '#27ae60',
-                  },
+                  styles.infoValue,
+                  { color: project.remainingDays > 0 ? '#e67e22' : '#e74c3c' },
                 ]}
               >
-                ₹{project.remainingAmount.toLocaleString('en-IN')}
+                {project.remainingDays > 0
+                  ? `${project.remainingDays} days left`
+                  : 'Overdue'}
               </Text>
             </View>
-          </View>
-        </Card>
-
-        {/* Description */}
-        {project.projectDescription && (
-          <Card style={styles.descCard}>
-            <Text style={styles.descTitle}>Project Description</Text>
-            <Text style={styles.descText}>{project.projectDescription}</Text>
           </Card>
-        )}
 
-        {/* Site Images */}
-        {project.siteImages.length > 0 && (
-          <Card style={styles.imagesCard}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>
-                Site Images ({project.siteImages.length})
-              </Text>
-              <Button
-                mode="text"
-                onPress={() => openImageModal(0)}
-                labelStyle={styles.viewAllText}
-              >
-                View All
-              </Button>
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.imageScroll}
-            >
-              {project.siteImages.map((img, idx) => (
-                <TouchableOpacity
-                  key={img.id}
-                  onPress={() => openImageModal(idx)}
-                  activeOpacity={0.8}
+          {/* Amount */}
+          <Card style={styles.amountCard}>
+            <View style={styles.amountRow}>
+              <View style={styles.amountBlock}>
+                <Text style={styles.amountLabel}>Total</Text>
+                <Text style={styles.amountValue}>
+                  ₹{project.totalAmount.toLocaleString('en-IN')}
+                </Text>
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.amountBlock}>
+                <Text style={styles.amountLabel}>Paid</Text>
+                <Text style={[styles.amountValue, { color: '#27ae60' }]}>
+                  ₹
+                  {(
+                    project.totalAmount - project.remainingAmount
+                  ).toLocaleString('en-IN')}
+                </Text>
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.amountBlock}>
+                <Text style={styles.amountLabel}>Remaining</Text>
+                <Text
+                  style={[
+                    styles.amountValue,
+                    {
+                      color:
+                        project.remainingAmount > 0 ? '#e74c3c' : '#27ae60',
+                    },
+                  ]}
                 >
-                  <Image
-                    source={{ uri: img.imageUrl }}
-                    style={styles.thumbnail}
-                  />
-                  <View style={styles.overlay}>
-                    <MaterialCommunityIcons
-                      name="magnify-plus"
-                      size={24}
-                      color="#fff"
-                    />
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+                  ₹{project.remainingAmount.toLocaleString('en-IN')}
+                </Text>
+              </View>
+            </View>
           </Card>
-        )}
 
-        {/* Items */}
-        <Card style={styles.itemsCard}>
-          <Text style={styles.sectionTitle}>
-            Items ({project.projectItems.length})
-          </Text>
-          {project.projectItems.length === 0 ? (
-            <Text style={styles.emptyText}>No items</Text>
-          ) : (
-            project.projectItems.map(item => (
-              <View key={item.id} style={styles.itemRow}>
-                <View>
+          {/* Description */}
+          {project.projectDescription ? (
+            <Card style={styles.descCard}>
+              <Text style={styles.descTitle}>Project Description</Text>
+              <Text style={styles.descText}>{project.projectDescription}</Text>
+            </Card>
+          ) : null}
+
+          {/* Site Images */}
+          {project.siteImages.length > 0 && (
+            <Card style={styles.imagesCard}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>
+                  Site Images ({project.siteImages.length})
+                </Text>
+                <Button
+                  mode="text"
+                  onPress={() => openImageModal(0)}
+                  labelStyle={styles.viewAllText}
+                >
+                  View All
+                </Button>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.imageScroll}
+              >
+                {project.siteImages.map((img, idx) => (
+                  <TouchableOpacity
+                    key={img.id}
+                    onPress={() => openImageModal(idx)}
+                    style={styles.thumbnailWrapper}
+                  >
+                    <Image
+                      source={{ uri: img.imageUrl }}
+                      style={styles.thumbnail}
+                    />
+                    <View style={styles.overlay}>
+                      <MaterialCommunityIcons
+                        name="magnify-plus"
+                        size={wp(6)}
+                        color="#fff"
+                      />
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </Card>
+          )}
+
+          {/* Items */}
+          <Card style={styles.itemsCard}>
+            <Text style={styles.sectionTitle}>
+              Items ({project.projectItems.length})
+            </Text>
+            {project.projectItems.length === 0 ? (
+              <Text style={styles.emptyText}>No items</Text>
+            ) : (
+              project.projectItems.map(item => (
+                <View key={item.id} style={styles.itemRow}>
                   <Text style={styles.itemName}>{item.itemName}</Text>
                   <Text style={styles.itemDetails}>
                     {item.quantity} × ₹{item.rateMrp} = ₹
                     {item.totalCost.toLocaleString('en-IN')}
                   </Text>
                 </View>
-              </View>
-            ))
+              ))
+            )}
+          </Card>
+
+          {/* Payments */}
+          {project.advancePayments.length > 0 && (
+            <Card style={styles.paymentsCard}>
+              <Text style={styles.sectionTitle}>Advance Payments</Text>
+              {project.advancePayments.map(pay => (
+                <View key={pay.id} style={styles.paymentRow}>
+                  <View>
+                    <Text style={styles.paymentAmount}>
+                      ₹{pay.amount.toLocaleString('en-IN')}
+                    </Text>
+                    <Text style={styles.paymentDate}>
+                      {formatDate(pay.paymentDate)}
+                    </Text>
+                  </View>
+                  <Chip mode="outlined" textStyle={styles.chipText}>
+                    {pay.paymentMode}
+                  </Chip>
+                </View>
+              ))}
+            </Card>
           )}
-        </Card>
 
-        {/* Payments */}
-        {project.advancePayments.length > 0 && (
-          <Card style={styles.paymentsCard}>
-            <Text style={styles.sectionTitle}>Advance Payments</Text>
-            {project.advancePayments.map(pay => (
-              <View key={pay.id} style={styles.paymentRow}>
-                <View>
-                  <Text style={styles.paymentAmount}>
-                    ₹{pay.amount.toLocaleString('en-IN')}
-                  </Text>
-                  <Text style={styles.paymentDate}>
-                    {formatDate(pay.paymentDate)}
+          {/* Voice Recording */}
+          {project.voiceRecordingUrl && (
+            <Card style={styles.voiceCard}>
+              <View style={styles.voiceHeader}>
+                <MaterialCommunityIcons
+                  name="microphone"
+                  size={wp(6)}
+                  color="#2874b8"
+                />
+                <Text style={styles.voiceTitle}>Voice Recording</Text>
+              </View>
+
+              <View style={styles.playerContainer}>
+                <IconButton
+                  icon={isPlaying ? 'pause' : 'play'}
+                  size={wp(7)}
+                  onPress={togglePlayback}
+                  style={styles.playButton}
+                />
+                <View style={styles.progressContainer}>
+                  <View style={styles.progressBar}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        {
+                          width:
+                            duration !== '00:00:00' && playTime !== '00:00:00'
+                              ? `${
+                                  (parseTime(playTime) / parseTime(duration)) *
+                                  100
+                                }%`
+                              : '0%',
+                        },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.timeText}>
+                    {playTime} / {duration}
                   </Text>
                 </View>
-                <Chip mode="outlined" textStyle={styles.chipText}>
-                  {pay.paymentMode}
-                </Chip>
               </View>
-            ))}
-          </Card>
-        )}
 
-        {/* VOICE RECORDING PLAYER */}
-        {project.voiceRecordingUrl && (
-          <Card style={styles.voiceCard}>
-            <View style={styles.voiceHeader}>
-              <MaterialCommunityIcons
-                name="microphone"
-                size={24}
-                color="#2874b8"
-              />
-              <Text style={styles.voiceTitle}>Voice Recording</Text>
-            </View>
-
-            <View style={styles.playerContainer}>
-              <IconButton
-                icon={isPlaying ? 'pause' : 'play'}
-                size={28}
-                // color="#2874b8"
-                onPress={togglePlayback}
-                style={styles.playButton}
-              />
-              <View style={styles.progressContainer}>
-                <View style={styles.progressBar}>
-                  <View
-                    style={[
-                      styles.progressFill,
-                      {
-                        width:
-                          duration !== '00:00:00' && playTime !== '00:00:00'
-                            ? `${
-                                (parseTime(playTime) / parseTime(duration)) *
-                                100
-                              }%`
-                            : '0%',
-                      },
-                    ]}
-                  />
-                </View>
-                <Text style={styles.timeText}>
-                  {playTime} / {duration}
-                </Text>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              onPress={() => Linking.openURL(project.voiceRecordingUrl!)}
-              style={styles.downloadLink}
-            >
-              <MaterialCommunityIcons
-                name="download"
-                size={20}
-                color="#2874b8"
-              />
-              <Text style={styles.downloadText}>Download Audio</Text>
-            </TouchableOpacity>
-          </Card>
-        )}
-
-        <View style={{ height: 100 }} />
-      </ScrollView>
-
-      {/* Image Modal */}
-      <Portal>
-        <Modal
-          visible={modalVisible}
-          onDismiss={() => setModalVisible(false)}
-          contentContainerStyle={styles.modalContainer}
-        >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Site Images</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <MaterialCommunityIcons name="close" size={28} color="#fff" />
+              <TouchableOpacity
+                onPress={() => Linking.openURL(project.voiceRecordingUrl!)}
+                style={styles.downloadLink}
+              >
+                <MaterialCommunityIcons
+                  name="download"
+                  size={wp(5)}
+                  color="#2874b8"
+                />
+                <Text style={styles.downloadText}>Download Audio</Text>
               </TouchableOpacity>
-            </View>
-            <FlatList
-              data={project.siteImages.map(img => img.imageUrl)}
-              renderItem={renderCarouselItem}
-              keyExtractor={(_, i) => i.toString()}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              initialScrollIndex={selectedImageIndex}
-              getItemLayout={(data, index) => ({
-                length: width,
-                offset: width * index,
-                index,
-              })}
-            />
-          </View>
-        </Modal>
+            </Card>
+          )}
 
-        {/* FAB */}
-        <FAB.Group
-          open={open}
-          visible={openModal}
-          icon={open ? 'close' : 'menu'}
-          onStateChange={({ open }) => setOpen(open)}
-          actions={[
-            {
-              icon: 'pencil',
-              label: 'Edit Project',
-              onPress: () => {
-                setOpenModal(false);
-                handleEdit();
+          <View style={{ height: hp(15) }} />
+        </ScrollView>
+
+        {/* Image Modal */}
+        <Portal>
+          <Modal
+            visible={modalVisible}
+            onDismiss={() => setModalVisible(false)}
+            contentContainerStyle={styles.modalContainer}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Site Images</Text>
+                <TouchableOpacity onPress={() => setModalVisible(false)}>
+                  <MaterialCommunityIcons
+                    name="close"
+                    size={wp(7)}
+                    color="#fff"
+                  />
+                </TouchableOpacity>
+              </View>
+              <FlatList
+                data={project.siteImages.map(img => img.imageUrl)}
+                renderItem={renderCarouselItem}
+                keyExtractor={(_, i) => i.toString()}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                initialScrollIndex={selectedImageIndex}
+                getItemLayout={(_, index) => ({
+                  length: width,
+                  offset: width * index,
+                  index,
+                })}
+              />
+            </View>
+          </Modal>
+
+          {/* FAB Group */}
+          <FAB.Group
+            open={fabOpen}
+            visible
+            icon={fabOpen ? 'close' : 'menu'}
+            onStateChange={({ open }) => setFabOpen(open)}
+            actions={[
+              {
+                icon: 'pencil',
+                label: 'Edit Project',
+                onPress: handleEdit,
               },
-            },
-            {
-              icon: 'delete',
-              label: 'Delete Project',
-              onPress: () => {
-                setOpenModal(false);
-                handleDelete();
+              {
+                icon: 'delete',
+                label: 'Delete Project',
+                onPress: handleDelete,
               },
-            },
-            {
-              icon: 'microphone',
-              label: 'Voice',
-              onPress: () => {
-                setOpenModal(false);
-                navigation.navigate('RecoredAudio', { project });
+              {
+                icon: 'microphone',
+                label: 'Record Voice',
+                onPress: () => {
+                  setFabOpen(false);
+                  navigation.navigate('RecoredAudio', { project });
+                },
               },
-            },
-            {
-              icon: 'cash',
-              label: 'Add Payment',
-              onPress: () => {
-                setOpenModal(false);
-                navigation.navigate('PaymentPage', { project });
+              {
+                icon: 'cash',
+                label: 'Add Payment',
+                onPress: () => {
+                  setFabOpen(false);
+                  navigation.navigate('PaymentPage', { project });
+                },
               },
-            },
-          ]}
-        />
-      </Portal>
-    </View>
+            ]}
+          />
+        </Portal>
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
+  safeArea: { flex: 1, backgroundColor: '#F5F5F5' },
+  container: { flex: 1 },
   content: {
-    padding: width * 0.04,
-    paddingBottom: height * 0.15,
+    paddingHorizontal: wp(4),
+    paddingBottom: hp(15),
   },
   headerCard: {
-    marginBottom: height * 0.02,
-    padding: width * 0.04,
+    marginBottom: hp(2),
+    padding: wp(4),
     backgroundColor: '#fff',
-    borderRadius: width * 0.03,
-    elevation: 2,
+    borderRadius: wp(3),
+    elevation: 3,
   },
   headerRow: {
     flexDirection: 'row',
@@ -638,225 +623,218 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   name: {
-    fontSize: width * 0.055,
+    fontSize: wp(5.5),
     fontWeight: '700',
     color: '#1a1a1a',
     flex: 1,
+    marginRight: wp(2),
   },
   statusChip: {
-    height: height * 0.04,
+    height: hp(4.5),
     justifyContent: 'center',
-    paddingHorizontal: width * 0.02,
+    paddingHorizontal: wp(2.5),
   },
   statusText: {
     color: '#fff',
-    fontSize: width * 0.032,
+    fontSize: wp(3.2),
     fontWeight: '600',
   },
   detailsCard: {
-    padding: width * 0.04,
+    padding: wp(4),
     backgroundColor: '#fff',
-    borderRadius: width * 0.03,
-    elevation: 2,
-    marginBottom: height * 0.02,
+    borderRadius: wp(3),
+    elevation: 3,
+    marginBottom: hp(2),
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: height * 0.015,
-    paddingBottom: height * 0.015,
+    marginBottom: hp(1.8),
+    paddingBottom: hp(1.8),
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
   infoLabel: {
-    marginLeft: width * 0.03,
-    width: width * 0.25,
-    fontSize: width * 0.036,
+    marginLeft: wp(3),
+    width: wp(25),
+    fontSize: wp(3.8),
     color: '#555',
     fontWeight: '500',
   },
   infoValue: {
     flex: 1,
-    fontSize: width * 0.036,
+    fontSize: wp(3.8),
     color: '#000',
   },
   amountCard: {
-    padding: width * 0.04,
+    padding: wp(4),
     backgroundColor: '#fff',
-    borderRadius: width * 0.03,
-    elevation: 2,
-    marginBottom: height * 0.02,
+    borderRadius: wp(3),
+    elevation: 3,
+    marginBottom: hp(2),
   },
   amountRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingTop: height * 0.015,
+    paddingTop: hp(1.5),
     borderTopWidth: 1,
     borderTopColor: '#eee',
   },
+  amountBlock: { alignItems: 'center', flex: 1 },
   amountLabel: {
-    fontSize: width * 0.032,
+    fontSize: wp(3.2),
     color: '#888',
-    textAlign: 'center',
   },
   amountValue: {
-    fontSize: width * 0.038,
+    fontSize: wp(4.2),
     fontWeight: 'bold',
     color: '#333',
-    textAlign: 'center',
-    marginTop: 2,
+    marginTop: hp(0.3),
   },
   divider: {
     width: 1,
     backgroundColor: '#ddd',
-    marginHorizontal: width * 0.02,
+    marginHorizontal: wp(2),
   },
   descCard: {
-    padding: width * 0.04,
+    padding: wp(4),
     backgroundColor: '#fff',
-    borderRadius: width * 0.03,
-    elevation: 2,
-    marginBottom: height * 0.02,
+    borderRadius: wp(3),
+    elevation: 3,
+    marginBottom: hp(2),
   },
   descTitle: {
-    fontSize: width * 0.04,
+    fontSize: wp(4.2),
     fontWeight: '600',
     color: '#333',
-    marginBottom: height * 0.01,
+    marginBottom: hp(1),
   },
   descText: {
-    fontSize: width * 0.036,
+    fontSize: wp(3.8),
     color: '#555',
-    lineHeight: width * 0.05,
+    lineHeight: wp(5.5),
   },
   imagesCard: {
-    padding: width * 0.04,
+    padding: wp(4),
     backgroundColor: '#fff',
-    borderRadius: width * 0.03,
-    elevation: 2,
-    marginBottom: height * 0.02,
+    borderRadius: wp(3),
+    elevation: 3,
+    marginBottom: hp(2),
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: height * 0.015,
+    marginBottom: hp(1.5),
   },
   sectionTitle: {
-    fontSize: width * 0.042,
+    fontSize: wp(4.4),
     fontWeight: '600',
     color: '#333',
   },
   viewAllText: {
-    fontSize: width * 0.032,
+    fontSize: wp(3.4),
     color: '#2874b8',
     fontWeight: '600',
   },
-  imageScroll: {
-    marginTop: height * 0.01,
-  },
+  imageScroll: { marginTop: hp(1) },
+  thumbnailWrapper: { marginRight: wp(3) },
   thumbnail: {
-    width: width * 0.28,
-    height: width * 0.28,
-    borderRadius: width * 0.02,
-    marginRight: width * 0.03,
+    width: wp(28),
+    height: wp(28),
+    borderRadius: wp(2),
   },
   overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: width * 0.03,
-    bottom: 0,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.3)',
-    borderRadius: width * 0.02,
+    borderRadius: wp(2),
     justifyContent: 'center',
     alignItems: 'center',
   },
   itemsCard: {
-    padding: width * 0.04,
+    padding: wp(4),
     backgroundColor: '#fff',
-    borderRadius: width * 0.03,
-    elevation: 2,
-    marginBottom: height * 0.02,
+    borderRadius: wp(3),
+    elevation: 3,
+    marginBottom: hp(2),
   },
   itemRow: {
-    paddingVertical: height * 0.015,
+    paddingVertical: hp(1.8),
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
   itemName: {
     fontWeight: '600',
-    fontSize: width * 0.038,
+    fontSize: wp(4),
   },
   itemDetails: {
     color: '#666',
-    fontSize: width * 0.034,
-    marginTop: 2,
+    fontSize: wp(3.6),
+    marginTop: hp(0.3),
   },
   emptyText: {
     textAlign: 'center',
     color: '#999',
     fontStyle: 'italic',
-    marginVertical: height * 0.02,
+    marginVertical: hp(2),
   },
   paymentsCard: {
-    padding: width * 0.04,
+    padding: wp(4),
     backgroundColor: '#fff',
-    borderRadius: width * 0.03,
-    elevation: 2,
-    marginBottom: height * 0.02,
+    borderRadius: wp(3),
+    elevation: 3,
+    marginBottom: hp(2),
   },
   paymentRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: height * 0.015,
+    paddingVertical: hp(1.8),
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
   paymentAmount: {
     fontWeight: '600',
-    fontSize: width * 0.038,
+    fontSize: wp(4),
   },
   paymentDate: {
     color: '#666',
-    fontSize: width * 0.032,
+    fontSize: wp(3.4),
   },
   chipText: {
-    fontSize: width * 0.03,
+    fontSize: wp(3),
   },
-
-  // Voice Player
   voiceCard: {
-    padding: width * 0.04,
+    padding: wp(4),
     backgroundColor: '#fff',
-    borderRadius: width * 0.03,
-    elevation: 2,
-    marginBottom: height * 0.02,
+    borderRadius: wp(3),
+    elevation: 3,
+    marginBottom: hp(2),
   },
   voiceHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: height * 0.015,
+    marginBottom: hp(1.5),
   },
   voiceTitle: {
-    fontSize: width * 0.04,
+    fontSize: wp(4.2),
     fontWeight: '600',
     color: '#333',
-    marginLeft: 8,
+    marginLeft: wp(2),
   },
   playerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: height * 0.01,
+    marginBottom: hp(1),
   },
   playButton: {
     margin: 0,
     backgroundColor: '#E3F2FD',
+    borderRadius: wp(10),
   },
   progressContainer: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: wp(3),
   },
   progressBar: {
     height: 6,
@@ -869,39 +847,35 @@ const styles = StyleSheet.create({
     backgroundColor: '#2874b8',
   },
   timeText: {
-    fontSize: width * 0.03,
+    fontSize: wp(3.2),
     color: '#666',
-    marginTop: 4,
+    marginTop: hp(0.5),
   },
   downloadLink: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: height * 0.01,
+    marginTop: hp(1),
   },
   downloadText: {
     color: '#2874b8',
-    fontSize: width * 0.035,
-    marginLeft: 4,
+    fontSize: wp(3.8),
+    marginLeft: wp(1.5),
   },
-
-  // Modal
   modalContainer: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.95)',
   },
-  modalContent: {
-    flex: 1,
-  },
+  modalContent: { flex: 1 },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: width * 0.05,
-    paddingVertical: height * 0.02,
+    paddingHorizontal: wp(5),
+    paddingVertical: hp(2),
     backgroundColor: 'rgba(40,116,184,0.9)',
   },
   modalTitle: {
-    fontSize: width * 0.045,
+    fontSize: wp(5),
     fontWeight: '700',
     color: '#fff',
   },
@@ -911,18 +885,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   carouselImage: {
-    width: width * 0.9,
-    height: height * 0.7,
+    width: wp(90),
+    height: hp(70),
   },
   imageCounter: {
     position: 'absolute',
-    bottom: height * 0.05,
+    bottom: hp(5),
     backgroundColor: 'rgba(0,0,0,0.7)',
     color: '#fff',
-    paddingHorizontal: width * 0.04,
-    paddingVertical: height * 0.01,
+    paddingHorizontal: wp(4),
+    paddingVertical: hp(1),
     borderRadius: 20,
-    fontSize: width * 0.035,
+    fontSize: wp(3.8),
     fontWeight: '600',
   },
 });

@@ -6,12 +6,19 @@ import {
   TouchableOpacity,
   StyleSheet,
   StatusBar,
-  SafeAreaView,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { rootStackParamList } from '../navigation/AppNavigation';
+
+const { width, height } = Dimensions.get('window');
+
+// Responsive helpers
+const wp = (percentage: number) => (width * percentage) / 100;
+const hp = (percentage: number) => (height * percentage) / 100;
 
 type Props = {
   navigation: NativeStackNavigationProp<rootStackParamList, 'splash'> | any;
@@ -26,19 +33,16 @@ const SplashScreen: React.FC<Props> = ({ navigation }) => {
       try {
         const role = await AsyncStorage.getItem('role');
         if (role === 'worker') {
-          // If role already set to worker, go straight to ProjectList
           navigation.replace('ProjectList');
           return;
         }
         if (role === 'admin') {
-          // If admin previously chosen, go to Login
-          navigation.replace({ name: 'login' });
+          navigation.replace('login');
           return;
         }
-        // else keep modal visible so user can choose
+        // Show modal if no role
         setVisible(true);
       } catch (e) {
-        // ignore and show modal
         setVisible(true);
       }
     })();
@@ -48,7 +52,6 @@ const SplashScreen: React.FC<Props> = ({ navigation }) => {
     setLoading(true);
     try {
       await AsyncStorage.setItem('role', 'worker');
-      // Navigate to ProjectList for workers
       navigation.replace('ProjectList');
     } catch (e) {
       console.error('Failed to save role', e);
@@ -57,12 +60,11 @@ const SplashScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const chooseAdmin = () => {
-    // Do not save role for admin (user must log in)
     navigation.replace('login');
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       <View style={styles.container}>
         <Text style={styles.appName}>WorkersApp</Text>
@@ -70,23 +72,28 @@ const SplashScreen: React.FC<Props> = ({ navigation }) => {
           Welcome — choose your role to continue
         </Text>
 
+        {/* Optional brand/logo placeholder */}
+        <View style={styles.brandBox} />
+
         <Modal
           visible={visible}
-          animationType="slide"
+          animationType="fade"
           transparent
           onRequestClose={() => {}}
+          statusBarTranslucent
         >
           <View style={styles.modalBackdrop}>
             <View style={styles.modalCard}>
               <Text style={styles.modalTitle}>Continue as</Text>
 
               <TouchableOpacity
-                style={styles.buttonPrimary}
+                style={[styles.buttonPrimary, loading && styles.buttonDisabled]}
                 onPress={chooseWorker}
                 disabled={loading}
+                activeOpacity={0.8}
               >
                 {loading ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color="#fff" size={wp(5)} />
                 ) : (
                   <Text style={styles.buttonText}>Worker</Text>
                 )}
@@ -95,6 +102,7 @@ const SplashScreen: React.FC<Props> = ({ navigation }) => {
               <TouchableOpacity
                 style={styles.buttonOutline}
                 onPress={chooseAdmin}
+                activeOpacity={0.8}
               >
                 <Text style={styles.buttonOutlineText}>Admin</Text>
               </TouchableOpacity>
@@ -102,65 +110,123 @@ const SplashScreen: React.FC<Props> = ({ navigation }) => {
               <TouchableOpacity
                 style={styles.buttonSkip}
                 onPress={() => setVisible(false)}
+                activeOpacity={0.7}
               >
                 <Text style={styles.buttonSkipText}>Skip</Text>
               </TouchableOpacity>
             </View>
           </View>
         </Modal>
-
-        {/* Minimal splash content shown behind modal */}
-        <View style={styles.brandBox} />
       </View>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#fff' },
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  appName: { fontSize: 28, fontWeight: '700', color: '#222' },
-  subtitle: { fontSize: 14, color: '#666', marginTop: 8 },
-  brandBox: { height: 200, width: 200, marginTop: 32 },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: wp(6),
+  },
+  appName: {
+    fontSize: wp(8),
+    fontWeight: '800',
+    color: '#222',
+    letterSpacing: 0.5,
+  },
+  subtitle: {
+    fontSize: wp(4),
+    color: '#666',
+    marginTop: hp(1),
+    textAlign: 'center',
+    paddingHorizontal: wp(8),
+  },
+  brandBox: {
+    height: wp(45),
+    width: wp(45),
+    marginTop: hp(4),
+    backgroundColor: '#f0f4f8',
+    borderRadius: wp(12),
+    opacity: 0.6,
+  },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    paddingHorizontal: wp(6),
   },
   modalCard: {
     width: '100%',
-    maxWidth: 420,
+    maxWidth: wp(90),
     backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 20,
+    borderRadius: wp(4),
+    paddingVertical: hp(4),
+    paddingHorizontal: wp(6),
     alignItems: 'center',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
   },
-  modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 16 },
+  modalTitle: {
+    fontSize: wp(5.5),
+    fontWeight: '700',
+    color: '#222',
+    marginBottom: hp(2.5),
+  },
   buttonPrimary: {
     backgroundColor: '#2874b8',
-    paddingVertical: 12,
-    paddingHorizontal: 28,
-    borderRadius: 8,
+    paddingVertical: hp(1.8),
+    paddingHorizontal: wp(8),
+    borderRadius: wp(2.5),
     width: '100%',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: hp(1.5),
+    minHeight: hp(6),
+    justifyContent: 'center',
   },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: wp(4.5),
+  },
   buttonOutline: {
     borderColor: '#2874b8',
-    borderWidth: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 28,
-    borderRadius: 8,
+    borderWidth: 1.5,
+    paddingVertical: hp(1.8),
+    paddingHorizontal: wp(8),
+    borderRadius: wp(2.5),
     width: '100%',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: hp(1.5),
+    minHeight: hp(6),
+    justifyContent: 'center',
   },
-  buttonOutlineText: { color: '#2874b8', fontWeight: '600', fontSize: 16 },
-  buttonSkip: { padding: 8, marginTop: 4 },
-  buttonSkipText: { color: '#888' },
+  buttonOutlineText: {
+    color: '#2874b8',
+    fontWeight: '600',
+    fontSize: wp(4.5),
+  },
+  buttonSkip: {
+    paddingVertical: hp(1),
+    paddingHorizontal: wp(4),
+    marginTop: hp(1),
+  },
+  buttonSkipText: {
+    color: '#888',
+    fontSize: wp(3.8),
+    fontWeight: '500',
+  },
 });
 
 export default SplashScreen;

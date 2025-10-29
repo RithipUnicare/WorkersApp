@@ -41,7 +41,21 @@ export const endpoints = {
   paymentsOutByProject: projectId =>
     `/api/v1/projects/${projectId}/payments-out`,
 
-  // Add any additional endpoints here as needed
+  // Quotation endpoints
+  quotations: '/api/v1/quotations',
+  quotationById: id => `/api/v1/quotations/${id}`,
+  quotationItemsByQuotation: id => `/api/v1/quotations/${id}/items`,
+  quotationsSearch: '/api/v1/quotations/search',
+  quotationsByCustomerId: customerId => `/api/v1/quotations/customer/${customerId}`,
+  quotationItems: '/api/v1/quotations/items',
+  quotationItemById: itemId => `/api/v1/quotations/items/${itemId}`,
+
+  // Unit endpoints
+  units: '/api/v1/units',
+  unitById: id => `/api/v1/units/${id}`,
+  unitCreate: '/api/v1/units',
+  unitUpdate: id => `/api/v1/units/${id}`,
+  unitDelete: id => `/api/v1/units/${id}`,
 };
 
 export function buildUrl(path, queryParams) {
