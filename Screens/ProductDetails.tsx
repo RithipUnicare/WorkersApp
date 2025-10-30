@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Platform,
   FlatList,
   Linking,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -19,7 +20,6 @@ import {
   Button,
   Modal,
   Portal,
-  FAB,
   IconButton,
 } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -41,6 +41,14 @@ type ProjectDetailsNavProp = NativeStackNavigationProp<
   rootStackParamList,
   'ProjectDetails'
 >;
+
+type VoiceRecording = {
+  id: number;
+  projectId: number;
+  name: string;
+  url: string;
+  createdAt: string;
+};
 
 type Project = {
   id: number;
@@ -75,9 +83,9 @@ type Project = {
     id: number;
     amount: number;
     paymentDate: string;
-    paymentMode: string;
+    paymentMode?: string;
   }[];
-  voiceRecordingUrl?: string;
+  voiceRecordings?: VoiceRecording[];
 };
 
 const openGoogleMaps = (
@@ -98,20 +106,31 @@ const ProjectDetails: React.FC = () => {
   const route = useRoute<ProjectDetailsRouteProp>();
   const navigation = useNavigation<ProjectDetailsNavProp>();
   const initialProject: Project = route.params.project;
-
   const [project, setProject] = useState<Project>(initialProject);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [fabOpen, setFabOpen] = useState(false);
 
   // Audio state
   const [isPlaying, setIsPlaying] = useState(false);
   const [playTime, setPlayTime] = useState('00:00:00');
   const [duration, setDuration] = useState('00:00:00');
-  const [url, setUrl] = useState<string>('');
+  const [currentUrl, setCurrentUrl] = useState<string>('');
 
   const formatTime = (time: string) => dayjs(time, 'HH:mm:ss').format('h:mm A');
   const formatDate = (date: string) => dayjs(date).format('DD-MM-YYYY');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const res = await ProjectAPI.getById(initialProject.id);
+      if (res?.data) setProject(res.data);
+    } catch (e) {
+      console.error('Failed to refresh project', e);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [initialProject.id]);
 
   // Reload project on focus
   useEffect(() => {
@@ -125,6 +144,27 @@ const ProjectDetails: React.FC = () => {
     });
     return unsubscribe;
   }, [navigation, initialProject.id]);
+
+  // Audio listeners setup once
+  useEffect(() => {
+    const playbackListener = Sound.addPlayBackListener((e: PlayBackType) => {
+      setPlayTime(Sound.mmssss(Math.floor(e.currentPosition)));
+      if (e.duration > 0) {
+        setDuration(Sound.mmssss(Math.floor(e.duration)));
+      }
+    });
+
+    const endListener = Sound.addPlaybackEndListener(() => {
+      setIsPlaying(false);
+      setPlayTime('00:00:00');
+      setCurrentUrl('');
+    });
+
+    return () => {
+      playbackListener?.remove();
+      endListener?.remove();
+    };
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -141,49 +181,29 @@ const ProjectDetails: React.FC = () => {
 
   const displayStatus = project.siteStatus || project.status;
 
-  // === AUDIO PLAYBACK ===
-  useEffect(() => {
-    if (!project.voiceRecordingUrl) return;
+  const togglePlayback = useCallback(
+    async (recordingUrl: string) => {
+      if (!recordingUrl) return;
 
-    setUrl(project.voiceRecordingUrl);
-
-    const playbackListener = Sound.addPlayBackListener((e: PlayBackType) => {
-      setPlayTime(Sound.mmssss(Math.floor(e.currentPosition)));
-      if (e.duration > 0) {
-        setDuration(Sound.mmssss(Math.floor(e.duration)));
+      try {
+        if (isPlaying && currentUrl === recordingUrl) {
+          await Sound.stopPlayer();
+          setIsPlaying(false);
+        } else {
+          await Sound.startPlayer(recordingUrl);
+          setIsPlaying(true);
+          setCurrentUrl(recordingUrl);
+          setPlayTime('00:00:00');
+          setDuration('00:00:00');
+        }
+      } catch (err) {
+        Alert.alert('Playback Error', 'Could not play audio');
       }
-    });
-
-    const endListener = Sound.addPlaybackEndListener(() => {
-      setIsPlaying(false);
-      setPlayTime('00:00:00');
-    });
-
-    return () => {
-      // if (playbackListener) playbackListener.remove();
-      // if (endListener) endListener.remove();
-      if (isPlaying) Sound.stopPlayer().catch(() => {});
-    };
-  }, [project.voiceRecordingUrl, isPlaying]);
-
-  const togglePlayback = async () => {
-    if (!url) return;
-
-    try {
-      if (isPlaying) {
-        await Sound.stopPlayer();
-        setIsPlaying(false);
-      } else {
-        await Sound.startPlayer(url);
-        setIsPlaying(true);
-      }
-    } catch (err) {
-      Alert.alert('Playback Error', 'Could not play audio');
-    }
-  };
+    },
+    [isPlaying, currentUrl],
+  );
 
   const handleEdit = () => {
-    setFabOpen(false);
     navigation.navigate('AddProject', { projectToEdit: project });
   };
 
@@ -195,7 +215,9 @@ const ProjectDetails: React.FC = () => {
         style: 'destructive',
         onPress: async () => {
           try {
-            await ProjectAPI.delete(project.id);
+            console.log(project.id);
+            const res = await ProjectAPI.delete(project.id);
+            console.log(res);
             navigation.goBack();
           } catch (e) {
             Alert.alert('Error', 'Failed to delete');
@@ -203,6 +225,14 @@ const ProjectDetails: React.FC = () => {
         },
       },
     ]);
+  };
+
+  const handleRecordVoice = () => {
+    navigation.navigate('RecoredAudio', { project });
+  };
+
+  const handleAddPayment = () => {
+    navigation.navigate('PaymentPage', { project });
   };
 
   const openImageModal = (index: number) => {
@@ -234,12 +264,24 @@ const ProjectDetails: React.FC = () => {
     return m * 60 + s;
   };
 
+  const sortedVoiceRecordings = project.voiceRecordings
+    ? project.voiceRecordings
+        .slice()
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        )
+    : [];
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={styles.container}>
         <ScrollView
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
         >
           {/* Header */}
           <Card style={styles.headerCard}>
@@ -344,7 +386,7 @@ const ProjectDetails: React.FC = () => {
               <View style={styles.amountBlock}>
                 <Text style={styles.amountLabel}>Total</Text>
                 <Text style={styles.amountValue}>
-                  ₹{project.totalAmount.toLocaleString('en-IN')}
+                  ₹{project.grandTotal.toLocaleString('en-IN')}
                 </Text>
               </View>
               <View style={styles.divider} />
@@ -353,7 +395,7 @@ const ProjectDetails: React.FC = () => {
                 <Text style={[styles.amountValue, { color: '#27ae60' }]}>
                   ₹
                   {(
-                    project.totalAmount - project.remainingAmount
+                    project.grandTotal - project.remainingAmount
                   ).toLocaleString('en-IN')}
                 </Text>
               </View>
@@ -461,15 +503,15 @@ const ProjectDetails: React.FC = () => {
                     </Text>
                   </View>
                   <Chip mode="outlined" textStyle={styles.chipText}>
-                    {pay.paymentMode}
+                    {pay.paymentMode || 'Cash'}
                   </Chip>
                 </View>
               ))}
             </Card>
           )}
 
-          {/* Voice Recording */}
-          {project.voiceRecordingUrl && (
+          {/* Voice Recordings */}
+          {sortedVoiceRecordings.length > 0 && (
             <Card style={styles.voiceCard}>
               <View style={styles.voiceHeader}>
                 <MaterialCommunityIcons
@@ -477,55 +519,141 @@ const ProjectDetails: React.FC = () => {
                   size={wp(6)}
                   color="#2874b8"
                 />
-                <Text style={styles.voiceTitle}>Voice Recording</Text>
+                <Text style={styles.voiceTitle}>
+                  Voice Recordings ({sortedVoiceRecordings.length})
+                </Text>
               </View>
-
-              <View style={styles.playerContainer}>
-                <IconButton
-                  icon={isPlaying ? 'pause' : 'play'}
-                  size={wp(7)}
-                  onPress={togglePlayback}
-                  style={styles.playButton}
-                />
-                <View style={styles.progressContainer}>
-                  <View style={styles.progressBar}>
-                    <View
-                      style={[
-                        styles.progressFill,
-                        {
-                          width:
-                            duration !== '00:00:00' && playTime !== '00:00:00'
-                              ? `${
-                                  (parseTime(playTime) / parseTime(duration)) *
-                                  100
-                                }%`
-                              : '0%',
-                        },
-                      ]}
+              {sortedVoiceRecordings.map(recording => (
+                <View key={recording.id} style={styles.recordingItem}>
+                  <View style={styles.recordingHeader}>
+                    <IconButton
+                      icon={
+                        isPlaying && currentUrl === recording.url
+                          ? 'pause'
+                          : 'play'
+                      }
+                      size={wp(7)}
+                      onPress={() => togglePlayback(recording.url)}
+                      style={styles.playButton}
                     />
+                    <View style={styles.recordingInfo}>
+                      <Text style={styles.recordingName} numberOfLines={1}>
+                        {recording.name}
+                      </Text>
+                      <Text style={styles.recordingDate}>
+                        {dayjs(recording.createdAt).format('DD-MM-YYYY HH:mm')}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => Linking.openURL(recording.url)}
+                      style={styles.downloadLink}
+                    >
+                      <MaterialCommunityIcons
+                        name="download"
+                        size={wp(5)}
+                        color="#2874b8"
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => {
+                        Alert.alert(
+                          'Delete Voice Recording',
+                          'Are you sure you want to delete this voice recording?',
+                          [
+                            {
+                              text: 'Cancel',
+                              onPress: () => console.log('Cancel Pressed'),
+                              style: 'cancel',
+                            },
+                            {
+                              text: 'Delete',
+                              onPress: async () => {
+                                const deleteVoiceRecording =
+                                  await ProjectAPI.deleteVoiceRecording(
+                                    project.id,
+                                    recording.id,
+                                  );
+                                setRefreshing(true);
+                                onRefresh();
+                                setRefreshing(false);
+                              },
+                            },
+                          ],
+                        );
+                      }}
+                      style={{ marginLeft: wp(2) }}
+                    >
+                      <MaterialCommunityIcons
+                        name="delete"
+                        size={wp(5)}
+                        color="#d80000ff"
+                      />
+                    </TouchableOpacity>
                   </View>
-                  <Text style={styles.timeText}>
-                    {playTime} / {duration}
-                  </Text>
+                  {isPlaying && currentUrl === recording.url && (
+                    <View style={styles.progressContainer}>
+                      <View style={styles.progressBar}>
+                        <View
+                          style={[
+                            styles.progressFill,
+                            {
+                              width:
+                                duration !== '00:00:00' &&
+                                playTime !== '00:00:00'
+                                  ? `${
+                                      (parseTime(playTime) /
+                                        parseTime(duration)) *
+                                      100
+                                    }%`
+                                  : '0%',
+                            },
+                          ]}
+                        />
+                      </View>
+                      <Text style={styles.timeText}>
+                        {playTime} / {duration}
+                      </Text>
+                    </View>
+                  )}
                 </View>
-              </View>
-
-              <TouchableOpacity
-                onPress={() => Linking.openURL(project.voiceRecordingUrl!)}
-                style={styles.downloadLink}
-              >
-                <MaterialCommunityIcons
-                  name="download"
-                  size={wp(5)}
-                  color="#2874b8"
-                />
-                <Text style={styles.downloadText}>Download Audio</Text>
-              </TouchableOpacity>
+              ))}
             </Card>
           )}
 
-          <View style={{ height: hp(15) }} />
+          <View style={{ height: hp(10) }} />
         </ScrollView>
+
+        {/* Bottom Action Buttons */}
+        <View style={styles.bottomBar}>
+          <IconButton
+            icon="pencil"
+            size={wp(7)}
+            onPress={handleEdit}
+            iconColor="#2874b8"
+            style={styles.actionButton}
+          />
+          <IconButton
+            icon="delete"
+            size={wp(7)}
+            onPress={handleDelete}
+            iconColor="#e74c3c"
+            style={styles.actionButton}
+          />
+          <IconButton
+            icon="microphone"
+            size={wp(7)}
+            onPress={handleRecordVoice}
+            iconColor="#4CAF50"
+            style={styles.actionButton}
+          />
+          <IconButton
+            icon="cash"
+            size={wp(7)}
+            onPress={handleAddPayment}
+            iconColor="#27ae60"
+            style={styles.actionButton}
+          />
+        </View>
 
         {/* Image Modal */}
         <Portal>
@@ -561,42 +689,6 @@ const ProjectDetails: React.FC = () => {
               />
             </View>
           </Modal>
-
-          {/* FAB Group */}
-          <FAB.Group
-            open={fabOpen}
-            visible
-            icon={fabOpen ? 'close' : 'menu'}
-            onStateChange={({ open }) => setFabOpen(open)}
-            actions={[
-              {
-                icon: 'pencil',
-                label: 'Edit Project',
-                onPress: handleEdit,
-              },
-              {
-                icon: 'delete',
-                label: 'Delete Project',
-                onPress: handleDelete,
-              },
-              {
-                icon: 'microphone',
-                label: 'Record Voice',
-                onPress: () => {
-                  setFabOpen(false);
-                  navigation.navigate('RecoredAudio', { project });
-                },
-              },
-              {
-                icon: 'cash',
-                label: 'Add Payment',
-                onPress: () => {
-                  setFabOpen(false);
-                  navigation.navigate('PaymentPage', { project });
-                },
-              },
-            ]}
-          />
         </Portal>
       </View>
     </SafeAreaView>
@@ -822,10 +914,28 @@ const styles = StyleSheet.create({
     color: '#333',
     marginLeft: wp(2),
   },
-  playerContainer: {
+  recordingItem: {
+    paddingVertical: hp(1),
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  recordingHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: hp(1),
+  },
+  recordingInfo: {
+    flex: 1,
+    marginLeft: wp(2),
+  },
+  recordingName: {
+    fontSize: wp(3.8),
+    fontWeight: '500',
+    color: '#333',
+  },
+  recordingDate: {
+    fontSize: wp(3.2),
+    color: '#666',
+    marginTop: hp(0.2),
   },
   playButton: {
     margin: 0,
@@ -833,8 +943,8 @@ const styles = StyleSheet.create({
     borderRadius: wp(10),
   },
   progressContainer: {
-    flex: 1,
-    marginLeft: wp(3),
+    marginTop: hp(1),
+    marginLeft: wp(12),
   },
   progressBar: {
     height: 6,
@@ -852,9 +962,7 @@ const styles = StyleSheet.create({
     marginTop: hp(0.5),
   },
   downloadLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: hp(1),
+    padding: wp(1),
   },
   downloadText: {
     color: '#2874b8',
@@ -898,6 +1006,20 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     fontSize: wp(3.8),
     fontWeight: '600',
+  },
+  bottomBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingHorizontal: wp(4),
+    paddingVertical: hp(2),
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    elevation: 3,
+  },
+  actionButton: {
+    margin: 0,
   },
 });
 

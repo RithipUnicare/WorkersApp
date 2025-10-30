@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   RefreshControl,
   Image,
 } from 'react-native';
-import { Card, FAB, Portal } from 'react-native-paper';
+import { Card } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -19,10 +19,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonActions } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import initNotification from '../utils/pushNofication';
+import { useTranslator } from 'react-native-translator';
 
 const { width, height } = Dimensions.get('window');
-
-// Responsive helpers
 const wp = (percentage: number) => (width * percentage) / 100;
 const hp = (percentage: number) => (height * percentage) / 100;
 
@@ -30,72 +29,149 @@ type Props = {
   navigation: NativeStackNavigationProp<rootStackParamList, 'AdminHome'>;
 };
 
+const enToTa: Record<string, string> = {
+  // Header
+  'Admin Portal': 'நிர்வாகி போர்டல்',
+
+  // Welcome
+  Welcome: 'வரவேற்கிறோம்',
+  'Administrator Account': 'நிர்வாகி கணக்கு',
+
+  // Menu items
+  'Customer List': 'வாடிக்கையாளர் பட்டியல்',
+  'View and manage customers': 'வாடிக்கையாளர்களைப் பார்க்கவும் நிர்வகிக்கவும்',
+
+  'Projects List': 'திட்டப் பட்டியல்',
+  'Track ongoing projects': 'நடந்து கொண்டிருக்கும் திட்டங்களைக் கண்காணிக்கவும்',
+
+  'Quotations List': 'மேற்கோள் பட்டியல்',
+
+  'Admin Panel': 'நிர்வாகி பேனல்',
+  'Manage users and roles': 'பயனர்கள் மற்றும் பாத்திரங்களை நிர்வகிக்கவும்',
+
+  'Unattended Customers': 'கவனிக்கப்படாத வாடிக்கையாளர்கள்',
+  'View customers needing follow-up':
+    'பின்தொடர்தல் தேவைப்படும் வாடிக்கையாளர்களைப் பார்க்கவும்',
+
+  // Footer
+  'Version 1.0 • © 2025 Indian Steel Company':
+    'பதிப்பு 1.0 • © 2025 இந்தியன் ஸ்டீல் நிறுவனம்',
+
+  // Logout dialog
+  Logout: 'வெளியேறு',
+  'Are you sure you want to logout?':
+    'நீங்கள் உறுதியாக வெளியேற விரும்புகிறீர்களா?',
+  Cancel: 'ரத்துசெய்',
+};
+
 const AdminHomePage: React.FC<Props> = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [username, setUsername] = useState('Admin User');
+  const [isTamil, setIsTamil] = useState(false);
+  const [translations, setTranslations] = useState<Record<string, string>>({});
+
+  const { translate } = useTranslator();
 
   useEffect(() => {
-    // Set role
-    AsyncStorage.setItem('role', 'Admin');
+    const init = async () => {
+      // language
+      const savedLang = await AsyncStorage.getItem('appLanguage');
+      const tamil = savedLang === 'ta';
+      setIsTamil(tamil);
 
-    // Load username if available
-    const loadUsername = async () => {
+      // username
       const stored = await AsyncStorage.getItem('username');
       if (stored) setUsername(stored);
+
+      // role
+      await AsyncStorage.setItem('role', 'Admin');
+
+      // animation
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }).start();
+
+      initNotification();
     };
-    loadUsername();
+    init();
+  }, [fadeAnim]);
 
-    // Fade in animation
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 600,
-      useNativeDriver: true,
-    }).start();
+  useEffect(() => {
+    if (!isTamil) {
+      setTranslations({});
+      return;
+    }
 
-    // Initialize notifications
-    initNotification();
-  }, []);
+    const translateAll = async () => {
+      const result: Record<string, string> = {};
+      for (const en of Object.keys(enToTa)) {
+        try {
+          // Google Translate (tamil = 'ta')
+          const ta = await translate('en', 'ta', en, { type: 'google' });
+          result[en] = ta;
+        } catch {
+          result[en] = enToTa[en] || en; // fallback to static map
+        }
+      }
+      setTranslations(result);
+    };
+
+    translateAll();
+  }, [isTamil, translate]);
+
+  const toggleLanguage = useCallback(async () => {
+    const newLang = !isTamil;
+    setIsTamil(newLang);
+    await AsyncStorage.setItem('appLanguage', newLang ? 'ta' : 'en');
+  }, [isTamil]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    // Simulate refresh
     setTimeout(() => setRefreshing(false), 1000);
+  };
+
+  const t = (english: string): string => {
+    if (!isTamil) return english;
+    return translations[english] ?? enToTa[english] ?? english;
   };
 
   const menuItems = [
     {
       id: 1,
-      title: 'Customer List',
-      description: 'View and manage customers',
+      title: t('Customer List'),
+      description: t('View and manage customers'),
       icon: 'account-group',
       onPress: () => navigation.navigate('CustomerList'),
     },
+
     {
       id: 2,
-      title: 'Projects List',
-      description: 'Track ongoing projects',
-      icon: 'folder-open',
-      onPress: () => navigation.navigate('ProjectList'),
-    },
-    {
-      id: 3,
-      title: 'Quotations List',
-      description: 'Track ongoing projects',
+      title: t('Quotations List'),
+      description: t('Track ongoing projects'),
       icon: 'folder-open',
       onPress: () => navigation.navigate('QuotationList'),
     },
     {
+      id: 3,
+      title: t('Projects List'),
+      description: t('Track ongoing projects'),
+      icon: 'folder-open',
+      onPress: () => navigation.navigate('ProjectList'),
+    },
+    {
       id: 4,
-      title: 'Admin Panel',
-      description: 'Manage users and roles',
+      title: t('Admin Panel'),
+      description: t('Manage users and roles'),
       icon: 'cog',
       onPress: () => navigation.navigate('AdminPanel'),
     },
     {
       id: 5,
-      title: 'Unattended Customers',
-      description: 'View customers needing follow-up',
+      title: t('Unattended Customers'),
+      description: t('View customers needing follow-up'),
       icon: 'account-clock',
       onPress: () => navigation.navigate('unattendedCustomers'),
     },
@@ -103,15 +179,15 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
 
   const handleLogout = () => {
     Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
+      t('Logout'),
+      t('Are you sure you want to logout?'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('Cancel'), style: 'cancel' },
         {
-          text: 'Logout',
+          text: t('Logout'),
           style: 'destructive',
-          onPress: () => {
-            AsyncStorage.multiRemove(['role', 'username']);
+          onPress: async () => {
+            await AsyncStorage.multiRemove(['role', 'username', 'appLanguage']);
             navigation.dispatch(
               CommonActions.reset({
                 index: 0,
@@ -128,7 +204,7 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={styles.container}>
-        {/* Header */}
+        {/* ---------- Header ---------- */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={styles.logoContainer}>
@@ -140,19 +216,27 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
             </View>
             <View style={styles.headerText}>
               <Text style={styles.headerTitle}>Indian Steel Company</Text>
-              <Text style={styles.headerSubtitle}>Admin Portal</Text>
+              <Text style={styles.headerSubtitle}>{t('Admin Portal')}</Text>
             </View>
           </View>
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
-            <MaterialCommunityIcons
-              name="logout"
-              size={wp(6.5)}
-              color="#FFFFFF"
-            />
-          </TouchableOpacity>
+
+          {/* ---- Language Toggle + Logout ---- */}
+          <View style={styles.headerRight}>
+            <TouchableOpacity onPress={toggleLanguage} style={styles.langBtn}>
+              <Text style={styles.langText}>{isTamil ? 'த' : 'EN'}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
+              <MaterialCommunityIcons
+                name="logout"
+                size={wp(6.5)}
+                color="#FFFFFF"
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Content */}
+        {/* ---------- Content ---------- */}
         <ScrollView
           style={styles.content}
           showsVerticalScrollIndicator={false}
@@ -160,10 +244,12 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
         >
-          {/* Welcome Section */}
+          {/* Welcome */}
           <Animated.View style={[styles.welcomeSection, { opacity: fadeAnim }]}>
-            <Text style={styles.welcomeText}>Welcome, {username}</Text>
-            <Text style={styles.accountType}>Administrator Account</Text>
+            <Text style={styles.welcomeText}>
+              {t('Welcome')}, {username}
+            </Text>
+            <Text style={styles.accountType}>{t('Administrator Account')}</Text>
           </Animated.View>
 
           {/* Menu Grid */}
@@ -222,26 +308,18 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
           {/* Footer */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>
-              Version 1.0 • © 2025 Indian Steel Company
+              {t('Version 1.0 • © 2025 Indian Steel Company')}
             </Text>
           </View>
         </ScrollView>
-
-        {/* FAB for Logout */}
-        {/* <Portal>
-          <FAB
-            icon="logout"
-            style={styles.fab}
-            color="#fff"
-            onPress={handleLogout}
-            label="Logout"
-          />
-        </Portal> */}
       </View>
     </SafeAreaView>
   );
 };
 
+/* -------------------------------------------------
+   Styles
+   ------------------------------------------------- */
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F5F5F5' },
   container: { flex: 1 },
@@ -281,9 +359,18 @@ const styles = StyleSheet.create({
     marginTop: hp(0.3),
     fontWeight: '500',
   },
-  logoutBtn: {
-    padding: wp(2),
+
+  headerRight: { flexDirection: 'row', alignItems: 'center' },
+  langBtn: {
+    backgroundColor: '#ffffff33',
+    paddingHorizontal: wp(1.5),
+    paddingVertical: wp(1),
+    borderRadius: wp(2),
+    marginRight: wp(2),
   },
+  langText: { color: '#fff', fontWeight: '600', fontSize: wp(4) },
+  logoutBtn: { padding: wp(2) },
+
   content: { flex: 1 },
   welcomeSection: {
     paddingHorizontal: wp(5),
@@ -306,9 +393,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: wp(5),
     paddingBottom: hp(2),
   },
-  menuItemWrapper: {
-    marginBottom: hp(2),
-  },
+  menuItemWrapper: { marginBottom: hp(2) },
   menuTouchable: { borderRadius: wp(3) },
   menuCard: {
     backgroundColor: '#FFFFFF',
@@ -329,9 +414,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: wp(4),
   },
-  menuTextContainer: {
-    flex: 1,
-  },
+  menuTextContainer: { flex: 1 },
   menuTitle: {
     fontSize: wp(4.8),
     fontWeight: '600',
@@ -343,24 +426,12 @@ const styles = StyleSheet.create({
     color: '#666666',
     lineHeight: wp(5),
   },
-  chevron: {
-    marginLeft: wp(2),
-  },
-  footer: {
-    alignItems: 'center',
-    paddingVertical: hp(4),
-  },
+  chevron: { marginLeft: wp(2) },
+  footer: { alignItems: 'center', paddingVertical: hp(4) },
   footerText: {
     fontSize: wp(3.2),
     color: '#999999',
     fontWeight: '500',
-  },
-  fab: {
-    position: 'absolute',
-    margin: wp(5),
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#e74c3c',
   },
 });
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,9 @@ import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { UserAPI } from '../service/apiService';
+import { User } from './Adminpanel';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -30,11 +33,37 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await UserAPI.getAll();
+        setUsers(response.data);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      }
+    };
+    fetchUsers();
+  }, []);
 
   const handleSignIn = () => {
+    const user = users.find(
+      user => user.email === email && user.password === password,
+    );
+    if (email === '' || password === '') {
+      Alert.alert('Invalid Credentials', 'Email or password is incorrect.');
+      return;
+    }
     if (email === 'admin@indiansteel.com' && password === 'admin123') {
+      AsyncStorage.setItem('user', JSON.stringify({ role: 'superadmin' }));
       navigation.replace('AdminHome');
-    } else if (email === 'worker@indiansteel.com' && password === 'worker123') {
+    }
+    if (user?.role === 'admin' || user?.role === 'superadmin') {
+      AsyncStorage.setItem('user', JSON.stringify(user));
+      navigation.replace('AdminHome');
+    } else if (user?.role === 'worker') {
+      AsyncStorage.setItem('user', JSON.stringify(user));
       navigation.replace('WorkersHome');
     } else {
       Alert.alert('Invalid Credentials', 'Email or password is incorrect.');

@@ -1,61 +1,82 @@
-import { get } from 'react-native/Libraries/TurboModule/TurboModuleRegistry';
 import { BASE_URL, endpoints, buildUrl } from './configuration';
+import axios from 'axios';
 
-async function handleResponse(res, parse = 'json') {
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    console.log(res);
-    let errorData;
-    try {
-      errorData = text ? JSON.parse(text) : {};
-    } catch {
-      errorData = { message: text || 'An unknown error occurred' };
-    }
+const api = axios.create({
+  baseURL: BASE_URL,
+  timeout: 15000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-    const error = new Error(errorData.message || `HTTP ${res.status}`);
-    error.status = res.status;
-    error.data = errorData;
+api.interceptors.response.use(
+  response => response,
+  error => {
+    const customError = new Error(
+      error.response?.data?.message ||
+        error.message ||
+        'An unknown error occurred',
+    );
+    customError.status = error.response?.status;
+    customError.data = error.response?.data || {};
+    return Promise.reject(customError);
+  },
+);
+
+async function handleResponse(response, parse = 'json') {
+  const { status, data } = response;
+  console.log(status, data);
+  if (status >= 400) {
+    const error = new Error(response.data?.message || `HTTP ${status}`);
+    error.status = status;
+    error.data = response.data || {};
     throw error;
   }
 
-  if (parse === 'blob') return res.blob();
-  if (parse === 'text') return res.text();
-  return res.status !== 204 ? res.json().catch(() => ({})) : null;
+  if (status === 204) return null;
+  if (parse === 'blob') return data;
+  if (parse === 'text')
+    return typeof data === 'string' ? data : JSON.stringify(data);
+  return data;
 }
 
 async function jsonRequest(method, path, body, headers = {}) {
-  const res = await fetch(buildUrl(path), {
+  const url = buildUrl(path);
+  const config = { headers };
+
+  const response = await api.request({
     method,
-    headers: {
-      'Content-Type': 'application/json',
-      ...headers,
-    },
-    body: body ? JSON.stringify(body) : undefined,
+    url,
+    data: body,
+    ...config,
   });
-  return handleResponse(res, 'json');
+
+  return handleResponse(response, 'json');
 }
 
 async function queryRequest(path, query) {
   const url = buildUrl(path, query);
-  const res = await fetch(url);
-  return handleResponse(res, 'json');
+  const response = await api.get(url);
+  return handleResponse(response, 'json');
 }
 
 async function deleteRequest(path) {
-  const res = await fetch(buildUrl(path), {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-  });
-  return handleResponse(res);
+  const url = buildUrl(path);
+  const response = await api.delete(url);
+  return handleResponse(response);
 }
 
 async function multipartRequest(method, path, formData) {
-  const res = await fetch(buildUrl(path), {
+  const url = buildUrl(path);
+  const response = await api.request({
     method,
-    body: formData,
-    headers: {},
+    url,
+    data: formData,
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
   });
-  return handleResponse(res, 'json');
+  return handleResponse(response, 'json');
 }
 
 export const CustomerAPI = {
@@ -94,20 +115,20 @@ export const ProjectAPI = {
     if (file.startsWith('file://') || file.includes('cache')) {
       const filename = file.split('/').pop() || `voice_note_${id}.mp3`;
       const type = 'audio/mpeg';
+      formData.append('name', filename);
       formData.append('file', {
         uri: file,
         name: filename,
         type,
       });
     }
-    // formData.append('file', file);
-    return multipartRequest('PUT', endpoints.projectVoice(id), formData);
+    return multipartRequest('POST', endpoints.projectVoice(id), formData);
   },
   addSiteImages: async (projectId, imageUris = []) => {
     const formData = new FormData();
 
     imageUris.forEach((uri, index) => {
-      if (!uri.startsWith('file://') && !uri.includes('cache')) return; // skip remote
+      if (!uri.startsWith('file://') && !uri.includes('cache')) return;
 
       const filename = uri.split('/').pop() || `site_image_${index}.jpg`;
       const type = 'image/jpeg';
@@ -131,8 +152,9 @@ export const ProjectAPI = {
   updateStatus: (id, status) =>
     jsonRequest('PUT', endpoints.projectStatus(id), status),
   getInvoicePdf: async id => {
-    const res = await fetch(buildUrl(endpoints.projectInvoice(id)));
-    return handleResponse(res, 'blob');
+    const url = buildUrl(endpoints.projectInvoice(id));
+    const response = await api.get(url, { responseType: 'blob' });
+    return handleResponse(response, 'blob');
   },
   createAdvance: payload => jsonRequest('POST', endpoints.advances, payload),
   getAdvances: projectId =>
@@ -146,16 +168,24 @@ export const ProjectAPI = {
     jsonRequest('POST', endpoints.paymentsIn, payload),
   getPaymentsIn: projectId =>
     queryRequest(endpoints.paymentsInByProject(projectId)),
+  updatePaymentIn: (id, payload) =>
+    jsonRequest('PUT', endpoints.paymentsInById(id), payload),
+  deletePaymentIn: id => deleteRequest(endpoints.paymentsInById(id)),
   createPaymentOut: payload =>
     jsonRequest('POST', endpoints.paymentsOut, payload),
   getPaymentsOut: projectId =>
     queryRequest(endpoints.paymentsOutByProject(projectId)),
+  updatePaymentOut: (id, payload) =>
+    jsonRequest('PUT', endpoints.paymentsOutById(id), payload),
+  deletePaymentOut: id => deleteRequest(endpoints.paymentsOutById(id)),
   getProjectItems: projectId =>
     queryRequest(endpoints.itemsByProject(projectId)),
+  deleteSiteImage: id => deleteRequest(endpoints.projectImages(id)),
+  deleteVoiceRecording: (id, voiceId) =>
+    deleteRequest(`${endpoints.projectVoice(id)}/${voiceId}`),
 };
 
 export const QuotationAPI = {
-  // Quotations CRUD
   create: payload => jsonRequest('POST', endpoints.quotations, payload),
   getById: id => queryRequest(endpoints.quotationById(id)),
   getAll: () => queryRequest(endpoints.quotations),
@@ -163,7 +193,6 @@ export const QuotationAPI = {
     jsonRequest('PUT', endpoints.quotationById(id), payload),
   delete: id => deleteRequest(endpoints.quotationById(id)),
 
-  // Items
   createItem: payload => jsonRequest('POST', endpoints.quotationItems, payload),
   updateItem: (itemId, payload) =>
     jsonRequest('PUT', endpoints.quotationItemById(itemId), payload),
@@ -171,7 +200,6 @@ export const QuotationAPI = {
   getItems: quotationId =>
     queryRequest(endpoints.quotationItemsByQuotation(quotationId)),
 
-  // Search and filters
   searchByCustomerName: customerName =>
     queryRequest(endpoints.quotationsSearch, { customerName }),
   searchByCustomerContactNo: customerContactNo =>
@@ -189,7 +217,6 @@ export const UnitAPI = {
 };
 
 export const UserAPI = {
-  // Basic CRUD operations
   create: payload => jsonRequest('POST', endpoints.users, payload),
   getById: id => queryRequest(endpoints.userById(id)),
   getAll: () => queryRequest(endpoints.users),
@@ -197,14 +224,12 @@ export const UserAPI = {
   delete: id => deleteRequest(endpoints.userById(id)),
   bulkDelete: ids => deleteRequest(`${endpoints.users}?ids=${ids.join(',')}`),
 
-  // Role operations
   getRoleById: id => queryRequest(endpoints.userRole(id)),
   updateRoleById: (id, payload) =>
     jsonRequest('PUT', endpoints.userRole(id), payload),
   getRoleByUsername: username =>
     queryRequest(endpoints.userRoleByUsername(username)),
 
-  // Password operations
   getPasswordById: id => queryRequest(endpoints.userPassword(id)),
   updatePasswordById: (id, payload) =>
     jsonRequest('PUT', endpoints.userPassword(id), payload),

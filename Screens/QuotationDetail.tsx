@@ -9,8 +9,9 @@ import {
   Dimensions,
   Alert,
   Platform,
+  Modal,
 } from 'react-native';
-import { Card, Chip, Button, Modal } from 'react-native-paper';
+import { Card, Chip, Button, IconButton } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -176,6 +177,9 @@ const QuotationDetail: React.FC = () => {
         quantity: item.quantity,
         rateMrp: item.rateMrp,
         totalCost: item.totalCost,
+        unitId: item.unit.id,
+        taxPercentage: item.taxPercentage,
+        hsnSac: item.hsnSac,
       })),
       status: 'CREATED',
       siteStatus: 'CREATED',
@@ -234,49 +238,6 @@ const QuotationDetail: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Top Action Buttons */}
-      <View style={styles.actionButtonsContainer}>
-        <Button
-          mode="outlined"
-          icon="pencil"
-          onPress={handleEdit}
-          style={styles.actionButton}
-          contentStyle={styles.actionButtonContent}
-          labelStyle={styles.actionButtonLabel}
-        >
-          Edit
-        </Button>
-        <Button
-          mode="outlined"
-          icon="delete"
-          onPress={handleDelete}
-          style={styles.actionButton}
-          contentStyle={styles.actionButtonContent}
-          labelStyle={styles.actionButtonLabel}
-          textColor="#e74c3c"
-        >
-          Delete
-        </Button>
-        <Button
-          mode="outlined"
-          icon="share"
-          onPress={shareQuotationPDF}
-          style={styles.actionButton}
-          contentStyle={styles.actionButtonContent}
-          labelStyle={styles.actionButtonLabel}
-        >
-          Share
-        </Button>
-        <Button
-          mode="outlined"
-          icon="plus"
-          onPress={handleConvertToProject}
-          style={styles.actionButton}
-          contentStyle={styles.actionButtonContent}
-          labelStyle={styles.actionButtonLabel}
-        >
-          To Project
-        </Button>
-      </View>
 
       <ScrollView contentContainerStyle={styles.content}>
         {/* Header */}
@@ -395,13 +356,43 @@ const QuotationDetail: React.FC = () => {
           )}
         </Card>
       </ScrollView>
-
+      <View style={styles.actionButtonsContainer}>
+        <IconButton
+          icon="pencil"
+          onPress={handleEdit}
+          style={styles.actionButton}
+          contentStyle={styles.actionButtonContent}
+          iconColor="#2874b8"
+        />
+        <IconButton
+          icon="delete"
+          onPress={handleDelete}
+          style={styles.actionButton}
+          contentStyle={styles.actionButtonContent}
+          iconColor="#e74c3c"
+        />
+        <IconButton
+          icon="share"
+          onPress={shareQuotationPDF}
+          style={styles.actionButton}
+          contentStyle={styles.actionButtonContent}
+          iconColor="#2874b8"
+        />
+        <IconButton
+          icon="plus"
+          onPress={handleConvertToProject}
+          style={styles.actionButton}
+          contentStyle={styles.actionButtonContent}
+          iconColor="#2874b8"
+        />
+      </View>
       {/* PDF Preview Modal */}
       <Modal
         visible={pdfModalVisible}
         onDismiss={() => setPdfModalVisible(false)}
         animationType="slide"
-        contentContainerStyle={{ flex: 1 }}
+        //contentContainerStyle={{ flex: 1 }}
+        style={{ maxHeight: height * 0.6 }}
       >
         <View style={styles.pdfModalContainer}>
           <View style={styles.pdfModalHeader}>
@@ -450,6 +441,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    elevation: 3,
+    marginBottom: 10,
   },
   actionButton: {
     flex: 0.22,

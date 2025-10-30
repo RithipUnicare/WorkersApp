@@ -21,7 +21,7 @@ export const endpoints = {
 
   // Project sub-resources
   projectGps: id => `/api/v1/projects/${id}/gps`,
-  projectVoice: id => `/api/v1/projects/${id}/voice`,
+  projectVoice: id => `/api/v1/projects/${id}/voice-recordings`,
   projectImages: id => `/api/v1/projects/${id}/images`,
   projectStatus: id => `/api/v1/projects/${id}/status`,
   projectInvoice: id => `/api/v1/projects/${id}/invoice`,
@@ -35,9 +35,11 @@ export const endpoints = {
   itemById: id => `/api/v1/projects/items/${id}`,
 
   paymentsIn: '/api/v1/projects/payments-in',
+  paymentsInById: id => `/api/v1/projects/payments-in/${id}`,
   paymentsInByProject: projectId => `/api/v1/projects/${projectId}/payments-in`,
 
   paymentsOut: '/api/v1/projects/payments-out',
+  paymentsOutById: id => `/api/v1/projects/payments-out/${id}`,
   paymentsOutByProject: projectId =>
     `/api/v1/projects/${projectId}/payments-out`,
 

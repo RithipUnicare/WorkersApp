@@ -14,7 +14,8 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { rootStackParamList } from '../navigation/AppNavigation';
-import { FAB, Portal } from 'react-native-paper';
+import { FAB, IconButton, Portal } from 'react-native-paper';
+import { CustomerAPI } from '../service/apiService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -28,8 +29,8 @@ type Props = {
 };
 
 const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
-  const { customer } = route.params as { customer: any };
-
+  const customer1 = route.params as { customer: any };
+  const [customer, setCustomer] = useState(customer1.customer);
   const [fabOpen, setFabOpen] = useState(false);
   const [fabVisible, setFabVisible] = useState(true);
 
@@ -52,6 +53,22 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (l: string) => l.toUpperCase());
 
+  useEffect(() => {
+    navigation.addListener('focus', () => {
+      const loadCustomer = async () => {
+        try {
+          const res = await CustomerAPI.getById(customer.id);
+          if (res && res.data) {
+            setCustomer(res.data);
+          }
+        } catch (e) {
+          console.error('Error loading customer:', e);
+        }
+      };
+      loadCustomer();
+    });
+  }, []);
+
   const getStatusColor = (status: string) => {
     switch (status.toUpperCase()) {
       case 'PAID':
@@ -62,6 +79,8 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
         return '#f39c12';
       case 'CANCELLED':
         return '#e74c3c';
+      case 'PROJECT_CREATED':
+        return '#01612cff';
       default:
         return '#95a5a6';
     }
@@ -121,15 +140,43 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
                 <Text style={styles.statusText}>{formattedStatus}</Text>
               </View>
             </View>
-            <Text style={styles.location}>
-              <MaterialCommunityIcons
-                name="map-marker"
-                size={wp(4)}
-                color="#666"
-              />
-              {'  '}
-              {address}
-            </Text>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <Text style={styles.location}>
+                <MaterialCommunityIcons
+                  name="map-marker"
+                  size={wp(4)}
+                  color="#666"
+                />
+                {'  '}
+                {address}
+              </Text>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'flex-end',
+                  justifyContent: 'flex-end',
+                }}
+              >
+                <IconButton
+                  icon="pencil"
+                  size={wp(6)}
+                  iconColor="#2874b8"
+                  onPress={handleEdit}
+                />
+                <IconButton
+                  icon="delete"
+                  size={wp(6)}
+                  iconColor="#e74c3c"
+                  onPress={handleDelete}
+                />
+              </View>
+            </View>
           </View>
 
           {/* Contact Information */}
@@ -285,7 +332,7 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
           <TouchableOpacity
             style={styles.addProjectButton}
             onPress={() => {
-              navigation.navigate('AddProject', { customer });
+              navigation.navigate('AddQuotation', { customer });
               setFabOpen(false);
             }}
             activeOpacity={0.9}
@@ -295,12 +342,14 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
               size={wp(6)}
               color="#fff"
             />
-            <Text style={styles.addProjectButtonText}>Convert to Project</Text>
+            <Text style={styles.addProjectButtonText}>
+              Convert to Quotation
+            </Text>
           </TouchableOpacity>
         </View>
 
         {/* FAB Group */}
-        <Portal>
+        {/* <Portal>
           <FAB.Group
             open={fabOpen}
             visible={fabVisible}
@@ -326,7 +375,7 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
             fabStyle={styles.fabStyle}
             style={styles.fabGroup}
           />
-        </Portal>
+        </Portal> */}
       </View>
     </SafeAreaView>
   );
@@ -334,7 +383,7 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F5F5F5' },
-  container: { flex: 1, marginTop: hp(-2) },
+  container: { flex: 1 },
   scrollView: { flex: 1 },
   scrollContent: { paddingBottom: hp(15) },
   headerCard: {

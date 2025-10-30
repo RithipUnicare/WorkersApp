@@ -37,13 +37,14 @@ type Props = {
   navigation: NativeStackNavigationProp<rootStackParamList, 'AdminPanel'>;
 };
 
-type User = {
+export type User = {
   id: number;
   name: string;
   mobile: string;
   email: string;
   username: string;
   role: string;
+  password: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -162,20 +163,14 @@ const UserManagementTab: React.FC<Props> = ({ navigation }) => {
           onPress: async () => {
             try {
               const res = await UserAPI.delete(id);
-              if (res.success) {
-                setUsers(prev => prev.filter(u => u.id !== id));
-                setSnackbar({
-                  visible: true,
-                  message: 'User deleted successfully',
-                });
-              } else {
-                setSnackbar({
-                  visible: true,
-                  message: res.error || 'Failed to delete user',
-                });
-              }
+              setUsers(prev => prev.filter(u => u.id !== id));
+              setSnackbar({
+                visible: true,
+                message: 'User deleted successfully',
+              });
+              loadUsers();
             } catch (e) {
-              console.error('Delete error', e);
+              //console.error('Delete error', e);
               setSnackbar({ visible: true, message: 'Failed to delete user' });
             }
           },
@@ -267,17 +262,13 @@ const UserManagementTab: React.FC<Props> = ({ navigation }) => {
         <Dialog
           visible={userModalVisible}
           onDismiss={() => setUserModalVisible(false)}
-          style={{
-            maxWidth: width * 0.95,
-            alignSelf: 'center',
-            minWidth: width * 0.9,
-          }}
+          style={styles.dialog}
         >
-          <Dialog.Title>User Details</Dialog.Title>
-          <Dialog.ScrollArea>
-            <ScrollView style={{ maxHeight: height * 0.4 }}>
+          <Dialog.Title style={styles.dialogTitle}>User Details</Dialog.Title>
+          <Dialog.ScrollArea style={styles.dialogScrollArea}>
+            <ScrollView contentContainerStyle={styles.dialogContent}>
               {selectedUser && (
-                <View style={styles.modalContent}>
+                <View>
                   <TextInput
                     label="Full Name *"
                     value={editName}
@@ -344,11 +335,16 @@ const UserManagementTab: React.FC<Props> = ({ navigation }) => {
                     inputSearchStyle={styles.inputSearchStyle}
                     iconStyle={styles.iconStyle}
                     data={[
+                      {
+                        label: 'Super Admin',
+                        value: 'superadmin',
+                        icon: 'shield-account',
+                      },
                       { label: 'Worker', value: 'worker', icon: 'account' },
                       {
                         label: 'Admin',
                         value: 'admin',
-                        icon: 'shield-account',
+                        icon: 'shield',
                       },
                     ]}
                     maxHeight={200}
@@ -428,13 +424,14 @@ const CreateUserTab: React.FC = () => {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'admin' | 'worker'>('worker');
+  const [role, setRole] = useState<'admin' | 'worker' | 'superadmin'>('worker');
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
 
   const roleOptions = [
     { label: 'Worker', value: 'worker', icon: 'account' },
     { label: 'Admin', value: 'admin', icon: 'shield-account' },
+    { label: 'Super Admin', value: 'superadmin', icon: 'shield-account' },
   ];
 
   const validateEmail = (email: string) => {
@@ -598,12 +595,20 @@ const CreateUserTab: React.FC = () => {
             valueField="value"
             placeholder="Select Role"
             value={role}
-            onChange={item => setRole(item.value as 'admin' | 'worker')}
+            onChange={item =>
+              setRole(item.value as 'admin' | 'worker' | 'superadmin')
+            }
             renderLeftIcon={() => (
               <Ionicons
                 style={styles.dropdownIcon}
                 color="#2874b8"
-                name={role === 'admin' ? 'shield-checkmark' : 'person'}
+                name={
+                  role === 'superadmin'
+                    ? 'shield-checkmark'
+                    : role === 'admin'
+                    ? 'shield'
+                    : 'person'
+                }
                 size={wp(5.5)}
               />
             )}
@@ -679,8 +684,12 @@ const AdminPanel: React.FC<Props> = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F5F5F5' },
-  tabs: { backgroundColor: '#fff', elevation: 4, marginTop: hp(-3) },
-  tabContent: { flex: 1, paddingHorizontal: wp(4), paddingTop: hp(2) },
+  tabs: { backgroundColor: '#fff', elevation: 4 },
+  tabContent: {
+    flex: 1,
+    paddingHorizontal: wp(4),
+    paddingTop: hp(3),
+  },
   loader: {
     flex: 1,
     justifyContent: 'center',
@@ -746,9 +755,28 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Modal
-  modalContent: {
-    padding: wp(1),
+  // Dialog Styles
+  dialog: {
+    maxWidth: width * 0.95,
+    alignSelf: 'center',
+    minWidth: width * 0.9,
+    minHeight: height * 0.5,
+    maxHeight: height * 0.7,
+  },
+  dialogTitle: {
+    fontSize: wp(5),
+    fontWeight: '600',
+    paddingBottom: hp(1),
+  },
+  dialogScrollArea: {
+    paddingHorizontal: 0,
+    paddingTop: 0,
+    paddingBottom: 0,
+  },
+  dialogContent: {
+    paddingHorizontal: wp(6),
+    paddingTop: hp(1),
+    paddingBottom: hp(2),
   },
 
   // Create User

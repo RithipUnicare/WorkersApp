@@ -15,13 +15,11 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { rootStackParamList } from '../navigation/AppNavigation';
 
 const { width, height } = Dimensions.get('window');
-
-// Responsive helpers
 const wp = (percentage: number) => (width * percentage) / 100;
 const hp = (percentage: number) => (height * percentage) / 100;
 
 type Props = {
-  navigation: NativeStackNavigationProp<rootStackParamList, 'splash'> | any;
+  navigation: NativeStackNavigationProp<rootStackParamList, 'splash'>;
 };
 
 const SplashScreen: React.FC<Props> = ({ navigation }) => {
@@ -32,6 +30,7 @@ const SplashScreen: React.FC<Props> = ({ navigation }) => {
     (async () => {
       try {
         const role = await AsyncStorage.getItem('role');
+
         if (role === 'worker') {
           navigation.replace('ProjectList');
           return;
@@ -40,7 +39,12 @@ const SplashScreen: React.FC<Props> = ({ navigation }) => {
           navigation.replace('login');
           return;
         }
-        // Show modal if no role
+        if (role === 'superadmin') {
+          navigation.replace('login'); // or your Super Admin dashboard
+          return;
+        }
+
+        // No role → show modal
         setVisible(true);
       } catch (e) {
         setVisible(true);
@@ -59,7 +63,13 @@ const SplashScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  const chooseAdmin = () => {
+  const chooseAdmin = async () => {
+    await AsyncStorage.setItem('role', 'admin');
+    navigation.replace('login');
+  };
+
+  const chooseSuperAdmin = async () => {
+    await AsyncStorage.setItem('role', 'superadmin');
     navigation.replace('login');
   };
 
@@ -86,6 +96,7 @@ const SplashScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.modalCard}>
               <Text style={styles.modalTitle}>Continue as</Text>
 
+              {/* Worker Button */}
               <TouchableOpacity
                 style={[styles.buttonPrimary, loading && styles.buttonDisabled]}
                 onPress={chooseWorker}
@@ -99,6 +110,7 @@ const SplashScreen: React.FC<Props> = ({ navigation }) => {
                 )}
               </TouchableOpacity>
 
+              {/* Admin Button */}
               <TouchableOpacity
                 style={styles.buttonOutline}
                 onPress={chooseAdmin}
@@ -107,12 +119,13 @@ const SplashScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.buttonOutlineText}>Admin</Text>
               </TouchableOpacity>
 
+              {/* Super Admin Button */}
               <TouchableOpacity
-                style={styles.buttonSkip}
-                onPress={() => setVisible(false)}
-                activeOpacity={0.7}
+                style={styles.buttonSecondary}
+                onPress={chooseSuperAdmin}
+                activeOpacity={0.8}
               >
-                <Text style={styles.buttonSkipText}>Skip</Text>
+                <Text style={styles.buttonSecondaryText}>Super Admin</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -217,15 +230,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: wp(4.5),
   },
-  buttonSkip: {
-    paddingVertical: hp(1),
-    paddingHorizontal: wp(4),
-    marginTop: hp(1),
+  buttonSecondary: {
+    backgroundColor: '#e74c3c',
+    paddingVertical: hp(1.8),
+    paddingHorizontal: wp(8),
+    borderRadius: wp(2.5),
+    width: '100%',
+    alignItems: 'center',
+    minHeight: hp(6),
+    justifyContent: 'center',
   },
-  buttonSkipText: {
-    color: '#888',
-    fontSize: wp(3.8),
-    fontWeight: '500',
+  buttonSecondaryText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: wp(4.5),
   },
 });
 

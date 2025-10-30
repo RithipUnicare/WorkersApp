@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Card, TextInput, Chip, FAB, Portal } from 'react-native-paper';
+import { Card, TextInput, Chip } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -73,7 +73,6 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [fabOpen, setFabOpen] = useState(false);
 
   // Load projects on mount & focus
   useEffect(() => {
@@ -85,11 +84,9 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
   const loadProjects = async () => {
     try {
       setLoading(true);
-      const [res, storedRole] = await Promise.all([
-        ProjectAPI.getAll(),
-        AsyncStorage.getItem('role'),
-      ]);
-
+      const res = await ProjectAPI.getAll();
+      const storedRole = await AsyncStorage.getItem('role');
+      console.log(res);
       if (res.success && Array.isArray(res.data)) {
         setProjects(res.data);
         setFilteredProjects(res.data);
@@ -139,7 +136,10 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  const formatTime = (time: string) => dayjs(time, 'HH:mm:ss').format('h:mm A');
+  const formatTime = (time: string) => {
+    if (!time) return 'Not set';
+    return dayjs(time, 'HH:mm:ss').format('h:mm A');
+  };
 
   const renderItem = ({ item }: { item: Project }) => (
     <Card style={styles.card} elevation={3}>
@@ -272,32 +272,52 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
     </View>
   );
 
+  const handleAddProject = () => {
+    navigation.navigate('AddProject');
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={styles.container}>
-        {/* Search Bar */}
-        <TextInput
-          placeholder="Search by name, location or phone..."
-          value={search}
-          onChangeText={setSearch}
-          mode="outlined"
-          style={styles.search}
-          theme={{ roundness: wp(2.5) }}
-          contentStyle={styles.searchContent}
-          outlineColor="#ddd"
-          activeOutlineColor="#2874b8"
-          left={<TextInput.Icon icon="magnify" size={wp(6)} />}
-          right={
-            search ? (
-              <TextInput.Icon
-                icon="close"
-                size={wp(6)}
-                onPress={() => setSearch('')}
-                color="#999"
-              />
-            ) : null
-          }
-        />
+        {/* Search Bar with Add Button */}
+        <View style={styles.searchRow}>
+          <TextInput
+            placeholder="Search by name, location or phone..."
+            value={search}
+            onChangeText={setSearch}
+            mode="outlined"
+            style={styles.search}
+            theme={{ roundness: wp(2.5) }}
+            contentStyle={styles.searchContent}
+            outlineColor="#ddd"
+            activeOutlineColor="#2874b8"
+            left={<TextInput.Icon icon="magnify" size={wp(6)} />}
+            right={
+              search ? (
+                <TextInput.Icon
+                  icon="close"
+                  size={wp(6)}
+                  onPress={() => setSearch('')}
+                  color="#999"
+                />
+              ) : null
+            }
+          />
+          <TouchableOpacity
+            style={[
+              styles.addButton,
+              role === 'worker' && styles.addButtonDisabled,
+            ]}
+            onPress={handleAddProject}
+            disabled={role === 'worker'}
+          >
+            <MaterialCommunityIcons
+              name="plus"
+              size={wp(6)}
+              color={role === 'worker' ? '#ccc' : '#fff'}
+            />
+          </TouchableOpacity>
+        </View>
 
         {/* Project List */}
         {loading ? (
@@ -317,27 +337,6 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
             ListEmptyComponent={renderEmpty}
           />
         )}
-
-        {/* FAB Group */}
-        {role === 'Admin' && (
-          <Portal>
-            <FAB.Group
-              open={fabOpen}
-              visible
-              icon={fabOpen ? 'close' : 'plus'}
-              actions={[
-                {
-                  icon: 'plus',
-                  label: 'Add Project',
-                  onPress: () => navigation.navigate('AddProject'),
-                  style: { backgroundColor: '#2874b8' },
-                },
-              ]}
-              onStateChange={({ open }) => setFabOpen(open)}
-              fabStyle={styles.fab}
-            />
-          </Portal>
-        )}
       </View>
     </SafeAreaView>
   );
@@ -345,14 +344,31 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F5F5F5' },
-  container: { flex: 1, marginTop: hp(-4) },
-  search: {
+  container: { flex: 1 },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginHorizontal: wp(4),
     marginTop: hp(1),
     marginBottom: hp(1),
+  },
+  search: {
+    flex: 1,
+    marginRight: wp(2),
     backgroundColor: '#fff',
   },
   searchContent: { fontSize: wp(4) },
+  addButton: {
+    width: wp(10),
+    height: wp(10),
+    borderRadius: wp(5),
+    backgroundColor: '#2874b8',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addButtonDisabled: {
+    backgroundColor: '#f0f0f0',
+  },
   listContent: {
     paddingHorizontal: wp(4),
     paddingBottom: hp(15),
@@ -476,9 +492,6 @@ const styles = StyleSheet.create({
     marginTop: hp(1),
     textAlign: 'center',
     paddingHorizontal: wp(10),
-  },
-  fab: {
-    backgroundColor: '#2874b8',
   },
 });
 

@@ -273,7 +273,6 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
           open={datePickerOpen}
           date={selectedDate}
           mode="date"
-          minimumDate={new Date()}
           onConfirm={date => {
             setSelectedDate(date);
             setDatePickerOpen(false);
@@ -302,7 +301,7 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#fff' },
-  container: { flex: 1, marginTop: hp(-4) },
+  container: { flex: 1 },
   content: {
     padding: wp(5),
     paddingBottom: hp(20),

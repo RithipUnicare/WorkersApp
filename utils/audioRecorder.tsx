@@ -126,10 +126,12 @@ const RecoredAudio: React.FC<props> = ({ navigation, route }) => {
     try {
       const formData = new FormData();
       // formData.append('file', audioPath);
-      await ProjectAPI.updateVoice(project.id, audioPath);
+      const res = await ProjectAPI.updateVoice(project.id, audioPath);
+      console.log(res);
       Alert.alert('Success', 'Audio uploaded successfully');
       navigation.goBack();
     } catch (err) {
+      console.log(err);
       Alert.alert('Error', 'Failed to upload audio');
     }
   };

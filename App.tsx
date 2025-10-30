@@ -12,10 +12,11 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import { DefaultTheme, Provider as PaperProvider } from 'react-native-paper';
-import { initNotification, triggerTestAlert } from './utils/pushNofication';
+import { initNotification } from './utils/pushNofication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AppNavigator from './navigation/AppNavigation';
 import { useEffect, useRef } from 'react';
+import { TranslatorProvider } from 'react-native-translator';
 const theme = {
   ...DefaultTheme,
   colors: {
@@ -52,10 +53,12 @@ function App() {
 
   return (
     <SafeAreaProvider>
-      <PaperProvider theme={theme}>
-        {/* <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} /> */}
-        <AppNavigator />
-      </PaperProvider>
+      <TranslatorProvider>
+        <PaperProvider theme={theme}>
+          {/* <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} /> */}
+          <AppNavigator />
+        </PaperProvider>
+      </TranslatorProvider>
     </SafeAreaProvider>
   );
 }

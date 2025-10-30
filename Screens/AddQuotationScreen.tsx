@@ -314,8 +314,28 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const handleSave = async () => {
-    if (!customerId || !deliveryDate || !description || !totalBudget) {
-      ToastAndroid.show('Fill all required fields', ToastAndroid.SHORT);
+    if (
+      !customerId ||
+      !deliveryDate ||
+      !description ||
+      !totalBudget ||
+      !items.length
+    ) {
+      if (!customerId) {
+        ToastAndroid.show('Customer is required', ToastAndroid.SHORT);
+      }
+      if (!deliveryDate) {
+        ToastAndroid.show('Delivery Date is required', ToastAndroid.SHORT);
+      }
+      if (!description) {
+        ToastAndroid.show('Description is required', ToastAndroid.SHORT);
+      }
+      if (!totalBudget) {
+        ToastAndroid.show('Total Budget is required', ToastAndroid.SHORT);
+      }
+      if (!items.length) {
+        ToastAndroid.show('At least one item is required', ToastAndroid.SHORT);
+      }
       return;
     }
 
@@ -378,7 +398,6 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
               value={customerName}
               mode="outlined"
               style={styles.input}
-              disabled
             />
           ) : (
             <Dropdown
@@ -403,19 +422,17 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             />
           )}
 
-          <TextInput
+          {/* <TextInput
             label="Customer Name"
             value={customerName}
             mode="outlined"
             style={styles.input}
-            disabled
-          />
+          /> */}
           <TextInput
             label="Mobile No"
             value={mobileNo}
             mode="outlined"
             style={styles.input}
-            disabled
           />
           <TextInput
             label="Address"
@@ -423,7 +440,6 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             mode="outlined"
             multiline
             style={[styles.input, styles.textArea]}
-            disabled
           />
 
           <TextInput
@@ -660,7 +676,6 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
           open={datePickerOpen}
           date={selectedDateObj}
           mode="date"
-          minimumDate={new Date()}
           onConfirm={d => {
             setSelectedDateObj(d);
             setDeliveryDate(dayjs(d).format('DD-MM-YYYY'));
@@ -675,7 +690,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#fff' },
-  container: { flex: 1, marginTop: hp(-2) },
+  container: { flex: 1 },
   content: { padding: wp(5), paddingBottom: hp(20) },
   title: {
     fontSize: wp(6.5),

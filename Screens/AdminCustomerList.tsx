@@ -59,11 +59,12 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
 
   // Load on focus
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', loadCustomers);
-    loadCustomers();
-    setFabVisible(true);
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadCustomers();
+      setFabVisible(true);
+    });
     return unsubscribe;
-  }, [navigation]);
+  }, []);
 
   const loadCustomers = async () => {
     try {
@@ -123,6 +124,8 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
         return { color: '#e74c3c', label: 'Cancelled' };
       case 'REJECTED':
         return { color: '#95a5a6', label: 'Rejected' };
+      case 'PROJECT_CREATED':
+        return { color: '#01612cff', label: 'Project Created' };
       default:
         return {
           color: '#95a5a6',
@@ -221,28 +224,45 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={styles.container}>
         {/* Search Bar */}
-        <TextInput
-          placeholder="Search by name, phone or address..."
-          value={search}
-          onChangeText={setSearch}
-          mode="outlined"
-          style={styles.search}
-          theme={{ roundness: wp(2.5) }}
-          contentStyle={styles.searchContent}
-          outlineColor="#ddd"
-          activeOutlineColor="#2874b8"
-          left={<TextInput.Icon icon="magnify" size={wp(6)} />}
-          right={
-            search ? (
-              <TextInput.Icon
-                icon="close"
-                size={wp(6)}
-                onPress={() => setSearch('')}
-                color="#999"
-              />
-            ) : null
-          }
-        />
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}
+        >
+          <TextInput
+            placeholder="Search by name, phone or address..."
+            value={search}
+            onChangeText={setSearch}
+            mode="outlined"
+            style={styles.search}
+            theme={{ roundness: wp(2.5) }}
+            contentStyle={styles.searchContent}
+            outlineColor="#ddd"
+            activeOutlineColor="#2874b8"
+            left={<TextInput.Icon icon="magnify" size={wp(6)} />}
+            right={
+              search ? (
+                <TextInput.Icon
+                  icon="close"
+                  size={wp(6)}
+                  onPress={() => setSearch('')}
+                  color="#999"
+                />
+              ) : null
+            }
+          />
+          <TouchableOpacity
+            onPress={() => navigation.navigate('AddCustomer')}
+            style={{
+              backgroundColor: '#2874b8',
+              padding: wp(2),
+              borderRadius: wp(3.5),
+            }}
+          >
+            <MaterialCommunityIcons name="plus" size={wp(6)} color="#fff" />
+          </TouchableOpacity>
+        </View>
 
         {/* Customer List */}
         {loading ? (
@@ -264,25 +284,6 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
         )}
 
         {/* FAB */}
-        {role === 'Admin' && (
-          <Portal>
-            <FAB.Group
-              open={fabOpen}
-              visible={fabVisible}
-              icon={fabOpen ? 'close' : 'plus'}
-              actions={[
-                {
-                  icon: 'account-plus',
-                  label: 'Add Customer',
-                  onPress: () => navigation.navigate('AddCustomer'),
-                  style: { backgroundColor: '#2874b8' },
-                },
-              ]}
-              onStateChange={({ open }) => setFabOpen(open)}
-              fabStyle={styles.fab}
-            />
-          </Portal>
-        )}
       </View>
     </SafeAreaView>
   );
@@ -290,12 +291,13 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F5F5F5' },
-  container: { flex: 1, marginTop: hp(-4) },
+  container: { flex: 1 },
   search: {
     marginHorizontal: wp(4),
     marginTop: hp(1),
     marginBottom: hp(1),
     backgroundColor: '#fff',
+    width: width * 0.8,
   },
   searchContent: { fontSize: wp(4) },
   listContent: {

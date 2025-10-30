@@ -50,7 +50,7 @@
 import { PermissionsAndroid, Platform, Alert } from 'react-native';
 import { OneSignal } from 'react-native-onesignal';
 
-const ONE_SIGNAL_APP_ID = '2828e5e4-8bee-49ea-915f-2563b95dbf40';
+const ONE_SIGNAL_APP_ID = '30be02dc-02cb-4eb7-a526-44c6230f5d19';
 
 export const initNotification = async () => {
   // 1. Android 13+ Notification Permission
@@ -97,3 +97,186 @@ export const triggerTestAlert = () => {
 };
 
 export default initNotification;
+
+// import { PermissionsAndroid, Platform, Alert } from 'react-native';
+// import { OneSignal } from 'react-native-onesignal';
+// import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
+// import BackgroundService from 'react-native-background-actions';
+// import { CustomerAPI } from '../service/apiService';
+
+// const ONE_SIGNAL_APP_ID = '2828e5e4-8bee-49ea-915f-2563b95dbf40';
+// const CHANNEL_ID = 'unattended-customers';
+// let navigationRef: any = null;
+
+// export const setNavigationRef = (ref: any) => (navigationRef = ref);
+
+// const createNotificationChannel = async () => {
+//   await notifee.createChannel({
+//     id: CHANNEL_ID,
+//     name: 'Unattended Customers',
+//     description: 'Notifications for unattended customers',
+//     importance: AndroidImportance.HIGH,
+//     sound: 'default',
+//     vibration: true,
+//   });
+// };
+
+// export const requestNotificationPermissions = async () => {
+//   if (Platform.OS === 'android' && Platform.Version >= 33) {
+//     const granted = await PermissionsAndroid.request(
+//       PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+//     );
+//     if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+//       Alert.alert('Permission Denied', 'Notifications will not work.');
+//       return false;
+//     }
+//   }
+//   await createNotificationChannel();
+//   await notifee.requestPermission();
+//   return true;
+// };
+
+// export const showUnattendedCustomerNotification = async (customer: any) => {
+//   try {
+//     await notifee.displayNotification({
+//       id: `unattended-${customer.id}`,
+//       title: '🔔 Unattended Customer',
+//       body: `${customer.name}\n📱 ${customer.contactNo}`,
+//       data: {
+//         type: 'unattended_customer',
+//         customerId: customer.id.toString(),
+//         customerData: JSON.stringify(customer),
+//       },
+//       android: {
+//         channelId: CHANNEL_ID,
+//         importance: AndroidImportance.HIGH,
+//         pressAction: { id: 'default' },
+//         smallIcon: 'ic_launcher',
+//         sound: 'default',
+//         vibrationPattern: [300, 500],
+//         color: '#2874b8',
+//         largeIcon: 'ic_launcher',
+//         actions: [
+//           { title: 'View Details', pressAction: { id: 'view_details' } },
+//           { title: 'Dismiss', pressAction: { id: 'dismiss' } },
+//         ],
+//       },
+//       ios: {
+//         sound: 'default',
+//         categoryId: 'unattended_customer',
+//         interruptionLevel: 'timeSensitive',
+//       },
+//     });
+//   } catch (e) {
+//     console.error('Error showing notification:', e);
+//   }
+// };
+
+// export const checkAndNotifyUnattendedCustomers = async () => {
+//   try {
+//     const response = await CustomerAPI.getReminder();
+//     if (response.success && response.data?.length > 0) {
+//       for (const c of response.data)
+//         await showUnattendedCustomerNotification(c);
+//       return response.data.length;
+//     }
+//     return 0;
+//   } catch (e) {
+//     console.error('Error checking unattended customers:', e);
+//     return 0;
+//   }
+// };
+
+// const handleNotificationPress = async (detail: any) => {
+//   const { notification, pressAction } = detail;
+//   if (notification?.data?.type === 'unattended_customer') {
+//     const customerId = notification.data.customerId;
+//     const customerData = notification.data.customerData
+//       ? JSON.parse(notification.data.customerData)
+//       : null;
+//     if (navigationRef?.current) {
+//       if (pressAction?.id === 'view_details')
+//         navigationRef.current.navigate('unattendedCustomers', {
+//           customerId,
+//           customerData,
+//         });
+//       else navigationRef.current.navigate('unattendedCustomers');
+//     }
+//   }
+// };
+
+// export const setupNotifeeListeners = () => {
+//   notifee.onForegroundEvent(({ type, detail }) => {
+//     if (type === EventType.PRESS || type === EventType.ACTION_PRESS)
+//       handleNotificationPress(detail);
+//   });
+//   notifee.onBackgroundEvent(async ({ type, detail }) => {
+//     if (type === EventType.PRESS || type === EventType.ACTION_PRESS)
+//       handleNotificationPress(detail);
+//   });
+// };
+
+// const sleep = (t: number) => new Promise(r => setTimeout(r, t));
+
+// const backgroundTask = async ({ delay }: any) => {
+//   while (BackgroundService.isRunning()) {
+//     await checkAndNotifyUnattendedCustomers();
+//     await sleep(delay);
+//   }
+// };
+
+// export const startBackgroundTask = async () => {
+//   const options = {
+//     taskName: 'UnattendedCheck',
+//     taskTitle: 'Checking unattended customers',
+//     taskDesc: 'Running background check...',
+//     taskIcon: { name: 'ic_launcher', type: 'mipmap' },
+//     color: '#2874b8',
+//     parameters: { delay: 15 * 60 * 1000 },
+//   };
+//   //await BackgroundService.start(backgroundTask, options);
+// };
+
+// export const stopBackgroundTask = async () => {
+//   await BackgroundService.stop();
+// };
+
+// export const initOneSignal = async () => {
+//   OneSignal.initialize(ONE_SIGNAL_APP_ID);
+//   OneSignal.Notifications.requestPermission(true);
+//   OneSignal.Notifications.addEventListener('click', e => {
+//     const { notification } = e;
+//     if (notification.additionalData?.screen && navigationRef?.current)
+//       navigationRef.current.navigate(
+//         notification.additionalData.screen,
+//         notification.additionalData.params,
+//       );
+//   });
+// };
+
+// export const initNotification = async () => {
+//   try {
+//     const ok = await requestNotificationPermissions();
+//     if (!ok) return false;
+//     setupNotifeeListeners();
+//     await initOneSignal();
+//     await startBackgroundTask();
+//     await checkAndNotifyUnattendedCustomers();
+//     console.log('Notification system initialized');
+//     return true;
+//   } catch (e) {
+//     console.error('Error initializing notifications:', e);
+//     return false;
+//   }
+// };
+
+// export const testUnattendedNotification = async () => {
+//   await showUnattendedCustomerNotification({
+//     id: 1,
+//     name: 'John Doe',
+//     mobile: '+91 98765 43210',
+//     address: 'Test Address',
+//   });
+// };
+
+// export default initNotification;
