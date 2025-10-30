@@ -7,6 +7,7 @@ import {
   RefreshControl,
   Alert,
   Dimensions,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -15,14 +16,16 @@ import {
   Button,
   ActivityIndicator,
   Snackbar,
+  Portal,
+  Dialog,
 } from 'react-native-paper';
 import { TabsProvider, Tabs, TabScreen } from 'react-native-paper-tabs';
 import { Dropdown } from 'react-native-element-dropdown';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { UserAPI } from '../service/apiService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -35,9 +38,14 @@ type Props = {
 };
 
 type User = {
-  username: string;
+  id: number;
+  name: string;
+  mobile: string;
   email: string;
-  role: 'admin' | 'worker';
+  username: string;
+  role: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 const UserManagementTab: React.FC<Props> = ({ navigation }) => {
@@ -45,6 +53,15 @@ const UserManagementTab: React.FC<Props> = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
+
+  // Modal states
+  const [userModalVisible, setUserModalVisible] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editMobile, setEditMobile] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editUsername, setEditUsername] = useState('');
+  const [editRole, setEditRole] = useState('worker');
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', loadUsers);
@@ -55,14 +72,18 @@ const UserManagementTab: React.FC<Props> = ({ navigation }) => {
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const stored = await AsyncStorage.getItem('users');
-      if (stored) {
-        setUsers(JSON.parse(stored));
+      const res = await UserAPI.getAll();
+      if (res.success) {
+        setUsers(res.data);
       } else {
-        setUsers([]);
+        setSnackbar({
+          visible: true,
+          message: res.error || 'Failed to load users',
+        });
       }
     } catch (e) {
       console.error('Failed to load users', e);
+      setSnackbar({ visible: true, message: 'Failed to load users' });
     } finally {
       setLoading(false);
     }
@@ -74,10 +95,65 @@ const UserManagementTab: React.FC<Props> = ({ navigation }) => {
     setRefreshing(false);
   }, []);
 
-  const deleteUser = async (username: string) => {
+  const openUserModal = (user: User) => {
+    setEditName(user.name);
+    setEditMobile(user.mobile);
+    setEditEmail(user.email);
+    setEditUsername(user.username);
+    setEditRole(user.role);
+    setSelectedUser(user);
+    setUserModalVisible(true);
+  };
+
+  const handleUpdateUser = async () => {
+    if (!selectedUser) return;
+
+    const payload = {
+      name: editName.trim(),
+      mobile: editMobile.trim(),
+      email: editEmail.trim(),
+      username: editUsername.trim(),
+      role: editRole,
+    };
+
+    if (
+      !payload.name ||
+      !payload.mobile ||
+      !payload.email ||
+      !payload.username
+    ) {
+      setSnackbar({ visible: true, message: 'All fields are required' });
+      return;
+    }
+
+    try {
+      console.log('Update payload', payload);
+      const res = await UserAPI.update(selectedUser.id, payload);
+
+      console.log('Update response', res);
+      if (res.success) {
+        setUsers(prev =>
+          prev.map(u => (u.id === selectedUser.id ? { ...u, ...payload } : u)),
+        );
+        setUserModalVisible(false);
+        setSnackbar({ visible: true, message: 'User updated successfully' });
+      } else {
+        setSnackbar({
+          visible: true,
+          message: res.error || 'Failed to update user',
+        });
+      }
+    } catch (e) {
+      //console.error('Update user error', e);
+      setSnackbar({ visible: true, message: 'Failed to update user' });
+    }
+  };
+
+  const deleteUser = async (id: number, event?: any) => {
+    if (event) event.stopPropagation();
     Alert.alert(
       'Delete User',
-      `Are you sure you want to delete ${username}?`,
+      'Are you sure you want to delete this user?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -85,22 +161,21 @@ const UserManagementTab: React.FC<Props> = ({ navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const stored = await AsyncStorage.getItem('users');
-              if (stored) {
-                const updatedUsers = JSON.parse(stored).filter(
-                  (u: User) => u.username !== username,
-                );
-                await AsyncStorage.setItem(
-                  'users',
-                  JSON.stringify(updatedUsers),
-                );
-                setUsers(updatedUsers);
+              const res = await UserAPI.delete(id);
+              if (res.success) {
+                setUsers(prev => prev.filter(u => u.id !== id));
                 setSnackbar({
                   visible: true,
                   message: 'User deleted successfully',
                 });
+              } else {
+                setSnackbar({
+                  visible: true,
+                  message: res.error || 'Failed to delete user',
+                });
               }
             } catch (e) {
+              console.error('Delete error', e);
               setSnackbar({ visible: true, message: 'Failed to delete user' });
             }
           },
@@ -133,49 +208,207 @@ const UserManagementTab: React.FC<Props> = ({ navigation }) => {
         ) : users.length === 0 ? (
           renderEmpty()
         ) : (
-          users.map((user, index) => (
-            <Card key={index} style={styles.userCard} elevation={3}>
-              <View style={styles.cardHeader}>
-                <View>
-                  <Text style={styles.username}>{user.username}</Text>
-                  <Text style={styles.userRole}>
-                    {user.role === 'admin' ? 'Administrator' : 'Worker'}
-                  </Text>
+          users.map(user => (
+            <TouchableOpacity key={user.id} onPress={() => openUserModal(user)}>
+              <Card style={styles.userCard} elevation={3}>
+                <View style={styles.cardHeader}>
+                  <View>
+                    <Text style={styles.username}>{user.name}</Text>
+                    <Text style={styles.userRole}>
+                      {user.role === 'admin' ? 'Administrator' : 'Worker'}
+                    </Text>
+                  </View>
+                  <Button
+                    mode="contained"
+                    onPress={e => deleteUser(user.id, e)}
+                    style={styles.deleteButton}
+                    contentStyle={styles.deleteButtonContent}
+                    buttonColor="#e74c3c"
+                    icon="delete"
+                  >
+                    Delete
+                  </Button>
                 </View>
-                <Button
-                  mode="contained"
-                  onPress={() => deleteUser(user.username)}
-                  style={styles.deleteButton}
-                  contentStyle={styles.deleteButtonContent}
-                  buttonColor="#e74c3c"
-                  icon="delete"
-                >
-                  Delete
-                </Button>
-              </View>
 
-              <View style={styles.infoRow}>
-                <MaterialCommunityIcons
-                  name="email"
-                  size={wp(5)}
-                  color="#2874b8"
-                />
-                <Text style={styles.infoText}>{user.email}</Text>
-              </View>
+                <View style={styles.infoRow}>
+                  <MaterialCommunityIcons
+                    name="email"
+                    size={wp(5)}
+                    color="#2874b8"
+                  />
+                  <Text style={styles.infoText}>{user.email}</Text>
+                </View>
 
-              <View style={styles.infoRow}>
-                <MaterialCommunityIcons
-                  name={user.role === 'admin' ? 'shield-account' : 'account'}
-                  size={wp(5)}
-                  color="#2874b8"
-                />
-                <Text style={styles.infoText}>Role: {user.role}</Text>
-              </View>
-            </Card>
+                <View style={styles.infoRow}>
+                  <MaterialCommunityIcons
+                    name="phone"
+                    size={wp(5)}
+                    color="#2874b8"
+                  />
+                  <Text style={styles.infoText}>{user.mobile}</Text>
+                </View>
+
+                <View style={styles.infoRow}>
+                  <MaterialCommunityIcons
+                    name={user.role === 'admin' ? 'shield-account' : 'account'}
+                    size={wp(5)}
+                    color="#2874b8"
+                  />
+                  <Text style={styles.infoText}>Role: {user.role}</Text>
+                </View>
+              </Card>
+            </TouchableOpacity>
           ))
         )}
         <View style={{ height: hp(10) }} />
       </ScrollView>
+
+      <Portal>
+        <Dialog
+          visible={userModalVisible}
+          onDismiss={() => setUserModalVisible(false)}
+          style={{
+            maxWidth: width * 0.95,
+            alignSelf: 'center',
+            minWidth: width * 0.9,
+          }}
+        >
+          <Dialog.Title>User Details</Dialog.Title>
+          <Dialog.ScrollArea>
+            <ScrollView style={{ maxHeight: height * 0.4 }}>
+              {selectedUser && (
+                <View style={styles.modalContent}>
+                  <TextInput
+                    label="Full Name *"
+                    value={editName}
+                    onChangeText={setEditName}
+                    mode="outlined"
+                    style={styles.input}
+                    theme={{ roundness: wp(2.5) }}
+                    contentStyle={styles.inputContent}
+                    outlineColor="#ddd"
+                    activeOutlineColor="#2874b8"
+                    left={
+                      <TextInput.Icon icon="account-outline" size={wp(6)} />
+                    }
+                  />
+
+                  <TextInput
+                    label="Mobile *"
+                    value={editMobile}
+                    onChangeText={setEditMobile}
+                    mode="outlined"
+                    style={styles.input}
+                    keyboardType="phone-pad"
+                    maxLength={10}
+                    theme={{ roundness: wp(2.5) }}
+                    contentStyle={styles.inputContent}
+                    outlineColor="#ddd"
+                    activeOutlineColor="#2874b8"
+                    left={<TextInput.Icon icon="phone" size={wp(6)} />}
+                  />
+
+                  <TextInput
+                    label="Email *"
+                    value={editEmail}
+                    onChangeText={setEditEmail}
+                    mode="outlined"
+                    style={styles.input}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    theme={{ roundness: wp(2.5) }}
+                    contentStyle={styles.inputContent}
+                    outlineColor="#ddd"
+                    activeOutlineColor="#2874b8"
+                    left={<TextInput.Icon icon="email" size={wp(6)} />}
+                  />
+
+                  <TextInput
+                    label="Username *"
+                    value={editUsername}
+                    onChangeText={setEditUsername}
+                    mode="outlined"
+                    style={styles.input}
+                    autoCapitalize="none"
+                    theme={{ roundness: wp(2.5) }}
+                    contentStyle={styles.inputContent}
+                    outlineColor="#ddd"
+                    activeOutlineColor="#2874b8"
+                    left={<TextInput.Icon icon="account" size={wp(6)} />}
+                  />
+
+                  <Dropdown
+                    style={styles.dropdown}
+                    placeholderStyle={styles.placeholderStyle}
+                    selectedTextStyle={styles.selectedTextStyle}
+                    inputSearchStyle={styles.inputSearchStyle}
+                    iconStyle={styles.iconStyle}
+                    data={[
+                      { label: 'Worker', value: 'worker', icon: 'account' },
+                      {
+                        label: 'Admin',
+                        value: 'admin',
+                        icon: 'shield-account',
+                      },
+                    ]}
+                    maxHeight={200}
+                    labelField="label"
+                    valueField="value"
+                    placeholder="Select Role"
+                    value={editRole}
+                    onChange={item =>
+                      setEditRole(item.value as 'admin' | 'worker')
+                    }
+                    renderLeftIcon={() => (
+                      <Ionicons
+                        style={styles.dropdownIcon}
+                        color="#2874b8"
+                        name={
+                          editRole === 'admin' ? 'shield-checkmark' : 'person'
+                        }
+                        size={wp(5.5)}
+                      />
+                    )}
+                  />
+
+                  <View style={styles.infoRow}>
+                    <MaterialCommunityIcons
+                      name="calendar"
+                      size={wp(5)}
+                      color="#2874b8"
+                    />
+                    <Text style={styles.infoText}>
+                      Created:{' '}
+                      {new Date(selectedUser.createdAt).toLocaleDateString()}
+                    </Text>
+                  </View>
+
+                  <View style={styles.infoRow}>
+                    <MaterialCommunityIcons
+                      name="update"
+                      size={wp(5)}
+                      color="#2874b8"
+                    />
+                    <Text style={styles.infoText}>
+                      Updated:{' '}
+                      {new Date(selectedUser.updatedAt).toLocaleDateString()}
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </ScrollView>
+          </Dialog.ScrollArea>
+          <Dialog.Actions>
+            <Button onPress={() => setUserModalVisible(false)}>Close</Button>
+            <Button
+              onPress={handleUpdateUser}
+              disabled={!editName || !editMobile || !editEmail || !editUsername}
+            >
+              Save Changes
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
 
       <Snackbar
         visible={snackbar.visible}
@@ -190,8 +423,11 @@ const UserManagementTab: React.FC<Props> = ({ navigation }) => {
 };
 
 const CreateUserTab: React.FC = () => {
-  const [username, setUsername] = useState('');
+  const [name, setName] = useState('');
+  const [mobile, setMobile] = useState('');
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [role, setRole] = useState<'admin' | 'worker'>('worker');
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
@@ -206,52 +442,69 @@ const CreateUserTab: React.FC = () => {
     return re.test(email);
   };
 
+  const validateMobile = (mobile: string) =>
+    mobile.length === 10 && /^\d{10}$/.test(mobile);
+
+  const validatePassword = (password: string) => password.length >= 6;
+
   const handleCreateUser = async () => {
-    if (!username.trim()) {
-      setSnackbar({ visible: true, message: 'Username is required' });
-      return;
-    }
-    if (!email.trim()) {
-      setSnackbar({ visible: true, message: 'Email is required' });
+    if (
+      !name.trim() ||
+      !mobile.trim() ||
+      !email.trim() ||
+      !username.trim() ||
+      !password.trim()
+    ) {
+      setSnackbar({ visible: true, message: 'All fields are required' });
       return;
     }
     if (!validateEmail(email)) {
       setSnackbar({ visible: true, message: 'Invalid email format' });
       return;
     }
+    if (!validateMobile(mobile)) {
+      setSnackbar({
+        visible: true,
+        message: 'Invalid mobile number (10 digits required)',
+      });
+      return;
+    }
+    if (!validatePassword(password)) {
+      setSnackbar({
+        visible: true,
+        message: 'Password must be at least 6 characters',
+      });
+      return;
+    }
 
     setLoading(true);
-    const newUser: User = {
-      username: username.trim(),
+    const payload = {
+      name: name.trim(),
+      mobile: mobile.trim(),
       email: email.trim(),
+      username: username.trim(),
+      password: password.trim(),
       role,
     };
 
     try {
-      const stored = await AsyncStorage.getItem('users');
-      const users: User[] = stored ? JSON.parse(stored) : [];
-
-      // Check duplicate
-      if (
-        users.some(
-          u => u.username === newUser.username || u.email === newUser.email,
-        )
-      ) {
+      const res = await UserAPI.create(payload);
+      if (res.success) {
+        setSnackbar({ visible: true, message: 'User created successfully!' });
+        setName('');
+        setMobile('');
+        setEmail('');
+        setUsername('');
+        setPassword('');
+        setRole('worker');
+      } else {
         setSnackbar({
           visible: true,
-          message: 'User with this username or email already exists',
+          message: res.error || 'Failed to create user',
         });
-        setLoading(false);
-        return;
       }
-
-      users.push(newUser);
-      await AsyncStorage.setItem('users', JSON.stringify(users));
-      setSnackbar({ visible: true, message: 'User created successfully!' });
-      setUsername('');
-      setEmail('');
-      setRole('worker');
     } catch (e) {
+      console.error('Create user error', e);
       setSnackbar({ visible: true, message: 'Failed to create user' });
     } finally {
       setLoading(false);
@@ -263,16 +516,31 @@ const CreateUserTab: React.FC = () => {
       <ScrollView style={styles.tabContent}>
         <View style={styles.formContainer}>
           <TextInput
-            label="Username *"
-            value={username}
-            onChangeText={setUsername}
+            label="Full Name *"
+            value={name}
+            onChangeText={setName}
             mode="outlined"
             style={styles.input}
             theme={{ roundness: wp(2.5) }}
             contentStyle={styles.inputContent}
             outlineColor="#ddd"
             activeOutlineColor="#2874b8"
-            left={<TextInput.Icon icon="account" size={wp(6)} />}
+            left={<TextInput.Icon icon="account-outline" size={wp(6)} />}
+          />
+
+          <TextInput
+            label="Mobile *"
+            value={mobile}
+            onChangeText={setMobile}
+            mode="outlined"
+            style={styles.input}
+            keyboardType="phone-pad"
+            maxLength={10}
+            theme={{ roundness: wp(2.5) }}
+            contentStyle={styles.inputContent}
+            outlineColor="#ddd"
+            activeOutlineColor="#2874b8"
+            left={<TextInput.Icon icon="phone" size={wp(6)} />}
           />
 
           <TextInput
@@ -288,6 +556,34 @@ const CreateUserTab: React.FC = () => {
             outlineColor="#ddd"
             activeOutlineColor="#2874b8"
             left={<TextInput.Icon icon="email" size={wp(6)} />}
+          />
+
+          <TextInput
+            label="Username *"
+            value={username}
+            onChangeText={setUsername}
+            mode="outlined"
+            style={styles.input}
+            autoCapitalize="none"
+            theme={{ roundness: wp(2.5) }}
+            contentStyle={styles.inputContent}
+            outlineColor="#ddd"
+            activeOutlineColor="#2874b8"
+            left={<TextInput.Icon icon="account" size={wp(6)} />}
+          />
+
+          <TextInput
+            label="Password *"
+            value={password}
+            onChangeText={setPassword}
+            mode="outlined"
+            style={styles.input}
+            secureTextEntry
+            theme={{ roundness: wp(2.5) }}
+            contentStyle={styles.inputContent}
+            outlineColor="#ddd"
+            activeOutlineColor="#2874b8"
+            left={<TextInput.Icon icon="lock" size={wp(6)} />}
           />
 
           <Dropdown
@@ -320,7 +616,14 @@ const CreateUserTab: React.FC = () => {
             contentStyle={styles.createButtonContent}
             buttonColor="#2874b8"
             loading={loading}
-            disabled={loading || !username.trim() || !email.trim()}
+            disabled={
+              loading ||
+              !name.trim() ||
+              !mobile.trim() ||
+              !email.trim() ||
+              !username.trim() ||
+              !password.trim()
+            }
             icon="account-plus"
           >
             Create User
@@ -443,8 +746,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
+  // Modal
+  modalContent: {
+    padding: wp(1),
+  },
+
   // Create User
-  formContainer: { paddingVertical: hp(1) },
+  formContainer: { paddingVertical: hp(2) },
   input: {
     marginBottom: hp(2.5),
     backgroundColor: '#fff',

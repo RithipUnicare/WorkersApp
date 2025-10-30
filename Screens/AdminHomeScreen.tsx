@@ -85,23 +85,15 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
       icon: 'folder-open',
       onPress: () => navigation.navigate('QuotationList'),
     },
-
     {
       id: 4,
-      title: 'Add Project',
-      description: 'Create new project',
-      icon: 'folder-plus',
-      onPress: () => navigation.navigate('AddProject'),
-    },
-    {
-      id: 5,
       title: 'Admin Panel',
       description: 'Manage users and roles',
       icon: 'cog',
       onPress: () => navigation.navigate('AdminPanel'),
     },
     {
-      id: 6,
+      id: 5,
       title: 'Unattended Customers',
       description: 'View customers needing follow-up',
       icon: 'account-clock',
