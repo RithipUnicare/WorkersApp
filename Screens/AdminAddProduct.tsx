@@ -12,6 +12,7 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  ToastAndroid,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -506,25 +507,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
             hsnSac: i.hsnSac || '',
           })),
         };
-        if (!customerId) {
-          setSnackbar({ visible: true, message: 'Select a valid customer' });
-          return;
-        }
-        if (!deliveryDate) {
-          setSnackbar({
-            visible: true,
-            message: 'Select a valid delivery date',
-          });
-          return;
-        }
-        if (!projectDescription) {
-          setSnackbar({ visible: true, message: 'Enter project description' });
-          return;
-        }
-        if (!totalAmount) {
-          setSnackbar({ visible: true, message: 'Enter total amount' });
-          return;
-        }
+
         if (!items.length) {
           setSnackbar({ visible: true, message: 'Enter at least one item' });
           return;
@@ -537,7 +520,8 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
         if (images.some(img => img.isLocal)) {
           await uploadImages(projectId);
         }
-
+        ToastAndroid.show('Project Created Successfully', ToastAndroid.SHORT);
+        navigation.goBack();
         setAdvanceModalOpen(true);
       }
     } catch (e: any) {
