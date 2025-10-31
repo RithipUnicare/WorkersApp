@@ -48,6 +48,7 @@ export type Quotation = {
   totalBudget: number;
   createdAt: string;
   updatedAt: string;
+  discount: number;
   items: {
     id: number;
     quotationId: number | null;
@@ -101,7 +102,7 @@ const QuotationDetail: React.FC = () => {
   const quotation: Quotation = route.params.quotation;
   console.log('QuotationDetail route params', route.params);
   const [quotationData, setQuotationData] = useState<Quotation>(quotation);
-
+  console.log('quotationData', quotationData);
   // PDF Modal State
   const [pdfModalVisible, setPdfModalVisible] = useState(false);
   const [htmlContent, setHtmlContent] = useState('');
@@ -168,9 +169,11 @@ const QuotationDetail: React.FC = () => {
       customerAddress: quotationData.customerAddress,
       deliveryDate: quotationData.deliveryDate,
       projectDescription: quotationData.projectDescription,
-      totalAmount: quotationData.totalAmount,
+      totalBudget: quotationData.totalBudget,
+      totalAmount: quotationData.totalBudget - quotationData.discount,
       grandTotal: quotationData.totalAmount, // Assume grandTotal = totalAmount
-      remainingAmount: quotationData.totalAmount - quotationData.totalBudget, // Example mapping
+      remainingAmount: quotationData.totalBudget - quotationData.totalBudget, // Example mapping
+      discount: quotationData.discount,
       projectItems: quotationData.items.map(item => ({
         id: item.id,
         itemName: item.itemName,
@@ -251,7 +254,7 @@ const QuotationDetail: React.FC = () => {
               ]}
               textStyle={styles.statusText}
             >
-              Quotation
+              {quotationData?.status?.toLowerCase() || 'CREATED'}
             </Chip>
           </View>
         </Card>
@@ -313,7 +316,10 @@ const QuotationDetail: React.FC = () => {
             <View style={{ flex: 1 }}>
               <Text style={styles.amountLabel}>Total Amount</Text>
               <Text style={styles.amountValue}>
-                ₹{quotationData.totalAmount.toLocaleString('en-IN')}
+                ₹
+                {Number(
+                  quotationData.totalBudget - quotationData.discount,
+                ).toLocaleString('en-IN')}
               </Text>
             </View>
             <View style={styles.divider} />

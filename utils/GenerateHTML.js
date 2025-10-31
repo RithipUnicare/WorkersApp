@@ -1,6 +1,7 @@
 import dayjs from 'dayjs';
 import image from '../assets/logo.jpg';
 export default function generateHTML(quotationData) {
+  console.log(quotationData);
   const currentDate = dayjs().format('DD/MM/YYYY');
   const formatDate = date => dayjs(date).format('DD-MM-YYYY');
   let html = `
@@ -14,37 +15,37 @@ export default function generateHTML(quotationData) {
       .company-details { flex: 1; color: white; text-align: center; }
       .company-name { font-size: 24px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; }
       .company-address { font-size: 11px; line-height: 1.5; }
-      
+
       .top-info { text-align: right; margin-bottom: 30px; }
       .top-info table { margin-left: auto; border-collapse: collapse; }
       .top-info td { padding: 5px 10px; border: 1px solid #333; }
       .top-info td:first-child { font-weight: bold; background-color: #f5f5f5; }
-      
+
       .header-row { display: flex; justify-content: space-between; margin-bottom: 20px; }
       .quotation-to { flex: 1; }
       .quotation-to-header { background-color: #2196F3; color: white; padding: 8px; font-weight: bold; margin-bottom: 10px; }
       .company-info { flex: 1; text-align: right; }
       .company-header { background-color: #2196F3; color: white; padding: 8px; font-weight: bold; text-align: center; margin-bottom: 10px; }
       .info-text { margin: 3px 0; line-height: 1.6; }
-      
+
       .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
       .items-table th { background-color: #2196F3; color: white; padding: 10px; text-align: left; border: 1px solid #2196F3; font-size: 11px; }
       .items-table td { border: 1px solid #ddd; padding: 10px; }
       .items-table tbody tr:nth-child(even) { background-color: #f9f9f9; }
-      
+
       .totals-section { margin-top: 10px; }
       .totals-row { display: flex; justify-content: space-between; padding: 5px 0; }
       .total-label { font-weight: bold; }
       .total-value { background-color: #2196F3; color: white; padding: 5px 15px; min-width: 150px; text-align: right; }
-      
+
       .terms-section { margin-top: 30px; }
       .terms-header { background-color: #2196F3; color: white; padding: 8px; font-weight: bold; margin-bottom: 10px; }
       .terms-list { margin: 10px 0; }
       .terms-list p { margin: 5px 0; line-height: 1.6; }
-      
+
       .signature-section { margin-top: 30px; border-top: 1px solid #333; padding-top: 10px; }
       .note { margin: 15px 0; font-size: 11px; }
-      
+
       .footer { margin-top: 30px; text-align: center; font-style: italic; color: #666; }
     </style>
   </head>
@@ -59,7 +60,7 @@ export default function generateHTML(quotationData) {
         </div>
       </div>
     </div>
-    
+
     <div class="top-info">
       <table>
         <tr>
@@ -80,7 +81,7 @@ export default function generateHTML(quotationData) {
         </tr>
       </table>
     </div>
-    
+
     <div class="header-row">
       <div class="quotation-to">
         <div class="quotation-to-header">Quotation To,</div>
@@ -96,7 +97,7 @@ export default function generateHTML(quotationData) {
         }</div>
         <div class="info-text">Email: ${quotationData.customerEmail || ''}</div>
       </div>
-      
+
       <div class="company-info">
         <div class="company-header">Company Information</div>
         <div class="info-text">Tirupathur, Tamil Nadu 635601</div>
@@ -104,7 +105,7 @@ export default function generateHTML(quotationData) {
         <div class="info-text">Prepared by: Admin</div>
       </div>
     </div>
-    
+
     <table class="items-table">
       <thead>
         <tr>
@@ -133,16 +134,28 @@ export default function generateHTML(quotationData) {
   html += `
       </tbody>
     </table>
-    
+
     <div class="totals-section">
+    <div class="totals-row">
+      <div class="total-label">TOTAL BUDGET</div>
+      <div class="total-value">₹${Number(
+        quotationData.totalBudget,
+      ).toLocaleString('en-IN')}</div>
+    </div>
       <div class="totals-row">
-        <div class="total-label">TOTAL DUE</div>
-        <div class="total-value">₹${quotationData.totalAmount.toLocaleString(
-          'en-IN',
-        )}</div>
+        <div class="total-label">TOTAL AMOUNT</div>
+        <div class="total-value">₹${Number(
+          quotationData.totalBudget - quotationData.discount,
+        ).toLocaleString('en-IN')}</div>
+      </div>
+      <div class="totals-row">
+        <div class="total-label">DISCOUNT</div>
+        <div class="total-value">₹${Number(
+          quotationData.discount,
+        ).toLocaleString('en-IN')}</div>
       </div>
     </div>
-    
+
     <div class="terms-section">
       <div class="terms-header">TERMS AND CONDITIONS</div>
       <div class="terms-list">
@@ -150,14 +163,14 @@ export default function generateHTML(quotationData) {
         <p>2. Payment has to be fully paid upon receipt</p>
         <p>3. Advance payment required for urgent cases</p>
       </div>
-      
+
       <div class="signature-section">
         <p><strong>Customer Acceptance (sign below):</strong></p>
         <p>x _________________________________________________</p>
         <div class="note">Note: Above rates are negotiable and price depends on quantity</div>
       </div>
     </div>
-    
+
     <div class="footer">
       <p>Thank You For Your Business!</p>
     </div>

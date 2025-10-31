@@ -28,15 +28,15 @@ const WorkerHomePage: React.FC<props> = ({ navigation }) => {
     AsyncStorage.setItem('role', 'worker');
   }, []);
   const menuItems = [
-    {
-      id: 1,
-      title: 'Customer List',
-      description: 'View and manage customers',
-      icon: 'account-group',
-      iconColor: '#2874b8',
-      iconBg: '#E3F2FD',
-      onPress: () => navigation.navigate('CustomerList'),
-    },
+    // {
+    //   id: 1,
+    //   title: 'Customer List',
+    //   description: 'View and manage customers',
+    //   icon: 'account-group',
+    //   iconColor: '#2874b8',
+    //   iconBg: '#E3F2FD',
+    //   onPress: () => navigation.navigate('CustomerList'),
+    // },
     {
       id: 2,
       title: 'Projects List',
@@ -46,15 +46,15 @@ const WorkerHomePage: React.FC<props> = ({ navigation }) => {
       iconBg: '#E3F2FD',
       onPress: () => navigation.navigate('ProjectList'),
     },
-    {
-      id: 3,
-      title: 'Add Project',
-      description: 'Create new project',
-      icon: 'folder-plus',
-      iconColor: '#2874b8',
-      iconBg: '#E3F2FD',
-      onPress: () => navigation.navigate('AddProject'),
-    },
+    // {
+    //   id: 3,
+    //   title: 'Add Project',
+    //   description: 'Create new project',
+    //   icon: 'folder-plus',
+    //   iconColor: '#2874b8',
+    //   iconBg: '#E3F2FD',
+    //   onPress: () => navigation.navigate('AddProject'),
+    // },
   ];
   const handleLogout = () => {
     Alert.alert('Logout', 'are you sure you want to logout', [
@@ -64,16 +64,19 @@ const WorkerHomePage: React.FC<props> = ({ navigation }) => {
       },
       {
         text: 'Logout',
-        onPress: () =>
+        onPress: async () => {
+          await AsyncStorage.multiRemove(['role', 'username', 'appLanguage']);
           navigation.dispatch(
             CommonActions.reset({
               index: 0,
               routes: [{ name: 'login' }],
             }),
-          ),
+          );
+        },
       },
     ]);
   };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}

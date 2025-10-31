@@ -65,6 +65,8 @@ type Project = {
   totalAmount: number;
   grandTotal: number;
   remainingAmount: number;
+  discount?: number;
+  totalBudget: number;
   location: {
     id: number;
     address: string;
@@ -106,6 +108,7 @@ const ProjectDetails: React.FC = () => {
   const route = useRoute<ProjectDetailsRouteProp>();
   const navigation = useNavigation<ProjectDetailsNavProp>();
   const initialProject: Project = route.params.project;
+  console.log(initialProject);
   const [project, setProject] = useState<Project>(initialProject);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -178,8 +181,8 @@ const ProjectDetails: React.FC = () => {
         return '#9E9E9E';
     }
   };
-
-  const displayStatus = project.siteStatus || project.status;
+  console.log('project atsa', project);
+  const displayStatus = project.status || project.siteStatus;
 
   const togglePlayback = useCallback(
     async (recordingUrl: string) => {
@@ -384,9 +387,16 @@ const ProjectDetails: React.FC = () => {
           <Card style={styles.amountCard}>
             <View style={styles.amountRow}>
               <View style={styles.amountBlock}>
-                <Text style={styles.amountLabel}>Total</Text>
+                <Text style={styles.amountLabel}>Budget</Text>
                 <Text style={styles.amountValue}>
-                  ₹{project.grandTotal.toLocaleString('en-IN')}
+                  ₹{project.totalBudget.toLocaleString('en-IN')}
+                </Text>
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.amountBlock}>
+                <Text style={styles.amountLabel}>Total Amount</Text>
+                <Text style={[styles.amountValue, { color: '#27ae60' }]}>
+                  ₹{project.totalAmount.toLocaleString('en-IN')}
                 </Text>
               </View>
               <View style={styles.divider} />
@@ -395,11 +405,11 @@ const ProjectDetails: React.FC = () => {
                 <Text style={[styles.amountValue, { color: '#27ae60' }]}>
                   ₹
                   {(
-                    project.grandTotal - project.remainingAmount
+                    project.totalAmount - project.remainingAmount
                   ).toLocaleString('en-IN')}
                 </Text>
               </View>
-              <View style={styles.divider} />
+              {/*<View style={styles.divider} />
               <View style={styles.amountBlock}>
                 <Text style={styles.amountLabel}>Remaining</Text>
                 <Text
@@ -413,7 +423,7 @@ const ProjectDetails: React.FC = () => {
                 >
                   ₹{project.remainingAmount.toLocaleString('en-IN')}
                 </Text>
-              </View>
+              </View>*/}
             </View>
           </Card>
 

@@ -25,7 +25,6 @@ api.interceptors.response.use(
 
 async function handleResponse(response, parse = 'json') {
   const { status, data } = response;
-  console.log(status, data);
   if (status >= 400) {
     const error = new Error(response.data?.message || `HTTP ${status}`);
     error.status = status;
@@ -43,7 +42,7 @@ async function handleResponse(response, parse = 'json') {
 async function jsonRequest(method, path, body, headers = {}) {
   const url = buildUrl(path);
   const config = { headers };
-
+  console.log(url);
   const response = await api.request({
     method,
     url,
@@ -206,6 +205,8 @@ export const QuotationAPI = {
     queryRequest(endpoints.quotationsSearch, { customerContactNo }),
   getByCustomerId: customerId =>
     queryRequest(endpoints.quotationsByCustomerId(customerId)),
+  updateQuotationStatus: (id, payload) =>
+    jsonRequest('PATCH', `${endpoints.quotationById(id)}/status`, payload),
 };
 
 export const UnitAPI = {

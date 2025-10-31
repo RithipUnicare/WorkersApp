@@ -35,20 +35,20 @@ function App() {
     initNotification().then(success => {
       if (success) console.log('Notification initialized');
     });
-    const subscription = AppState.addEventListener(
-      'change',
-      async nextAppState => {
-        if (appState.current.match(/active/) && nextAppState === 'background') {
-          console.log('App going to background — clearing storage...');
-          await AsyncStorage.clear();
-        }
-        appState.current = nextAppState;
-      },
-    );
+    // const subscription = AppState.addEventListener(
+    //   'change',
+    //   async nextAppState => {
+    //     if (appState.current.match(/active/) && nextAppState === 'background') {
+    //       console.log('App going to background — clearing storage...');
+    //       await AsyncStorage.clear();
+    //     }
+    //     appState.current = nextAppState;
+    //   },
+    // );
 
-    return () => {
-      subscription.remove();
-    };
+    // return () => {
+    //   subscription.remove();
+    // };
   }, []);
 
   return (

@@ -50,7 +50,7 @@
 import { PermissionsAndroid, Platform, Alert } from 'react-native';
 import { OneSignal } from 'react-native-onesignal';
 
-const ONE_SIGNAL_APP_ID = '30be02dc-02cb-4eb7-a526-44c6230f5d19';
+const ONE_SIGNAL_APP_ID = '81985d30-6da5-4f7a-8b63-e629cddfefb3';
 
 export const initNotification = async () => {
   // 1. Android 13+ Notification Permission

@@ -35,7 +35,12 @@ import DatePicker from 'react-native-date-picker';
 import { RouteProp } from '@react-navigation/native';
 import { getLocation } from '../utils/GeoLocation';
 import { Dropdown } from 'react-native-element-dropdown';
-import { ProjectAPI, CustomerAPI, UnitAPI } from '../service/apiService';
+import {
+  ProjectAPI,
+  CustomerAPI,
+  UnitAPI,
+  QuotationAPI,
+} from '../service/apiService';
 import { useNavigationState } from '@react-navigation/native';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 dayjs.extend(customParseFormat);
@@ -128,11 +133,12 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   const [advanceModalOpen, setAdvanceModalOpen] = useState(false);
   const [advanceAmount, setAdvanceAmount] = useState('');
   const [createdProjectId, setCreatedProjectId] = useState<number | null>(null);
-
+  const [discount, setDiscount] = useState<Number>(0);
+  const [discountPercentage, setDisCountPercentage] = useState<Number>(0);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
-
+  const [actualAmount, setActualAmount] = useState<Number>(0);
   // Load customers and units
   const loadData = useCallback(async () => {
     try {
@@ -185,12 +191,21 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
         setSelectedCustomerIdx(idx);
         setCustomerId(customers[idx].id);
       }
-
+      console.log('rawProject', rawProject);
       setDeliveryDate(dayjs(rawProject.deliveryDate).format('DD-MM-YYYY'));
       setSelectedDateObj(new Date(rawProject.deliveryDate));
       setProjectDescription(rawProject.projectDescription || '');
-      setTotalAmount(String(rawProject.totalAmount || ''));
+      setTotalAmount(
+        String(rawProject.totalBudget - rawProject.discount || ''),
+      );
+      setActualAmount(rawProject.totalBudget || 0);
       setStatus(rawProject.status || 'CREATED');
+      setDiscount(rawProject.discount || 0);
+      setDisCountPercentage(
+        (Number(rawProject.discount) /
+          (rawProject.totalBudget - rawProject.discount)) *
+          100,
+      );
 
       if (rawProject.customerTime) {
         const { hour, minute } = rawProject.customerTime;
@@ -413,7 +428,10 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   );
 
   useEffect(() => {
-    if (!isEditMode && itemsTotal > 0) setTotalAmount(String(itemsTotal));
+    if (!isEditMode && itemsTotal > 0 && !isFromQuotationDetail) {
+      setTotalAmount(String(itemsTotal));
+      setActualAmount(itemsTotal);
+    }
   }, [itemsTotal, isEditMode]);
 
   // Upload images
@@ -467,8 +485,10 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
         const payload = {
           deliveryDate: dayjs(deliveryDate, 'DD-MM-YYYY').format('YYYY-MM-DD'),
           projectDescription,
-          //siteStatus: status,
+          siteStatus: status,
           status,
+          discount,
+          totalBudget: actualAmount,
         };
         console.log(payload);
         await ProjectAPI.update(rawProject.id, payload);
@@ -487,7 +507,13 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
         }
 
         await ProjectAPI.updateStatus(projectId, status);
-
+        try {
+          await QuotationAPI.updateQuotationStatus(projectId, {
+            status,
+          });
+        } catch (error) {
+          console.log(error);
+        }
         setSnackbar({ visible: true, message: 'Project updated!' });
         navigation.goBack();
       } else {
@@ -498,6 +524,8 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           totalAmount: Number(totalAmount),
           siteStatus: status,
           status,
+          discount,
+          totalBudget: actualAmount,
           items: items.map(i => ({
             itemName: i.itemName,
             rateMrp: i.rateMrp,
@@ -519,6 +547,11 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
 
         if (images.some(img => img.isLocal)) {
           await uploadImages(projectId);
+        }
+        if (isFromQuotationDetail) {
+          await QuotationAPI.updateQuotationStatus(rawProject.id, {
+            status: 'IN PROGRESS',
+          });
         }
         ToastAndroid.show('Project Created Successfully', ToastAndroid.SHORT);
         navigation.goBack();
@@ -565,7 +598,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           <Text style={styles.title}>
             {isEditMode ? 'Edit Project' : 'Create New Project'}
           </Text>
-
           {/* Customer */}
           {isFromInquiry ? (
             <TextInput
@@ -595,7 +627,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               }}
             />
           )}
-
           {/* Delivery Date */}
           <TouchableOpacity onPress={() => setDatePickerOpen(true)}>
             <TextInput
@@ -608,8 +639,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               theme={{ roundness: wp(2.5) }}
             />
           </TouchableOpacity>
-
-          {/* Description */}
           <TextInput
             label="Project Description *"
             value={projectDescription}
@@ -620,8 +649,22 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
             style={[styles.input, styles.textArea]}
             theme={{ roundness: wp(2.5) }}
           />
-
-          {/* Total Amount */}
+          <TextInput
+            label="Total Budjet *"
+            value={actualAmount.toString()}
+            onChangeText={text => {
+              setActualAmount(Number(text));
+              if (Number(text) > Number(totalAmount)) {
+                setTotalAmount(text);
+              }
+            }}
+            mode="outlined"
+            keyboardType="numeric"
+            style={styles.input}
+            theme={{ roundness: wp(2.5) }}
+            right={<TextInput.Affix text="₹" />}
+            disabled={false}
+          />
           <TextInput
             label="Total Amount *"
             value={totalAmount}
@@ -633,7 +676,58 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
             right={<TextInput.Affix text="₹" />}
             disabled={false}
           />
+          {Number(totalAmount) > 0 && (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: wp(2),
+              }}
+            >
+              <TextInput
+                label="Discount"
+                value={discount === 0 ? '' : String(discount)}
+                onChangeText={text => {
+                  const discountValue = text === '' ? 0 : Number(text);
+                  setDiscount(discountValue);
 
+                  if (discountValue === 0 || text === '') {
+                    setTotalAmount(String(actualAmount));
+                    setDisCountPercentage(0);
+                  } else {
+                    // Calculate percentage based on actualAmount (original total)
+                    const percentage = (discountValue / actualAmount) * 100;
+                    setDisCountPercentage(percentage);
+
+                    // Update totalAmount by subtracting from actualAmount
+                    setTotalAmount(String(actualAmount - discountValue));
+                  }
+                }}
+                mode="outlined"
+                keyboardType="numeric"
+                style={[styles.input, { width: wp(60) }]}
+                theme={{ roundness: wp(2.5) }}
+                disabled={false}
+              />
+              <TextInput
+                label="Percentage"
+                value={
+                  discountPercentage === 0
+                    ? '0.00'
+                    : discountPercentage.toFixed(2)
+                }
+                mode="outlined"
+                keyboardType="numeric"
+                style={[styles.input, { width: wp(30) }]}
+                theme={{ roundness: wp(2.5) }}
+                editable={false}
+                right={
+                  <TextInput.Icon icon="percent" size={wp(6)} color="#2874b8" />
+                }
+              />
+            </View>
+          )}
           {/* Location */}
           {isEditMode && (
             <TextInput
@@ -653,7 +747,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               }
             />
           )}
-
           {/* Time */}
           {/* {isEditMode && (
             <TouchableOpacity onPress={() => setTimePickerOpen(true)}>
@@ -668,7 +761,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               />
             </TouchableOpacity>
           )} */}
-
           {/* Status */}
           {isEditMode && (
             <Dropdown
@@ -687,7 +779,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               onChange={item => setStatus(item.value)}
             />
           )}
-
           {/* Images */}
           {isEditMode && (
             <>
@@ -743,7 +834,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               </View>
             </>
           )}
-
           {/* Items */}
           <View style={styles.itemsHeader}>
             <Text style={styles.sectionTitle}>Project Items</Text>
@@ -751,7 +841,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               Total: ₹{itemsTotal.toLocaleString('en-IN')}
             </Chip>
           </View>
-
           {items.length === 0 ? (
             <Text style={styles.emptyText}>No items added yet</Text>
           ) : (
@@ -786,7 +875,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               </Card>
             ))
           )}
-
           {/* Save Button */}
           <Button
             mode="contained"

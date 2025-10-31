@@ -31,6 +31,7 @@ import DatePicker from 'react-native-date-picker';
 import { RouteProp } from '@react-navigation/native';
 import { Dropdown } from 'react-native-element-dropdown';
 import { CustomerAPI, QuotationAPI, UnitAPI } from '../service/apiService';
+import { yellowA700 } from 'react-native-paper/lib/typescript/styles/themes/v2/colors';
 
 const { width, height } = Dimensions.get('window');
 const wp = (p: number) => (width * p) / 100;
@@ -96,7 +97,9 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
   const [unitModalOpen, setUnitModalOpen] = useState(false);
   const [newUnitName, setNewUnitName] = useState('');
   const [newUnitShortName, setNewUnitShortName] = useState('');
-
+  const [discount, setDiscount] = useState<number>(0);
+  const [discountPercent, setDiscountPercent] = useState<number>(0);
+  const [actualAmount, setActualAmount] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -149,8 +152,12 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
           setDeliveryDate(dayjs(quot.deliveryDate).format('DD-MM-YYYY'));
           setSelectedDateObj(new Date(quot.deliveryDate));
           setDescription(quot.projectDescription || '');
-          setTotalBudget(String(quot.totalBudget || quot.totalAmount || ''));
-
+          setTotalBudget(String(quot.totalBudget - quot.discount || ''));
+          setActualAmount(quot.totalBudget || 0);
+          setDiscount(quot.discount || 0);
+          setDiscountPercent(
+            (quot.discount / (quot.totalBudget - quot.discount)) * 100,
+          );
           setItems(
             loadedItems.map((it: any) => ({
               id: it.id,
@@ -218,6 +225,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
   useEffect(() => {
     if (!isEditMode && grandTotal > 0) {
       setTotalBudget(grandTotal.toFixed(2));
+      setActualAmount(grandTotal);
     }
   }, [grandTotal, isEditMode]);
 
@@ -345,7 +353,8 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
         customerId,
         projectDescription: description,
         deliveryDate: dayjs(deliveryDate, 'DD-MM-YYYY').format('YYYY-MM-DD'),
-        totalBudget: Number(totalBudget),
+        totalBudget: Number(actualAmount),
+        discount: Number(discount),
         items: items.map(i => ({
           quotationId: rawQuotation?.id || 0,
           itemName: i.itemName,
@@ -363,7 +372,6 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
         ToastAndroid.show('Quotation updated!', ToastAndroid.SHORT);
       } else {
         const res = await QuotationAPI.create(payload);
-        console.log(res);
         ToastAndroid.show('Quotation created!', ToastAndroid.SHORT);
       }
 
@@ -462,9 +470,21 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
               right={<TextInput.Icon icon="calendar" size={wp(6)} />}
             />
           </TouchableOpacity>
-
           <TextInput
             label="Total Budget *"
+            value={actualAmount.toString()}
+            onChangeText={text => {
+              setActualAmount(Number(text));
+              setTotalBudget(text);
+            }}
+            mode="outlined"
+            keyboardType="numeric"
+            style={styles.input}
+            editable={!isEditMode}
+            left={<TextInput.Affix text="₹" />}
+          />
+          <TextInput
+            label="Total Amount *"
             value={totalBudget}
             onChangeText={setTotalBudget}
             mode="outlined"
@@ -473,6 +493,56 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             editable={!isEditMode}
             left={<TextInput.Affix text="₹" />}
           />
+          {Number(totalBudget) > 0 && (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: wp(2),
+              }}
+            >
+              <TextInput
+                label="Discount"
+                value={discount === 0 ? '' : String(discount)}
+                onChangeText={text => {
+                  const discountValue = text === '' ? 0 : Number(text);
+                  setDiscount(discountValue);
+
+                  if (discountValue === 0 || text === '') {
+                    setTotalBudget(String(actualAmount));
+                    setDiscountPercent(0);
+                  } else {
+                    // Calculate percentage based on actualAmount (original total)
+                    const percentage = (discountValue / actualAmount) * 100;
+                    setDiscountPercent(percentage);
+
+                    // Update totalAmount by subtracting from actualAmount
+                    setTotalBudget(String(actualAmount - discountValue));
+                  }
+                }}
+                mode="outlined"
+                keyboardType="numeric"
+                style={[styles.input, { width: wp(60) }]}
+                theme={{ roundness: wp(2.5) }}
+                disabled={false}
+              />
+              <TextInput
+                label="Percentage"
+                value={
+                  discountPercent === 0 ? '0.00' : discountPercent.toFixed(2)
+                }
+                mode="outlined"
+                keyboardType="numeric"
+                style={[styles.input, { width: wp(30) }]}
+                theme={{ roundness: wp(2.5) }}
+                editable={false}
+                right={
+                  <TextInput.Icon icon="percent" size={wp(6)} color="#2874b8" />
+                }
+              />
+            </View>
+          )}
 
           <View style={styles.itemsHeader}>
             <Text style={styles.sectionTitle}>Items</Text>

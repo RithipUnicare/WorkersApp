@@ -32,15 +32,15 @@ const SplashScreen: React.FC<Props> = ({ navigation }) => {
         const role = await AsyncStorage.getItem('role');
 
         if (role === 'worker') {
-          navigation.replace('ProjectList');
+          navigation.replace('WorkersHome');
           return;
         }
         if (role === 'admin') {
-          navigation.replace('login');
+          navigation.replace('AdminHome');
           return;
         }
         if (role === 'superadmin') {
-          navigation.replace('login'); // or your Super Admin dashboard
+          navigation.replace('AdminHome');
           return;
         }
 
@@ -50,13 +50,13 @@ const SplashScreen: React.FC<Props> = ({ navigation }) => {
         setVisible(true);
       }
     })();
-  }, [navigation]);
+  }, []);
 
   const chooseWorker = async () => {
     setLoading(true);
     try {
       await AsyncStorage.setItem('role', 'worker');
-      navigation.replace('ProjectList');
+      navigation.replace('WorkersHome');
     } catch (e) {
       console.error('Failed to save role', e);
       setLoading(false);

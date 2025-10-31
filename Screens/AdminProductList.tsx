@@ -37,9 +37,11 @@ export type Project = {
   customerTime: string;
   siteStatus: string;
   totalAmount: number;
+  discount?: number;
   grandTotal: number;
   remainingAmount: number;
   status: string;
+  totalBudget?: number;
   location: {
     id: number;
     address: string;
@@ -65,6 +67,175 @@ export type Project = {
 type Props = {
   navigation: NativeStackNavigationProp<rootStackParamList, 'ProjectList'>;
 };
+
+// Memoized helper functions
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'IN_PROGRESS':
+      return '#4CAF50';
+    case 'CREATED':
+      return '#FFC107';
+    case 'COMPLETED':
+      return '#2196F3';
+    default:
+      return '#9E9E9E';
+  }
+};
+
+const formatTime = (time: string) => {
+  if (!time) return 'Not set';
+  return dayjs(time, 'HH:mm:ss').format('h:mm A');
+};
+
+// Memoized Image Preview Component
+const ImagePreview = React.memo(
+  ({ images }: { images: { id: number; imageUrl: string }[] }) => {
+    if (images.length === 0) return null;
+
+    return (
+      <View style={styles.imagePreview}>
+        {images.slice(0, 4).map(img => (
+          <Image
+            key={img.id}
+            source={{ uri: img.imageUrl }}
+            style={styles.thumbnail}
+            resizeMode="cover"
+          />
+        ))}
+        {images.length > 4 && (
+          <View style={styles.moreImages}>
+            <Text style={styles.moreText}>+{images.length - 4}</Text>
+          </View>
+        )}
+      </View>
+    );
+  },
+);
+
+// Memoized Project Card Component
+const ProjectCard = React.memo(
+  ({ item, onPress }: { item: Project; onPress: (item: Project) => void }) => {
+    const handlePress = useCallback(() => {
+      onPress(item);
+    }, [item, onPress]);
+
+    const paidAmount = item.totalAmount - item.remainingAmount;
+
+    return (
+      <Card style={styles.card} elevation={3}>
+        <TouchableOpacity onPress={handlePress} activeOpacity={0.8}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.name} numberOfLines={1}>
+              {item.customerName}
+            </Text>
+            <Chip
+              style={[
+                styles.statusChip,
+                { backgroundColor: getStatusColor(item.status) },
+              ]}
+              textStyle={styles.statusText}
+            >
+              {item.status || item.siteStatus}
+            </Chip>
+          </View>
+
+          <View style={styles.infoRow}>
+            <MaterialCommunityIcons
+              name="map-marker"
+              size={wp(4.5)}
+              color="#2874b8"
+            />
+            <Text style={styles.infoText} numberOfLines={1}>
+              {item.location?.address || 'No location'}
+            </Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <MaterialCommunityIcons
+              name="phone"
+              size={wp(4.5)}
+              color="#2874b8"
+            />
+            <Text style={styles.infoText}>{item.customerContactNo}</Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <MaterialCommunityIcons
+              name="calendar"
+              size={wp(4.5)}
+              color="#2874b8"
+            />
+            <Text style={styles.infoText}>
+              Delivery: {dayjs(item.deliveryDate).format('DD MMM YYYY')}
+            </Text>
+            <Text
+              style={[
+                styles.daysLeft,
+                { color: item.remainingDays > 0 ? '#e67e22' : '#e74c3c' },
+              ]}
+            >
+              {item.remainingDays > 0
+                ? `${item.remainingDays} days left`
+                : 'Overdue'}
+            </Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <MaterialCommunityIcons
+              name="clock"
+              size={wp(4.5)}
+              color="#2874b8"
+            />
+            <Text style={styles.infoText}>
+              Time: {formatTime(item.customerTime)}
+            </Text>
+          </View>
+
+          <View style={styles.amountRow}>
+            <View style={styles.amountBlock}>
+              <Text style={styles.amountLabel}>Total</Text>
+              <Text style={styles.amountValue}>
+                ₹{item.totalAmount.toLocaleString('en-IN')}
+              </Text>
+            </View>
+            <View style={styles.amountDivider} />
+            <View style={styles.amountBlock}>
+              <Text style={styles.amountLabel}>Paid</Text>
+              <Text style={[styles.amountValue, { color: '#27ae60' }]}>
+                ₹{paidAmount.toLocaleString('en-IN')}
+              </Text>
+            </View>
+            <View style={styles.amountDivider} />
+            <View style={styles.amountBlock}>
+              <Text style={styles.amountLabel}>Remaining</Text>
+              <Text
+                style={[
+                  styles.amountValue,
+                  { color: item.remainingAmount > 0 ? '#e74c3c' : '#27ae60' },
+                ]}
+              >
+                ₹{item.remainingAmount.toLocaleString('en-IN')}
+              </Text>
+            </View>
+          </View>
+
+          <ImagePreview images={item.siteImages} />
+        </TouchableOpacity>
+      </Card>
+    );
+  },
+  (prevProps, nextProps) => {
+    // Only re-render if these specific fields change
+    return (
+      prevProps.item.id === nextProps.item.id &&
+      prevProps.item.status === nextProps.item.status &&
+      prevProps.item.remainingAmount === nextProps.item.remainingAmount &&
+      prevProps.item.remainingDays === nextProps.item.remainingDays &&
+      prevProps.item.siteImages.length === nextProps.item.siteImages.length &&
+      prevProps.item.customerName === nextProps.item.customerName
+    );
+  },
+);
 
 const ProjectList: React.FC<Props> = ({ navigation }) => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -123,158 +294,48 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
     return () => clearTimeout(timeout);
   }, [search, projects]);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'IN_PROGRESS':
-        return '#4CAF50';
-      case 'CREATED':
-        return '#FFC107';
-      case 'COMPLETED':
-        return '#2196F3';
-      default:
-        return '#9E9E9E';
-    }
-  };
-
-  const formatTime = (time: string) => {
-    if (!time) return 'Not set';
-    return dayjs(time, 'HH:mm:ss').format('h:mm A');
-  };
-
-  const renderItem = ({ item }: { item: Project }) => (
-    <Card style={styles.card} elevation={3}>
-      <TouchableOpacity
-        onPress={() => navigation.navigate('ProjectDetails', { project: item })}
-        activeOpacity={0.8}
-      >
-        <View style={styles.cardHeader}>
-          <Text style={styles.name} numberOfLines={1}>
-            {item.customerName}
-          </Text>
-          <Chip
-            style={[
-              styles.statusChip,
-              { backgroundColor: getStatusColor(item.status) },
-            ]}
-            textStyle={styles.statusText}
-          >
-            {item.siteStatus || item.status}
-          </Chip>
-        </View>
-
-        <View style={styles.infoRow}>
-          <MaterialCommunityIcons
-            name="map-marker"
-            size={wp(4.5)}
-            color="#2874b8"
-          />
-          <Text style={styles.infoText} numberOfLines={1}>
-            {item.location?.address || 'No location'}
-          </Text>
-        </View>
-
-        <View style={styles.infoRow}>
-          <MaterialCommunityIcons name="phone" size={wp(4.5)} color="#2874b8" />
-          <Text style={styles.infoText}>{item.customerContactNo}</Text>
-        </View>
-
-        <View style={styles.infoRow}>
-          <MaterialCommunityIcons
-            name="calendar"
-            size={wp(4.5)}
-            color="#2874b8"
-          />
-          <Text style={styles.infoText}>
-            Delivery: {dayjs(item.deliveryDate).format('DD MMM YYYY')}
-          </Text>
-          <Text
-            style={[
-              styles.daysLeft,
-              { color: item.remainingDays > 0 ? '#e67e22' : '#e74c3c' },
-            ]}
-          >
-            {item.remainingDays > 0
-              ? `${item.remainingDays} days left`
-              : 'Overdue'}
-          </Text>
-        </View>
-
-        <View style={styles.infoRow}>
-          <MaterialCommunityIcons name="clock" size={wp(4.5)} color="#2874b8" />
-          <Text style={styles.infoText}>
-            Time: {formatTime(item.customerTime)}
-          </Text>
-        </View>
-
-        <View style={styles.amountRow}>
-          <View style={styles.amountBlock}>
-            <Text style={styles.amountLabel}>Total</Text>
-            <Text style={styles.amountValue}>
-              ₹{item.totalAmount.toLocaleString('en-IN')}
-            </Text>
-          </View>
-          <View style={styles.amountDivider} />
-          <View style={styles.amountBlock}>
-            <Text style={styles.amountLabel}>Paid</Text>
-            <Text style={[styles.amountValue, { color: '#27ae60' }]}>
-              ₹
-              {(item.totalAmount - item.remainingAmount).toLocaleString(
-                'en-IN',
-              )}
-            </Text>
-          </View>
-          <View style={styles.amountDivider} />
-          <View style={styles.amountBlock}>
-            <Text style={styles.amountLabel}>Remaining</Text>
-            <Text
-              style={[
-                styles.amountValue,
-                { color: item.remainingAmount > 0 ? '#e74c3c' : '#27ae60' },
-              ]}
-            >
-              ₹{item.remainingAmount.toLocaleString('en-IN')}
-            </Text>
-          </View>
-        </View>
-
-        {item.siteImages.length > 0 && (
-          <View style={styles.imagePreview}>
-            {item.siteImages.slice(0, 4).map((img, idx) => (
-              <Image
-                key={img.id}
-                source={{ uri: img.imageUrl }}
-                style={styles.thumbnail}
-                resizeMode="cover"
-              />
-            ))}
-            {item.siteImages.length > 4 && (
-              <View style={styles.moreImages}>
-                <Text style={styles.moreText}>
-                  +{item.siteImages.length - 4}
-                </Text>
-              </View>
-            )}
-          </View>
-        )}
-      </TouchableOpacity>
-    </Card>
+  // Memoized navigation handler
+  const handleNavigateToDetails = useCallback(
+    (project: Project) => {
+      navigation.navigate('ProjectDetails', { project });
+    },
+    [navigation],
   );
 
-  const renderEmpty = () => (
-    <View style={styles.emptyContainer}>
-      <MaterialCommunityIcons name="folder-open" size={wp(20)} color="#ccc" />
-      <Text style={styles.emptyText}>No projects found</Text>
-      <Text style={styles.emptySubtext}>
-        {search
-          ? 'Try a different search term'
-          : 'Start by adding a new project'}
-      </Text>
-    </View>
+  // Memoized render item
+  const renderItem = useCallback(
+    ({ item }: { item: Project }) => (
+      <ProjectCard item={item} onPress={handleNavigateToDetails} />
+    ),
+    [handleNavigateToDetails],
   );
 
-  const handleAddProject = () => {
+  // Memoized key extractor
+  const keyExtractor = useCallback((item: Project) => item.id.toString(), []);
+
+  // Memoized empty component
+  const renderEmpty = useCallback(
+    () => (
+      <View style={styles.emptyContainer}>
+        <MaterialCommunityIcons name="folder-open" size={wp(20)} color="#ccc" />
+        <Text style={styles.emptyText}>No projects found</Text>
+        <Text style={styles.emptySubtext}>
+          {search
+            ? 'Try a different search term'
+            : 'Start by adding a new project'}
+        </Text>
+      </View>
+    ),
+    [search],
+  );
+
+  const handleAddProject = useCallback(() => {
     navigation.navigate('AddProject');
-  };
+  }, [navigation]);
+
+  const handleClearSearch = useCallback(() => {
+    setSearch('');
+  }, []);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -297,7 +358,7 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
                 <TextInput.Icon
                   icon="close"
                   size={wp(6)}
-                  onPress={() => setSearch('')}
+                  onPress={handleClearSearch}
                   color="#999"
                 />
               ) : null
@@ -328,13 +389,18 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
           <FlatList
             data={filteredProjects}
             renderItem={renderItem}
-            keyExtractor={item => item.id.toString()}
+            keyExtractor={keyExtractor}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.listContent}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }
             ListEmptyComponent={renderEmpty}
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={10}
+            updateCellsBatchingPeriod={50}
+            initialNumToRender={10}
+            windowSize={5}
           />
         )}
       </View>
