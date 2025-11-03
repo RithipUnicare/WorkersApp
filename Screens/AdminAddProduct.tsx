@@ -74,7 +74,7 @@ export type Unit = {
 };
 
 const AddProject: React.FC<Props> = ({ navigation, route }) => {
-  const rawCustomer: any = route.params?.customer;
+  const rawCustomer: any = route.params?.customer || null;
   const rawProject: any =
     route.params?.projectToEdit || route.params?.productEdit;
   const routeLength = useNavigationState(state => state.routes.length);
@@ -198,7 +198,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       setTotalAmount(
         String(rawProject.totalBudget - rawProject.discount || ''),
       );
-      setActualAmount(rawProject.totalBudget || 0);
+      setActualAmount(rawProject?.totalBudget || 0);
       setStatus(rawProject.status || 'CREATED');
       setDiscount(rawProject.discount || 0);
       setDisCountPercentage(

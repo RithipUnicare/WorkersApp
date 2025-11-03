@@ -16,6 +16,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import dayjs from 'dayjs';
 import { QuotationAPI } from '../service/apiService'; // Replace with your actual API
 import { Quotation } from './QuotationList';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 const { width, height } = Dimensions.get('window');
 
 // export type Quotation = {
@@ -170,7 +171,7 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <TextInput
         placeholder="Search by name, mobile, or description..."
         value={search}
@@ -215,7 +216,7 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
           Add Quotation
         </Button>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -316,10 +317,10 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   addButtonContainer: {
-    position: 'absolute',
-    bottom: 20,
-    left: width * 0.04,
-    right: width * 0.04,
+    // position: 'absolute',
+    // bottom: 20,
+    // left: width * 0.04,
+    // right: width * 0.04,
     elevation: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

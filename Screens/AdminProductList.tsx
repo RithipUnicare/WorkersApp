@@ -284,9 +284,9 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
       const query = search.toLowerCase().trim();
       const filtered = projects.filter(
         p =>
-          p.customerName.toLowerCase().includes(query) ||
-          (p.location?.address || '').toLowerCase().includes(query) ||
-          p.customerContactNo.includes(query),
+          p.customerName.toLowerCase()?.includes(query) ||
+          (p.location?.address || '').toLowerCase()?.includes(query) ||
+          p.customerContactNo?.includes(query),
       );
       setFilteredProjects(filtered);
     }, 300);

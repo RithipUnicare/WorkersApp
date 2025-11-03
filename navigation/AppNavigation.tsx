@@ -28,16 +28,16 @@ export type rootStackParamList = {
   AdminHome: undefined;
   WorkersHome: undefined;
   CustomerList: undefined;
-  AddCustomer: { customer: Customer } | undefined;
+  AddCustomer: { customer: Customer } | any;
   ProjectList: undefined;
-  AddProject: { customer: Customer } | { projectToEdit: Project } | undefined;
+  AddProject: { customer: Customer } | { projectToEdit: Project } | any;
   AdminPanel: undefined;
-  PaymentPage: { project: Project };
+  PaymentPage: { project: Project } | any;
   TestingScreen: undefined;
   CustomerDetail: { customer: Customer };
   ProjectDetails: { project: Project };
   unattendedCustomers: undefined;
-  RecoredAudio: { project: Project };
+  RecoredAudio: { project: Project } | any;
   splash: undefined;
   AddQuotation:
     | { customer: Customer }

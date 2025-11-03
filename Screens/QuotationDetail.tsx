@@ -24,6 +24,7 @@ import Share from 'react-native-share';
 import RNFS from 'react-native-fs';
 import generateHTML from '../utils/GenerateHTML';
 import { Project } from './AdminProductList';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
 
@@ -79,6 +80,7 @@ type PartialProject = {
   totalAmount: number;
   grandTotal: number;
   remainingAmount: number;
+
   projectItems: {
     id: number;
     itemName: string;
@@ -239,7 +241,7 @@ const QuotationDetail: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* Top Action Buttons */}
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -431,7 +433,7 @@ const QuotationDetail: React.FC = () => {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
 
