@@ -25,8 +25,8 @@ import QuotationDetail from '../Screens/QuotationDetail';
 
 export type rootStackParamList = {
   login: undefined;
-  AdminHome: undefined;
-  WorkersHome: undefined;
+  AdminHome: any;
+  WorkersHome: any;
   CustomerList: undefined;
   AddCustomer: { customer: Customer } | any;
   ProjectList: undefined;

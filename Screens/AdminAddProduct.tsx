@@ -43,6 +43,9 @@ import {
 } from '../service/apiService';
 import { useNavigationState } from '@react-navigation/native';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslator } from 'react-native-translator';
+
 dayjs.extend(customParseFormat);
 
 const { width, height } = Dimensions.get('window');
@@ -73,17 +76,92 @@ export type Unit = {
   shortName: string;
 };
 
+const enToTa: Record<string, string> = {
+  // Titles
+  'Create New Project': 'புதிய திட்டத்தை உருவாக்கு',
+  'Edit Project': 'திட்டத்தைத் திருத்து',
+
+  // Labels
+  Customer: 'வாடிக்கையாளர்',
+  'Select Customer *': 'வாடிக்கையாளரைத் தேர்ந்தெடு *',
+  'Delivery Date *': 'விநியோக தேதி *',
+  'Project Description *': 'திட்ட விளக்கம் *',
+  'Total Budjet *': 'மொத்த பட்ஜெட் *',
+  'Total Amount *': 'மொத்த தொகை *',
+  Discount: 'தள்ளுபடி',
+  Percentage: 'விழுக்காடு',
+  'Site Location': 'தள இடம்',
+  'Preferred Time': 'விருப்பமான நேரம்',
+  'Select Status': 'நிலையைத் தேர்ந்தெடு',
+  'Site Images': 'தள படங்கள்',
+  Gallery: 'கேலரி',
+  Camera: 'கேமரா',
+  'Project Items': 'திட்டப் பொருட்கள்',
+  Total: 'மொத்தம்',
+  'No items added yet': 'இதுவரை பொருட்கள் சேர்க்கப்படவில்லை',
+  'Update Project': 'திட்டத்தைப் புதுப்பி',
+  'Save Project': 'திட்டத்தைச் சேமி',
+
+  // Item Dialog
+  'Add Item': 'பொருளைச் சேர்',
+  'Edit Item': 'பொருளைத் திருத்து',
+  'Item Name *': 'பொருள் பெயர் *',
+  Description: 'விளக்கம்',
+  'Quantity *': 'அளவு *',
+  'Rate (MRP) *': 'விலை (MRP) *',
+  'Unit *': 'அலகு *',
+  'Tax Percentage *': 'வரி விழுக்காடு *',
+  'HSN/SAC Code': 'HSN/SAC குறியீடு',
+  Save: 'சேமி',
+  Cancel: 'ரத்து செய்',
+
+  // Unit Dialog
+  'Add New Unit': 'புதிய அலகு சேர்',
+  'Unit Name': 'அலகு பெயர்',
+  'Short Name': 'குறுகிய பெயர்',
+  Add: 'சேர்',
+
+  // Advance Dialog
+  'Add Advance Payment': 'முன்பணம் சேர்',
+  'Advance Amount': 'முன்பண தொகை',
+  Skip: 'தவிர்',
+
+  // Messages
+  'Fill all required fields': 'அனைத்து தேவையான புலங்களையும் நிரப்பு',
+  'Select a valid customer': 'சரியான வாடிக்கையாளரைத் தேர்ந்தெடு',
+  'Enter at least one item': 'குறைந்தது ஒரு பொருளை உள்ளிடு',
+  'Project updated!': 'திட்டம் புதுப்பிக்கப்பட்டது!',
+  'Project Created Successfully': 'திட்டம் வெற்றிகரமாக உருவாக்கப்பட்டது',
+  'Save failed': 'சேமிப்பு தோல்வியடைந்தது',
+  'Location captured!': 'இடம் பிடிக்கப்பட்டது!',
+  'Failed to get location': 'இடத்தைப் பெற முடியவில்லை',
+  'Max 15 images allowed': 'அதிகபட்சம் 15 படங்கள் மட்டுமே அனுமதி',
+  'Fill unit name and short name': 'அலகு பெயர் மற்றும் குறுகிய பெயரை நிரப்பு',
+  'Unit added!': 'அலகு சேர்க்கப்பட்டது!',
+  'Failed to add unit': 'அலகு சேர்க்க முடியவில்லை',
+  'Failed to add item': 'பொருள் சேர்க்க முடியவில்லை',
+  'Failed to delete image': 'படத்தை நீக்க முடியவில்லை',
+  'Failed to save advance': 'முன்பணத்தைச் சேமிக்க முடியவில்லை',
+
+  // Status
+  CREATED: 'உருவாக்கப்பட்டது',
+  IN_PROGRESS: 'செயல்பாட்டில்',
+  DISCONTINUED: 'நிறுத்தப்பட்டது',
+  COMPLETED: 'முடிக்கப்பட்டது',
+};
+
 const AddProject: React.FC<Props> = ({ navigation, route }) => {
   const rawCustomer: any = route.params?.customer || null;
   const rawProject: any =
     route.params?.projectToEdit || route.params?.productEdit;
-  const routeLength = useNavigationState(state => state.routes.length);
+  //const routeLength = useNavigationState(state => state.routes.length);
   let previousScreenName = '';
-  if (routeLength > 1) {
-    previousScreenName = useNavigationState(
-      state => state.routes[state.index - 1].name,
-    );
-  }
+  // if (routeLength > 1) {
+  //   previousScreenName = useNavigationState(state => state.routes[state.index - 1].name);
+  // }
+  previousScreenName = useNavigationState(
+    state => state.routes[state.index - 1].name,
+  );
 
   const isFromQuotationDetail = previousScreenName === 'QuotationDetail';
   const isEditMode = !!rawProject && !isFromQuotationDetail;
@@ -133,13 +211,57 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   const [advanceModalOpen, setAdvanceModalOpen] = useState(false);
   const [advanceAmount, setAdvanceAmount] = useState('');
   const [createdProjectId, setCreatedProjectId] = useState<number | null>(null);
-  const [discount, setDiscount] = useState<Number>(0);
-  const [discountPercentage, setDisCountPercentage] = useState<Number>(0);
+  const [discount, setDiscount] = useState<number>(0);
+  const [discountPercentage, setDisCountPercentage] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
-  const [actualAmount, setActualAmount] = useState<Number>(0);
-  // Load customers and units
+  const [actualAmount, setActualAmount] = useState<number>(0);
+
+  const [isTamil, setIsTamil] = useState(false);
+  const [translations, setTranslations] = useState<Record<string, string>>({});
+  const { translate } = useTranslator();
+
+  // Initialize language
+  useEffect(() => {
+    const initLang = async () => {
+      const saved = await AsyncStorage.getItem('appLanguage');
+      const tamil = saved === 'ta';
+      setIsTamil(tamil);
+    };
+    initLang();
+  }, []);
+
+  // Translate all strings
+  useEffect(() => {
+    if (!isTamil) {
+      setTranslations({});
+      return;
+    }
+    const translateAll = async () => {
+      const result: Record<string, string> = {};
+      for (const en of Object.keys(enToTa)) {
+        try {
+          const ta = await translate('en', 'ta', en, { type: 'google' });
+          result[en] = ta;
+        } catch {
+          result[en] = enToTa[en] ?? en;
+        }
+      }
+      setTranslations(result);
+    };
+    translateAll();
+  }, [isTamil, translate]);
+
+  const t = useCallback(
+    (english: string): string => {
+      if (!isTamil) return english;
+      return translations[english] ?? enToTa[english] ?? english;
+    },
+    [isTamil, translations],
+  );
+
+  // Load data
   const loadData = useCallback(async () => {
     try {
       setRefreshing(true);
@@ -150,11 +272,11 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       if (Array.isArray(customerRes.data)) setCustomers(customerRes.data);
       if (Array.isArray(unitRes.data)) setUnits(unitRes.data);
     } catch (e) {
-      setSnackbar({ visible: true, message: 'Failed to load data' });
+      setSnackbar({ visible: true, message: t('Failed to load data') });
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadData();
@@ -191,7 +313,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
         setSelectedCustomerIdx(idx);
         setCustomerId(customers[idx].id);
       }
-      console.log('rawProject', rawProject);
       setDeliveryDate(dayjs(rawProject.deliveryDate).format('DD-MM-YYYY'));
       setSelectedDateObj(new Date(rawProject.deliveryDate));
       setProjectDescription(rawProject.projectDescription || '');
@@ -218,7 +339,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
         longitude: rawProject.location?.longitude || 0,
       });
 
-      // Load site images
       if (rawProject.id) {
         ProjectAPI.getSiteImages(rawProject.id)
           .then(res => {
@@ -277,17 +397,17 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           latitude: loc.pos.coords.latitude,
           longitude: loc.pos.coords.longitude,
         });
-        setSnackbar({ visible: true, message: 'Location captured!' });
+        setSnackbar({ visible: true, message: t('Location captured!') });
       }
     } catch (e) {
-      setSnackbar({ visible: true, message: 'Failed to get location' });
+      setSnackbar({ visible: true, message: t('Failed to get location') });
     }
   };
 
   // Image handlers
   const pickImage = () => {
     if (images.length >= 15) {
-      setSnackbar({ visible: true, message: 'Max 15 images allowed' });
+      setSnackbar({ visible: true, message: t('Max 15 images allowed') });
       return;
     }
     launchImageLibrary({ mediaType: 'photo', quality: 0.6 }, res => {
@@ -299,7 +419,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
 
   const openCamera = () => {
     if (images.length >= 15) {
-      setSnackbar({ visible: true, message: 'Max 15 images allowed' });
+      setSnackbar({ visible: true, message: t('Max 15 images allowed') });
       return;
     }
     launchCamera({ mediaType: 'photo', quality: 0.6 }, res => {
@@ -313,9 +433,9 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
     const image = images[index];
     if (image.id && isEditMode && rawProject?.id) {
       try {
-        await ProjectAPI.deleteSiteImage(image.id); // Add delete endpoint if available
+        await ProjectAPI.deleteSiteImage(image.id);
       } catch (e) {
-        setSnackbar({ visible: true, message: 'Failed to delete image' });
+        setSnackbar({ visible: true, message: t('Failed to delete image') });
       }
     }
     setImages(p => p.filter((_, i) => i !== index));
@@ -324,7 +444,10 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   // Unit handlers
   const addNewUnit = async () => {
     if (!newUnitName || !newUnitShortName) {
-      setSnackbar({ visible: true, message: 'Fill unit name and short name' });
+      setSnackbar({
+        visible: true,
+        message: t('Fill unit name and short name'),
+      });
       return;
     }
     try {
@@ -334,13 +457,13 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       });
       if (res.data) {
         setUnits(prev => [...prev, res.data]);
-        setSnackbar({ visible: true, message: 'Unit added!' });
+        setSnackbar({ visible: true, message: t('Unit added!') });
         setUnitModalOpen(false);
         setNewUnitName('');
         setNewUnitShortName('');
       }
     } catch (e) {
-      setSnackbar({ visible: true, message: 'Failed to add unit' });
+      setSnackbar({ visible: true, message: t('Failed to add unit') });
     }
   };
 
@@ -377,7 +500,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
     if (!itemName || qty <= 0 || rate <= 0 || unitId <= 0) {
       setSnackbar({
         visible: true,
-        message: 'Fill all required fields (including Unit)',
+        message: t('Fill all required fields (including Unit)'),
       });
       return;
     }
@@ -393,12 +516,14 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       taxPercentage,
       hsnSac: itemHsnSac,
     };
+
     try {
       if (editingItem?.id) await ProjectAPI.updateItem(editingItem.id, newItem);
       else await ProjectAPI.createItem(newItem);
     } catch (e) {
-      //setSnackbar({ visible: true, message: 'Failed to add item' });
+      setSnackbar({ visible: true, message: t('Failed to add item') });
     }
+
     setItems(prev =>
       editingItem?.id
         ? prev.map(i => (i.id === editingItem.id ? newItem : i))
@@ -408,10 +533,10 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const deleteItemLocal = async (idx: number) => {
-    Alert.alert('Delete Item', 'Are you sure?', [
-      { text: 'Cancel' },
+    Alert.alert(t('Delete Item'), t('Are you sure?'), [
+      { text: t('Cancel') },
       {
-        text: 'Delete',
+        text: t('Delete'),
         style: 'destructive',
         onPress: () => {
           setItems(p => p.filter((_, i) => i !== idx));
@@ -430,14 +555,13 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   useEffect(() => {
     if (!isEditMode && itemsTotal > 0 && !isFromQuotationDetail) {
       setTotalAmount(String(itemsTotal));
-      setActualAmount(itemsTotal);
+      //setActualAmount(itemsTotal);
     }
   }, [itemsTotal, isEditMode]);
 
   // Upload images
   const uploadImages = async (projectId: number) => {
     const localImages = images.filter(img => img.isLocal).map(img => img.uri);
-
     if (localImages.length === 0) return;
 
     const formData = new FormData();
@@ -456,7 +580,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   // Save project
   const handleSave = async () => {
     if (!customerId || !deliveryDate || !projectDescription || !totalAmount) {
-      setSnackbar({ visible: true, message: 'Fill all required fields' });
+      setSnackbar({ visible: true, message: t('Fill all required fields') });
       return;
     }
 
@@ -464,18 +588,9 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       (c, idx) => idx === selectedCustomerIdx,
     );
     if (!selectedCustomer) {
-      setSnackbar({ visible: true, message: 'Select a valid customer' });
+      setSnackbar({ visible: true, message: t('Select a valid customer') });
       return;
     }
-
-    const timeObj = time
-      ? {
-          hour: dayjs(time).hour(),
-          minute: dayjs(time).minute(),
-          second: dayjs(time).second(),
-          nano: 0,
-        }
-      : { hour: 0, minute: 0, second: 0, nano: 0 };
 
     setLoading(true);
     let projectId: number;
@@ -490,7 +605,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           discount,
           totalBudget: actualAmount,
         };
-        console.log(payload);
         await ProjectAPI.update(rawProject.id, payload);
         projectId = rawProject.id;
 
@@ -508,13 +622,11 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
 
         await ProjectAPI.updateStatus(projectId, status);
         try {
-          await QuotationAPI.updateQuotationStatus(projectId, {
-            status,
-          });
+          await QuotationAPI.updateQuotationStatus(projectId, { status });
         } catch (error) {
           console.log(error);
         }
-        setSnackbar({ visible: true, message: 'Project updated!' });
+        setSnackbar({ visible: true, message: t('Project updated!') });
         navigation.goBack();
       } else {
         const payload = {
@@ -537,11 +649,10 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
         };
 
         if (!items.length) {
-          setSnackbar({ visible: true, message: 'Enter at least one item' });
+          setSnackbar({ visible: true, message: t('Enter at least one item') });
           return;
         }
         const created: any = await ProjectAPI.create(payload);
-        console.log(created);
         projectId = created.data.id || created.data.projectId;
         setCreatedProjectId(projectId);
 
@@ -553,12 +664,15 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
             status: 'IN PROGRESS',
           });
         }
-        ToastAndroid.show('Project Created Successfully', ToastAndroid.SHORT);
+        ToastAndroid.show(
+          t('Project Created Successfully'),
+          ToastAndroid.SHORT,
+        );
         navigation.goBack();
         setAdvanceModalOpen(true);
       }
     } catch (e: any) {
-      setSnackbar({ visible: true, message: e?.message || 'Save failed' });
+      setSnackbar({ visible: true, message: e?.message || t('Save failed') });
     } finally {
       setLoading(false);
     }
@@ -574,7 +688,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       });
       navigation.goBack();
     } catch (e) {
-      setSnackbar({ visible: true, message: 'Failed to save advance' });
+      setSnackbar({ visible: true, message: t('Failed to save advance') });
     } finally {
       setAdvanceModalOpen(false);
     }
@@ -596,12 +710,13 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           }
         >
           <Text style={styles.title}>
-            {isEditMode ? 'Edit Project' : 'Create New Project'}
+            {isEditMode ? t('Edit Project') : t('Create New Project')}
           </Text>
+
           {/* Customer */}
           {isFromInquiry ? (
             <TextInput
-              label="Customer"
+              label={t('Customer')}
               value={customers.find(c => c.id === customerId)?.name || ''}
               mode="outlined"
               disabled
@@ -618,7 +733,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               maxHeight={hp(40)}
               labelField="label"
               valueField="value"
-              placeholder="Select Customer *"
+              placeholder={t('Select Customer *')}
               value={selectedCustomerIdx}
               onChange={item => {
                 const cust = customers[item.value];
@@ -627,10 +742,11 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               }}
             />
           )}
+
           {/* Delivery Date */}
           <TouchableOpacity onPress={() => setDatePickerOpen(true)}>
             <TextInput
-              label="Delivery Date *"
+              label={t('Delivery Date *')}
               value={deliveryDate}
               mode="outlined"
               editable={false}
@@ -639,8 +755,9 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               theme={{ roundness: wp(2.5) }}
             />
           </TouchableOpacity>
+
           <TextInput
-            label="Project Description *"
+            label={t('Project Description *')}
             value={projectDescription}
             onChangeText={setProjectDescription}
             mode="outlined"
@@ -649,8 +766,9 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
             style={[styles.input, styles.textArea]}
             theme={{ roundness: wp(2.5) }}
           />
+
           <TextInput
-            label="Total Budjet *"
+            label={t('Total Budjet *')}
             value={actualAmount.toString()}
             onChangeText={text => {
               setActualAmount(Number(text));
@@ -665,8 +783,9 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
             right={<TextInput.Affix text="₹" />}
             disabled={false}
           />
+
           <TextInput
-            label="Total Amount *"
+            label={t('Total Amount *')}
             value={totalAmount}
             onChangeText={setTotalAmount}
             mode="outlined"
@@ -676,6 +795,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
             right={<TextInput.Affix text="₹" />}
             disabled={false}
           />
+
           {Number(totalAmount) > 0 && (
             <View
               style={{
@@ -686,21 +806,17 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               }}
             >
               <TextInput
-                label="Discount"
+                label={t('Discount')}
                 value={discount === 0 ? '' : String(discount)}
                 onChangeText={text => {
                   const discountValue = text === '' ? 0 : Number(text);
                   setDiscount(discountValue);
-
                   if (discountValue === 0 || text === '') {
                     setTotalAmount(String(actualAmount));
                     setDisCountPercentage(0);
                   } else {
-                    // Calculate percentage based on actualAmount (original total)
                     const percentage = (discountValue / actualAmount) * 100;
                     setDisCountPercentage(percentage);
-
-                    // Update totalAmount by subtracting from actualAmount
                     setTotalAmount(String(actualAmount - discountValue));
                   }
                 }}
@@ -711,7 +827,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                 disabled={false}
               />
               <TextInput
-                label="Percentage"
+                label={t('Percentage')}
                 value={
                   discountPercentage === 0
                     ? '0.00'
@@ -723,15 +839,20 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                 theme={{ roundness: wp(2.5) }}
                 editable={false}
                 right={
-                  <TextInput.Icon icon="percent" size={wp(6)} color="#0a411fff" />
+                  <TextInput.Icon
+                    icon="percent"
+                    size={wp(6)}
+                    color="#0a411fff"
+                  />
                 }
               />
             </View>
           )}
+
           {/* Location */}
           {isEditMode && (
             <TextInput
-              label="Site Location"
+              label={t('Site Location')}
               value={fullLocation.address}
               mode="outlined"
               editable={true}
@@ -747,20 +868,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               }
             />
           )}
-          {/* Time */}
-          {/* {isEditMode && (
-            <TouchableOpacity onPress={() => setTimePickerOpen(true)}>
-              <TextInput
-                label="Preferred Time"
-                value={time ? dayjs(time).format('h:mm A') : ''}
-                mode="outlined"
-                editable={false}
-                style={styles.input}
-                theme={{ roundness: wp(2.5) }}
-                right={<TextInput.Icon icon="clock-outline" size={wp(6)} />}
-              />
-            </TouchableOpacity>
-          )} */}
+
           {/* Status */}
           {isEditMode && (
             <Dropdown
@@ -768,22 +876,23 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               placeholderStyle={styles.placeholderStyle}
               selectedTextStyle={styles.selectedTextStyle}
               data={statuses.map(s => ({
-                label: s.replace(/_/g, ' '),
+                label: t(s),
                 value: s,
               }))}
               maxHeight={hp(40)}
               labelField="label"
               valueField="value"
-              placeholder="Select Status"
+              placeholder={t('Select Status')}
               value={status}
               onChange={item => setStatus(item.value)}
             />
           )}
+
           {/* Images */}
           {isEditMode && (
             <>
               <Text style={styles.sectionTitle}>
-                Site Images ({images.length}/15)
+                {t('Site Images')} ({images.length}/15)
               </Text>
               <View style={styles.imageContainer}>
                 {images.map((img, i) => (
@@ -816,7 +925,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                         size={wp(8)}
                         color="#0a411fff"
                       />
-                      <Text style={styles.uploadText}>Gallery</Text>
+                      <Text style={styles.uploadText}>{t('Gallery')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.uploadBtn}
@@ -827,22 +936,23 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                         size={wp(8)}
                         color="#0a411fff"
                       />
-                      <Text style={styles.uploadText}>Camera</Text>
+                      <Text style={styles.uploadText}>{t('Camera')}</Text>
                     </TouchableOpacity>
                   </>
                 )}
               </View>
             </>
           )}
+
           {/* Items */}
           <View style={styles.itemsHeader}>
-            <Text style={styles.sectionTitle}>Project Items</Text>
+            <Text style={styles.sectionTitle}>{t('Project Items')}</Text>
             <Chip icon="calculator" compact style={styles.totalChip}>
-              Total: ₹{itemsTotal.toLocaleString('en-IN')}
+              {t('Total')}: ₹{itemsTotal.toLocaleString('en-IN')}
             </Chip>
           </View>
           {items.length === 0 ? (
-            <Text style={styles.emptyText}>No items added yet</Text>
+            <Text style={styles.emptyText}>{t('No items added yet')}</Text>
           ) : (
             items.map((item, index) => (
               <Card key={index} style={styles.itemCard} elevation={2}>
@@ -875,6 +985,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               </Card>
             ))
           )}
+
           {/* Save Button */}
           <Button
             mode="contained"
@@ -892,7 +1003,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
             }
             icon="content-save"
           >
-            {isEditMode ? 'Update Project' : 'Save Project'}
+            {isEditMode ? t('Update Project') : t('Save Project')}
           </Button>
         </ScrollView>
 
@@ -912,18 +1023,20 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
             visible={itemModalOpen}
             onDismiss={() => setItemModalOpen(false)}
           >
-            <Dialog.Title>{editingItem ? 'Edit' : 'Add'} Item</Dialog.Title>
+            <Dialog.Title>
+              {editingItem ? t('Edit Item') : t('Add Item')}
+            </Dialog.Title>
             <Dialog.ScrollArea>
               <ScrollView style={{ maxHeight: hp(50) }}>
                 <TextInput
-                  label="Item Name *"
+                  label={t('Item Name *')}
                   value={itemName}
                   onChangeText={setItemName}
                   mode="outlined"
                   style={styles.dialogInput}
                 />
                 <TextInput
-                  label="Description"
+                  label={t('Description')}
                   value={itemDesc}
                   onChangeText={setItemDesc}
                   mode="outlined"
@@ -932,7 +1045,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                   numberOfLines={2}
                 />
                 <TextInput
-                  label="Quantity *"
+                  label={t('Quantity *')}
                   value={itemQty}
                   onChangeText={setItemQty}
                   mode="outlined"
@@ -940,7 +1053,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                   style={styles.dialogInput}
                 />
                 <TextInput
-                  label="Rate (MRP) *"
+                  label={t('Rate (MRP) *')}
                   value={itemRate}
                   onChangeText={setItemRate}
                   mode="outlined"
@@ -957,7 +1070,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                       data={unitDropdown}
                       labelField="label"
                       valueField="value"
-                      placeholder="Unit *"
+                      placeholder={t('Unit *')}
                       value={selectedItemUnitId}
                       onChange={item => setSelectedItemUnitId(item.value)}
                     />
@@ -970,7 +1083,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                   />
                 </View>
                 <TextInput
-                  label="Tax Percentage *"
+                  label={t('Tax Percentage *')}
                   value={itemTaxPercentage}
                   onChangeText={setItemTaxPercentage}
                   mode="outlined"
@@ -979,7 +1092,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                   right={<TextInput.Affix text="%" />}
                 />
                 <TextInput
-                  label="HSN/SAC Code"
+                  label={t('HSN/SAC Code')}
                   value={itemHsnSac}
                   onChangeText={setItemHsnSac}
                   mode="outlined"
@@ -988,14 +1101,16 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               </ScrollView>
             </Dialog.ScrollArea>
             <Dialog.Actions>
-              <Button onPress={() => setItemModalOpen(false)}>Cancel</Button>
+              <Button onPress={() => setItemModalOpen(false)}>
+                {t('Cancel')}
+              </Button>
               <Button
                 onPress={saveItemLocally}
                 disabled={
                   !itemName || !itemQty || !itemRate || !selectedItemUnitId
                 }
               >
-                Save
+                {t('Save')}
               </Button>
             </Dialog.Actions>
           </Dialog>
@@ -1007,17 +1122,17 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
             visible={unitModalOpen}
             onDismiss={() => setUnitModalOpen(false)}
           >
-            <Dialog.Title>Add New Unit</Dialog.Title>
+            <Dialog.Title>{t('Add New Unit')}</Dialog.Title>
             <Dialog.Content>
               <TextInput
-                label="Unit Name"
+                label={t('Unit Name')}
                 value={newUnitName}
                 onChangeText={setNewUnitName}
                 mode="outlined"
                 style={styles.dialogInput}
               />
               <TextInput
-                label="Short Name"
+                label={t('Short Name')}
                 value={newUnitShortName}
                 onChangeText={setNewUnitShortName}
                 mode="outlined"
@@ -1025,19 +1140,24 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               />
             </Dialog.Content>
             <Dialog.Actions>
-              <Button onPress={() => setUnitModalOpen(false)}>Cancel</Button>
-              <Button onPress={addNewUnit}>Add</Button>
+              <Button onPress={() => setUnitModalOpen(false)}>
+                {t('Cancel')}
+              </Button>
+              <Button onPress={addNewUnit}>{t('Add')}</Button>
             </Dialog.Actions>
           </Dialog>
         </Portal>
 
         {/* Advance Dialog */}
         <Portal>
-          <Dialog visible={false} onDismiss={() => setAdvanceModalOpen(false)}>
-            <Dialog.Title>Add Advance Payment</Dialog.Title>
+          <Dialog
+            visible={advanceModalOpen}
+            onDismiss={() => setAdvanceModalOpen(false)}
+          >
+            <Dialog.Title>{t('Add Advance Payment')}</Dialog.Title>
             <Dialog.Content>
               <TextInput
-                label="Advance Amount"
+                label={t('Advance Amount')}
                 value={advanceAmount}
                 onChangeText={setAdvanceAmount}
                 mode="outlined"
@@ -1053,16 +1173,16 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                   navigation.goBack();
                 }}
               >
-                Skip
+                {t('Skip')}
               </Button>
               <Button onPress={saveAdvance} disabled={!advanceAmount}>
-                Save
+                {t('Save')}
               </Button>
             </Dialog.Actions>
           </Dialog>
         </Portal>
 
-        {/* Date Picker */}
+        {/* Date & Time Pickers */}
         <DatePicker
           modal
           open={datePickerOpen}
@@ -1075,8 +1195,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           }}
           onCancel={() => setDatePickerOpen(false)}
         />
-
-        {/* Time Picker */}
         <DatePicker
           modal
           open={timePickerOpen}

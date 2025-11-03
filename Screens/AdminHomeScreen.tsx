@@ -67,7 +67,7 @@ const enToTa: Record<string, string> = {
 const AdminHomePage: React.FC<Props> = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
-  const [username, setUsername] = useState('Admin User');
+  const [username, setUsername] = useState('');
   const [isTamil, setIsTamil] = useState(false);
   const [translations, setTranslations] = useState<Record<string, string>>({});
 
@@ -85,8 +85,13 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
       if (stored) setUsername(stored);
 
       // role
-      await AsyncStorage.setItem('role', 'Admin');
+      //await AsyncStorage.setItem('role', 'Admin');
+      const currentUser = await AsyncStorage.getItem('user');
+      const parsedUser = currentUser ? JSON.parse(currentUser) : null;
 
+      console.log("user", parsedUser);
+
+      setUsername(parsedUser?.name || 'Admin User');
       // animation
       Animated.timing(fadeAnim, {
         toValue: 1,

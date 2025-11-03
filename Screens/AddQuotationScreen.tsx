@@ -1,4 +1,3 @@
-// screens/AddQuotation.tsx
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
@@ -31,7 +30,8 @@ import DatePicker from 'react-native-date-picker';
 import { RouteProp } from '@react-navigation/native';
 import { Dropdown } from 'react-native-element-dropdown';
 import { CustomerAPI, QuotationAPI, UnitAPI } from '../service/apiService';
-import { yellowA700 } from 'react-native-paper/lib/typescript/styles/themes/v2/colors';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslator } from 'react-native-translator';
 
 const { width, height } = Dimensions.get('window');
 const wp = (p: number) => (width * p) / 100;
@@ -58,6 +58,67 @@ export type Unit = {
   id: number;
   name: string;
   shortName: string;
+};
+
+const enToTa: Record<string, string> = {
+  // Titles
+  'Create Quotation': 'மேற்கோள் உருவாக்கு',
+  'Edit Quotation': 'மேற்கோளைத் திருத்து',
+
+  // Labels
+  Customer: 'வாடிக்கையாளர்',
+  'Select Customer *': 'வாடிக்கையாளரைத் தேர்ந்தெடு *',
+  'Mobile No': 'கைப்பேசி எண்',
+  Address: 'முகவரி',
+  'Project Description *': 'திட்ட விளக்கம் *',
+  'Delivery Date *': 'விநியோக தேதி *',
+  'Total Budget *': 'மொத்த பட்ஜெட் *',
+  'Total Amount *': 'மொத்த தொகை *',
+  Discount: 'தள்ளுபடி',
+  Percentage: 'விழுக்காடு',
+  Items: 'பொருட்கள்',
+  'No items added yet': 'இதுவரை பொருட்கள் சேர்க்கப்படவில்லை',
+
+  // Item Dialog
+  'Add Item': 'பொருளைச் சேர்',
+  'Edit Item': 'பொருளைத் திருத்து',
+  'Name *': 'பெயர் *',
+  Description: 'விளக்கம்',
+  'Quantity *': 'அளவு *',
+  'Unit *': 'அலகு *',
+  'MRP *': 'MRP *',
+  'HSN/SAC': 'HSN/SAC',
+  'Tax (%)': 'வரி (%)',
+  Total: 'மொத்தம்',
+  Cancel: 'ரத்து செய்',
+  Save: 'சேமி',
+
+  // Unit Dialog
+  'Add New Unit': 'புதிய அலகு சேர்',
+  'Unit Name': 'அலகு பெயர்',
+  'Short Name': 'குறுகிய பெயர்',
+  Add: 'சேர்',
+
+  // Messages
+  'Customer is required': 'வாடிக்கையாளர் தேவை',
+  'Delivery Date is required': 'விநியோக தேதி தேவை',
+  'Description is required': 'விளக்கம் தேவை',
+  'Total Budget is required': 'மொத்த பட்ஜெட் தேவை',
+  'At least one item is required': 'குறைந்தது ஒரு பொருள் தேவை',
+  'Name, Qty, Unit, MRP required': 'பெயர், அளவு, அலகு, MRP தேவை',
+  'Both fields required': 'இரு புலங்களும் தேவை',
+  'Failed to load data': 'தரவை ஏற்ற முடியவில்லை',
+  'Failed to load quotation': 'மேற்கோளை ஏற்ற முடியவில்லை',
+  'Unit added': 'அலகு சேர்க்கப்பட்டது',
+  'Failed to add unit': 'அலகு சேர்க்க முடியவில்லை',
+  'Delete failed': 'நீக்க முடியவில்லை',
+  'Quotation updated!': 'மேற்கோள் புதுப்பிக்கப்பட்டது!',
+  'Quotation created!': 'மேற்கோள் உருவாக்கப்பட்டது!',
+  'Save failed': 'சேமிப்பு தோல்வியடைந்தது',
+
+  // Buttons
+  'Update Quotation': 'மேற்கோளைப் புதுப்பி',
+  'Save Quotation': 'மேற்கோளைச் சேமி',
 };
 
 const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
@@ -103,6 +164,49 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  const [isTamil, setIsTamil] = useState(false);
+  const [translations, setTranslations] = useState<Record<string, string>>({});
+  const { translate } = useTranslator();
+
+  // Initialize language
+  useEffect(() => {
+    const initLang = async () => {
+      const saved = await AsyncStorage.getItem('appLanguage');
+      const tamil = saved === 'ta';
+      setIsTamil(tamil);
+    };
+    initLang();
+  }, []);
+
+  // Translate all strings
+  useEffect(() => {
+    if (!isTamil) {
+      setTranslations({});
+      return;
+    }
+    const translateAll = async () => {
+      const result: Record<string, string> = {};
+      for (const en of Object.keys(enToTa)) {
+        try {
+          const ta = await translate('en', 'ta', en, { type: 'google' });
+          result[en] = ta;
+        } catch {
+          result[en] = enToTa[en] ?? en;
+        }
+      }
+      setTranslations(result);
+    };
+    translateAll();
+  }, [isTamil, translate]);
+
+  const t = useCallback(
+    (english: string): string => {
+      if (!isTamil) return english;
+      return translations[english] ?? enToTa[english] ?? english;
+    },
+    [isTamil, translations],
+  );
+
   // Load Customers & Units
   const loadData = useCallback(async () => {
     try {
@@ -115,11 +219,11 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
       if (Array.isArray(custRes.data)) setCustomers(custRes.data);
       if (Array.isArray(unitRes.data)) setUnits(unitRes.data);
     } catch (e) {
-      ToastAndroid.show('Failed to load data', ToastAndroid.SHORT);
+      ToastAndroid.show(t('Failed to load data'), ToastAndroid.SHORT);
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadData();
@@ -172,7 +276,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             })),
           );
         } catch (e) {
-          ToastAndroid.show('Failed to load quotation', ToastAndroid.SHORT);
+          ToastAndroid.show(t('Failed to load quotation'), ToastAndroid.SHORT);
         } finally {
           setLoading(false);
         }
@@ -189,7 +293,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
         setAddress(cust.address || '');
       }
     }
-  }, [rawQuotation, rawCustomer, customers, isEditMode, isFromInquiry]);
+  }, [rawQuotation, rawCustomer, customers, isEditMode, isFromInquiry, t]);
 
   const customerDropdown = useMemo(
     () =>
@@ -254,7 +358,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
 
   const saveItemLocally = () => {
     if (!itemName || !itemQty || selectedUnitId === null || !itemMrp) {
-      ToastAndroid.show('Name, Qty, Unit, MRP required', ToastAndroid.SHORT);
+      ToastAndroid.show(t('Name, Qty, Unit, MRP required'), ToastAndroid.SHORT);
       return;
     }
 
@@ -281,10 +385,10 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const deleteItemLocal = (idx: number) => {
-    Alert.alert('Delete Item', 'Sure?', [
-      { text: 'Cancel' },
+    Alert.alert(t('Delete Item'), t('Sure?'), [
+      { text: t('Cancel') },
       {
-        text: 'Delete',
+        text: t('Delete'),
         style: 'destructive',
         onPress: async () => {
           const item = items[idx];
@@ -292,7 +396,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             try {
               await QuotationAPI.deleteItem(item.id);
             } catch (e) {
-              ToastAndroid.show('Delete failed', ToastAndroid.SHORT);
+              ToastAndroid.show(t('Delete failed'), ToastAndroid.SHORT);
             }
           }
           setItems(p => p.filter((_, i) => i !== idx));
@@ -303,7 +407,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
 
   const addNewUnit = async () => {
     if (!newUnitName || !newUnitShortName) {
-      ToastAndroid.show('Both fields required', ToastAndroid.SHORT);
+      ToastAndroid.show(t('Both fields required'), ToastAndroid.SHORT);
       return;
     }
     try {
@@ -315,9 +419,9 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
       setNewUnitName('');
       setNewUnitShortName('');
       setUnitModalOpen(false);
-      ToastAndroid.show('Unit added', ToastAndroid.SHORT);
+      ToastAndroid.show(t('Unit added'), ToastAndroid.SHORT);
     } catch (e) {
-      ToastAndroid.show('Failed to add unit', ToastAndroid.SHORT);
+      ToastAndroid.show(t('Failed to add unit'), ToastAndroid.SHORT);
     }
   };
 
@@ -329,21 +433,19 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
       !totalBudget ||
       !items.length
     ) {
-      if (!customerId) {
-        ToastAndroid.show('Customer is required', ToastAndroid.SHORT);
-      }
-      if (!deliveryDate) {
-        ToastAndroid.show('Delivery Date is required', ToastAndroid.SHORT);
-      }
-      if (!description) {
-        ToastAndroid.show('Description is required', ToastAndroid.SHORT);
-      }
-      if (!totalBudget) {
-        ToastAndroid.show('Total Budget is required', ToastAndroid.SHORT);
-      }
-      if (!items.length) {
-        ToastAndroid.show('At least one item is required', ToastAndroid.SHORT);
-      }
+      if (!customerId)
+        ToastAndroid.show(t('Customer is required'), ToastAndroid.SHORT);
+      if (!deliveryDate)
+        ToastAndroid.show(t('Delivery Date is required'), ToastAndroid.SHORT);
+      if (!description)
+        ToastAndroid.show(t('Description is required'), ToastAndroid.SHORT);
+      if (!totalBudget)
+        ToastAndroid.show(t('Total Budget is required'), ToastAndroid.SHORT);
+      if (!items.length)
+        ToastAndroid.show(
+          t('At least one item is required'),
+          ToastAndroid.SHORT,
+        );
       return;
     }
 
@@ -369,15 +471,15 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
 
       if (isEditMode && rawQuotation?.id) {
         await QuotationAPI.update(rawQuotation.id, payload);
-        ToastAndroid.show('Quotation updated!', ToastAndroid.SHORT);
+        ToastAndroid.show(t('Quotation updated!'), ToastAndroid.SHORT);
       } else {
         const res = await QuotationAPI.create(payload);
-        ToastAndroid.show('Quotation created!', ToastAndroid.SHORT);
+        ToastAndroid.show(t('Quotation created!'), ToastAndroid.SHORT);
       }
 
       setTimeout(() => navigation.goBack(), 800);
     } catch (e: any) {
-      ToastAndroid.show(e?.message || 'Save failed', ToastAndroid.SHORT);
+      ToastAndroid.show(e?.message || t('Save failed'), ToastAndroid.SHORT);
     } finally {
       setLoading(false);
     }
@@ -400,12 +502,12 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
           }
         >
           <Text style={styles.title}>
-            {isEditMode ? 'Edit Quotation' : 'Create Quotation'}
+            {isEditMode ? t('Edit Quotation') : t('Create Quotation')}
           </Text>
 
           {isFromInquiry ? (
             <TextInput
-              label="Customer"
+              label={t('Customer')}
               value={customerName}
               mode="outlined"
               style={styles.input}
@@ -420,7 +522,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
               maxHeight={hp(40)}
               labelField="label"
               valueField="value"
-              placeholder="Select Customer *"
+              placeholder={t('Select Customer *')}
               value={selectedCustomerIdx}
               onChange={item => {
                 const cust = customers[item.value];
@@ -433,20 +535,14 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             />
           )}
 
-          {/* <TextInput
-            label="Customer Name"
-            value={customerName}
-            mode="outlined"
-            style={styles.input}
-          /> */}
           <TextInput
-            label="Mobile No"
+            label={t('Mobile No')}
             value={mobileNo}
             mode="outlined"
             style={styles.input}
           />
           <TextInput
-            label="Address"
+            label={t('Address')}
             value={address}
             mode="outlined"
             multiline
@@ -454,7 +550,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
           />
 
           <TextInput
-            label="Project Description *"
+            label={t('Project Description *')}
             value={description}
             onChangeText={setDescription}
             mode="outlined"
@@ -465,7 +561,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
 
           <TouchableOpacity onPress={() => setDatePickerOpen(true)}>
             <TextInput
-              label="Delivery Date *"
+              label={t('Delivery Date *')}
               value={deliveryDate}
               mode="outlined"
               editable={false}
@@ -473,8 +569,9 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
               right={<TextInput.Icon icon="calendar" size={wp(6)} />}
             />
           </TouchableOpacity>
+
           <TextInput
-            label="Total Budget *"
+            label={t('Total Budget *')}
             value={actualAmount.toString()}
             onChangeText={text => {
               setActualAmount(Number(text));
@@ -487,7 +584,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             left={<TextInput.Affix text="₹" />}
           />
           <TextInput
-            label="Total Amount *"
+            label={t('Total Amount *')}
             value={totalBudget}
             onChangeText={setTotalBudget}
             mode="outlined"
@@ -496,6 +593,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             editable={!isEditMode}
             left={<TextInput.Affix text="₹" />}
           />
+
           {Number(totalBudget) > 0 && (
             <View
               style={{
@@ -506,21 +604,17 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
               }}
             >
               <TextInput
-                label="Discount"
+                label={t('Discount')}
                 value={discount === 0 ? '' : String(discount)}
                 onChangeText={text => {
                   const discountValue = text === '' ? 0 : Number(text);
                   setDiscount(discountValue);
-
                   if (discountValue === 0 || text === '') {
                     setTotalBudget(String(actualAmount));
                     setDiscountPercent(0);
                   } else {
-                    // Calculate percentage based on actualAmount (original total)
                     const percentage = (discountValue / actualAmount) * 100;
                     setDiscountPercent(percentage);
-
-                    // Update totalAmount by subtracting from actualAmount
                     setTotalBudget(String(actualAmount - discountValue));
                   }
                 }}
@@ -531,7 +625,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
                 disabled={false}
               />
               <TextInput
-                label="Percentage"
+                label={t('Percentage')}
                 value={
                   discountPercent === 0 ? '0.00' : discountPercent.toFixed(2)
                 }
@@ -548,14 +642,14 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
           )}
 
           <View style={styles.itemsHeader}>
-            <Text style={styles.sectionTitle}>Items</Text>
+            <Text style={styles.sectionTitle}>{t('Items')}</Text>
             <Chip icon="calculator" style={styles.totalChip}>
               ₹{grandTotal.toFixed(2)}
             </Chip>
           </View>
 
           {items.length === 0 ? (
-            <Text style={styles.emptyText}>No items added yet</Text>
+            <Text style={styles.emptyText}>{t('No items added yet')}</Text>
           ) : (
             items.map((item, index) => {
               const unit = units.find(u => u.id === item.unitId);
@@ -610,7 +704,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             }
             icon="content-save"
           >
-            {isEditMode ? 'Update Quotation' : 'Save Quotation'}
+            {isEditMode ? t('Update Quotation') : t('Save Quotation')}
           </Button>
         </ScrollView>
 
@@ -629,32 +723,33 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             visible={itemModalOpen}
             onDismiss={() => setItemModalOpen(false)}
           >
-            <Dialog.Title>{editingItem ? 'Edit' : 'Add'} Item</Dialog.Title>
+            <Dialog.Title>
+              {editingItem ? t('Edit Item') : t('Add Item')}
+            </Dialog.Title>
             <Dialog.ScrollArea>
               <ScrollView style={{ maxHeight: hp(55) }}>
                 <TextInput
-                  label="Name *"
+                  label={t('Name *')}
                   value={itemName}
                   onChangeText={setItemName}
                   mode="outlined"
                   style={styles.dialogInput}
                 />
                 <TextInput
-                  label="Description"
+                  label={t('Description')}
                   value={itemDesc}
                   onChangeText={setItemDesc}
                   mode="outlined"
                   style={styles.dialogInput}
                 />
                 <TextInput
-                  label="Quantity *"
+                  label={t('Quantity *')}
                   value={itemQty}
                   onChangeText={setItemQty}
                   mode="outlined"
                   keyboardType="numeric"
                   style={styles.dialogInput}
                 />
-
                 <View style={styles.unitRow}>
                   <View style={{ flex: 1 }}>
                     <Dropdown
@@ -664,7 +759,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
                       data={unitDropdown}
                       labelField="label"
                       valueField="value"
-                      placeholder="Unit *"
+                      placeholder={t('Unit *')}
                       value={selectedUnitId}
                       onChange={item => setSelectedUnitId(item.value)}
                     />
@@ -676,9 +771,8 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
                     style={styles.addUnitBtn}
                   />
                 </View>
-
                 <TextInput
-                  label="MRP *"
+                  label={t('MRP *')}
                   value={itemMrp}
                   onChangeText={setItemMrp}
                   mode="outlined"
@@ -687,14 +781,14 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
                   left={<TextInput.Affix text="₹" />}
                 />
                 <TextInput
-                  label="HSN/SAC"
+                  label={t('HSN/SAC')}
                   value={hsnSac}
                   onChangeText={setHsnSac}
                   mode="outlined"
                   style={styles.dialogInput}
                 />
                 <TextInput
-                  label="Tax (%)"
+                  label={t('Tax (%)')}
                   value={itemTax}
                   onChangeText={setItemTax}
                   mode="outlined"
@@ -703,13 +797,15 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
                   right={<TextInput.Affix text="%" />}
                 />
                 <Text style={styles.amountPreview}>
-                  Total: ₹{calculateItemTotal().toFixed(2)}
+                  {t('Total')}: ₹{calculateItemTotal().toFixed(2)}
                 </Text>
               </ScrollView>
             </Dialog.ScrollArea>
             <Dialog.Actions>
-              <Button onPress={() => setItemModalOpen(false)}>Cancel</Button>
-              <Button onPress={saveItemLocally}>Save</Button>
+              <Button onPress={() => setItemModalOpen(false)}>
+                {t('Cancel')}
+              </Button>
+              <Button onPress={saveItemLocally}>{t('Save')}</Button>
             </Dialog.Actions>
           </Dialog>
         </Portal>
@@ -720,17 +816,17 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             visible={unitModalOpen}
             onDismiss={() => setUnitModalOpen(false)}
           >
-            <Dialog.Title>Add New Unit</Dialog.Title>
+            <Dialog.Title>{t('Add New Unit')}</Dialog.Title>
             <Dialog.Content>
               <TextInput
-                label="Unit Name"
+                label={t('Unit Name')}
                 value={newUnitName}
                 onChangeText={setNewUnitName}
                 mode="outlined"
                 style={styles.dialogInput}
               />
               <TextInput
-                label="Short Name"
+                label={t('Short Name')}
                 value={newUnitShortName}
                 onChangeText={setNewUnitShortName}
                 mode="outlined"
@@ -738,8 +834,10 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
               />
             </Dialog.Content>
             <Dialog.Actions>
-              <Button onPress={() => setUnitModalOpen(false)}>Cancel</Button>
-              <Button onPress={addNewUnit}>Add</Button>
+              <Button onPress={() => setUnitModalOpen(false)}>
+                {t('Cancel')}
+              </Button>
+              <Button onPress={addNewUnit}>{t('Add')}</Button>
             </Dialog.Actions>
           </Dialog>
         </Portal>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,10 +16,10 @@ import { RouteProp } from '@react-navigation/native';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { FAB, IconButton, Portal } from 'react-native-paper';
 import { CustomerAPI } from '../service/apiService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslator } from 'react-native-translator';
 
 const { width, height } = Dimensions.get('window');
-
-// Responsive helpers
 const wp = (percentage: number) => (width * percentage) / 100;
 const hp = (percentage: number) => (height * percentage) / 100;
 
@@ -28,17 +28,100 @@ type Props = {
   route: RouteProp<rootStackParamList, 'CustomerDetail'>;
 };
 
+const enToTa: Record<string, string> = {
+  // General
+  'Unknown Customer': 'தெரியாத வாடிக்கையாளர்',
+  'No address provided': 'முகவரி கிடைக்கவில்லை',
+  'No work description': 'பணி விளக்கம் இல்லை',
+  'No follow-up scheduled': 'பின்தொடர்வு திட்டமிடப்படவில்லை',
+  'Not provided': 'வழங்கப்படவில்லை',
+
+  // Sections
+  'Contact Information': 'தொடர்பு தகவல்',
+  'Inquiry Details': 'விசாரணை விவரங்கள்',
+
+  // Labels
+  'Phone Number': 'தொலைபேசி எண்',
+  Address: 'முகவரி',
+  'Work Description': 'பணி விளக்கம்',
+  'Follow-up In': 'பின்தொடர்வு',
+  'Inquiry Date': 'விசாரணை தேதி',
+  'Created On': 'உருவாக்கப்பட்டது',
+
+  // Status
+  Paid: 'பணம் செலுத்தப்பட்டது',
+  Inquired: 'விசாரிக்கப்பட்டது',
+  Pending: 'நிலுவையில்',
+  Cancelled: 'ரத்து செய்யப்பட்டது',
+  'Project Created': 'திட்டம் உருவாக்கப்பட்டது',
+
+  // Buttons & Alerts
+  'Delete Customer': 'வாடிக்கையாளரை நீக்கு',
+  'Are you sure you want to delete': 'நிச்சயமாக நீக்க வேண்டுமா',
+  'has been removed.': 'நீக்கப்பட்டது.',
+  Error: 'பிழை',
+  'Cannot open phone dialer': 'தொலைபேசி டயலரை திறக்க முடியவில்லை',
+  'Convert to Quotation': 'மேற்கோளுக்கு மாற்று',
+
+  // FAB Group (if enabled)
+  'Edit Customer': 'வாடிக்கையாளரைத் திருத்து',
+  //'Delete Customer': 'வாடிக்கையாளரை நீக்கு',
+};
+
 const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
   const customer1 = route.params as { customer: any };
   const [customer, setCustomer] = useState(customer1.customer);
   const [fabOpen, setFabOpen] = useState(false);
   const [fabVisible, setFabVisible] = useState(true);
 
+  const [isTamil, setIsTamil] = useState(false);
+  const [translations, setTranslations] = useState<Record<string, string>>({});
+  const { translate } = useTranslator();
+
+  // Initialize language
+  useEffect(() => {
+    const initLang = async () => {
+      const saved = await AsyncStorage.getItem('appLanguage');
+      const tamil = saved === 'ta';
+      setIsTamil(tamil);
+    };
+    initLang();
+  }, []);
+
+  // Translate all strings
+  useEffect(() => {
+    if (!isTamil) {
+      setTranslations({});
+      return;
+    }
+    const translateAll = async () => {
+      const result: Record<string, string> = {};
+      for (const en of Object.keys(enToTa)) {
+        try {
+          const ta = await translate('en', 'ta', en, { type: 'google' });
+          result[en] = ta;
+        } catch {
+          result[en] = enToTa[en] ?? en;
+        }
+      }
+      setTranslations(result);
+    };
+    translateAll();
+  }, [isTamil, translate]);
+
+  const t = useCallback(
+    (english: string): string => {
+      if (!isTamil) return english;
+      return translations[english] ?? enToTa[english] ?? english;
+    },
+    [isTamil, translations],
+  );
+
   // Safely extract values
-  const name = customer.name || 'Unknown Customer';
+  const name = customer.name || t('Unknown Customer');
   const contactNo = customer.contactNo;
-  const address = customer.address || 'No address provided';
-  const workDescription = customer.workDescription || 'No work description';
+  const address = customer.address || t('No address provided');
+  const workDescription = customer.workDescription || t('No work description');
   const noOfDaysToVisit = customer.noOfDaysToVisit || 0;
   const date = customer.date
     ? new Date(customer.date).toLocaleDateString('en-IN')
@@ -54,7 +137,7 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
     .replace(/\b\w/g, (l: string) => l.toUpperCase());
 
   useEffect(() => {
-    navigation.addListener('focus', () => {
+    const unsubscribe = navigation.addListener('focus', () => {
       const loadCustomer = async () => {
         try {
           const res = await CustomerAPI.getById(customer.id);
@@ -67,7 +150,8 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
       };
       loadCustomer();
     });
-  }, []);
+    return unsubscribe;
+  }, [navigation, customer.id]);
 
   const getStatusColor = (status: string) => {
     switch (status.toUpperCase()) {
@@ -87,22 +171,23 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
   };
 
   useEffect(() => {
-    navigation.addListener('focus', () => {
+    const unsubscribe = navigation.addListener('focus', () => {
       setFabVisible(true);
     });
-  }, []);
+    return unsubscribe;
+  }, [navigation]);
 
   const handleDelete = () => {
     Alert.alert(
-      'Delete Customer',
-      `Are you sure you want to delete ${name}?`,
+      t('Delete Customer'),
+      `${t('Are you sure you want to delete')} ${name}?`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('Cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('Delete'),
           style: 'destructive',
           onPress: () => {
-            Alert.alert('Deleted', `${name} has been removed.`);
+            Alert.alert(t('Deleted'), `${name} ${t('has been removed.')}`);
             navigation.goBack();
           },
         },
@@ -137,7 +222,9 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
                   { backgroundColor: getStatusColor(status) },
                 ]}
               >
-                <Text style={styles.statusText}>{formattedStatus}</Text>
+                <Text style={styles.statusText}>
+                  {t(formattedStatus) || formattedStatus}
+                </Text>
               </View>
             </View>
             <View
@@ -181,7 +268,7 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
 
           {/* Contact Information */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Contact Information</Text>
+            <Text style={styles.cardTitle}>{t('Contact Information')}</Text>
 
             {contactNo ? (
               <TouchableOpacity
@@ -192,7 +279,7 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
                   if (supported) {
                     await Linking.openURL(url);
                   } else {
-                    Alert.alert('Error', 'Cannot open phone dialer');
+                    Alert.alert(t('Error'), t('Cannot open phone dialer'));
                   }
                 }}
                 activeOpacity={0.8}
@@ -205,7 +292,7 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
                   />
                 </View>
                 <View style={styles.infoTextContainer}>
-                  <Text style={styles.infoLabel}>Phone Number</Text>
+                  <Text style={styles.infoLabel}>{t('Phone Number')}</Text>
                   <Text style={styles.infoValue}>{contactNo}</Text>
                 </View>
                 <MaterialCommunityIcons
@@ -224,9 +311,9 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
                   />
                 </View>
                 <View style={styles.infoTextContainer}>
-                  <Text style={styles.infoLabel}>Phone Number</Text>
+                  <Text style={styles.infoLabel}>{t('Phone Number')}</Text>
                   <Text style={[styles.infoValue, { color: '#95a5a6' }]}>
-                    Not provided
+                    {t('Not provided')}
                   </Text>
                 </View>
               </View>
@@ -243,7 +330,7 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
                 />
               </View>
               <View style={styles.infoTextContainer}>
-                <Text style={styles.infoLabel}>Address</Text>
+                <Text style={styles.infoLabel}>{t('Address')}</Text>
                 <Text style={styles.infoValue}>{address}</Text>
               </View>
             </View>
@@ -251,7 +338,7 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
 
           {/* Inquiry Details */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Inquiry Details</Text>
+            <Text style={styles.cardTitle}>{t('Inquiry Details')}</Text>
 
             <View style={styles.infoRow}>
               <View style={styles.iconContainer}>
@@ -262,7 +349,7 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
                 />
               </View>
               <View style={styles.infoTextContainer}>
-                <Text style={styles.infoLabel}>Work Description</Text>
+                <Text style={styles.infoLabel}>{t('Work Description')}</Text>
                 <Text style={styles.infoValue}>{workDescription}</Text>
               </View>
             </View>
@@ -278,11 +365,11 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
                 />
               </View>
               <View style={styles.infoTextContainer}>
-                <Text style={styles.infoLabel}>Follow-up In</Text>
+                <Text style={styles.infoLabel}>{t('Follow-up In')}</Text>
                 <Text style={styles.infoValue}>
                   {noOfDaysToVisit > 0
                     ? `${noOfDaysToVisit} day${noOfDaysToVisit > 1 ? 's' : ''}`
-                    : 'No follow-up scheduled'}
+                    : t('No follow-up scheduled')}
                 </Text>
               </View>
             </View>
@@ -299,7 +386,7 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
                     />
                   </View>
                   <View style={styles.infoTextContainer}>
-                    <Text style={styles.infoLabel}>Inquiry Date</Text>
+                    <Text style={styles.infoLabel}>{t('Inquiry Date')}</Text>
                     <Text style={styles.infoValue}>{date}</Text>
                   </View>
                 </View>
@@ -317,7 +404,7 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
                 />
               </View>
               <View style={styles.infoTextContainer}>
-                <Text style={styles.infoLabel}>Created On</Text>
+                <Text style={styles.infoLabel}>{t('Created On')}</Text>
                 <Text style={styles.infoValue}>{createdAt}</Text>
               </View>
             </View>
@@ -343,12 +430,12 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
               color="#fff"
             />
             <Text style={styles.addProjectButtonText}>
-              Convert to Quotation
+              {t('Convert to Quotation')}
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* FAB Group */}
+        {/* FAB Group (Uncomment to enable) */}
         {/* <Portal>
           <FAB.Group
             open={fabOpen}
@@ -357,7 +444,7 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
             actions={[
               {
                 icon: 'pencil',
-                label: 'Edit Customer',
+                label: t('Edit Customer'),
                 onPress: () => {
                   setFabVisible(false);
                   handleEdit();
@@ -366,7 +453,7 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
               },
               {
                 icon: 'delete',
-                label: 'Delete Customer',
+                label: t('Delete Customer'),
                 onPress: handleDelete,
                 style: { backgroundColor: '#e74c3c' },
               },
@@ -507,7 +594,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0a411fff',
   },
   fabGroup: {
-    paddingBottom: hp(12), // Prevents overlap with bottom button
+    paddingBottom: hp(12),
   },
 });
 

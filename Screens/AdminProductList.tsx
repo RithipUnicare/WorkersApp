@@ -11,19 +11,38 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Card, TextInput, Chip } from 'react-native-paper';
+import { Card, TextInput, Chip, Switch } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ProjectAPI } from '../service/apiService';
 import dayjs from 'dayjs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslator } from 'react-native-translator';
 
 const { width, height } = Dimensions.get('window');
+const wp = (p: number) => (width * p) / 100;
+const hp = (p: number) => (height * p) / 100;
 
-// Responsive helpers
-const wp = (percentage: number) => (width * percentage) / 100;
-const hp = (percentage: number) => (height * percentage) / 100;
+const enToTa: Record<string, string> = {
+  'Search by name, location or phone...':
+    'பெயர், இடம் அல்லது தொலைபேசி எண்ணால் தேடு...',
+  'No projects found': 'எந்த திட்டங்களும் இல்லை',
+  'Try a different search term': 'வேறு தேடல் சொல்லை முயற்சிக்கவும்',
+  'Start by adding a new project': 'புதிய திட்டத்தைச் சேர்த்து தொடங்கவும்',
+  'Delivery:': 'விநியோகம்:',
+  'days left': 'நாட்கள் மீதம்',
+  Overdue: 'காலாவதியானது',
+  'Time:': 'நேரம்:',
+  'Not set': 'அமைக்கப்படவில்லை',
+  Total: 'மொத்தம்',
+  Paid: 'செலுத்தப்பட்டது',
+  Remaining: 'மீதமுள்ளது',
+  'No location': 'இடம் இல்லை',
+  Language: 'மொழி',
+  English: 'English',
+  Tamil: 'தமிழ்',
+};
 
 export type Project = {
   id: number;
@@ -68,7 +87,6 @@ type Props = {
   navigation: NativeStackNavigationProp<rootStackParamList, 'ProjectList'>;
 };
 
-// Memoized helper functions
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'IN_PROGRESS':
@@ -87,11 +105,9 @@ const formatTime = (time: string) => {
   return dayjs(time, 'HH:mm:ss').format('h:mm A');
 };
 
-// Memoized Image Preview Component
 const ImagePreview = React.memo(
   ({ images }: { images: { id: number; imageUrl: string }[] }) => {
     if (images.length === 0) return null;
-
     return (
       <View style={styles.imagePreview}>
         {images.slice(0, 4).map(img => (
@@ -112,24 +128,20 @@ const ImagePreview = React.memo(
   },
 );
 
-// Memoized Project Card Component
 const ProjectCard = React.memo(
-  ({ item, onPress }: { item: Project; onPress: (item: Project) => void }) => {
-    const handlePress = useCallback(() => {
-      onPress(item);
-    }, [item, onPress]);
-    const [role, setRole] = useState<string | null>('worker');
-    useEffect(() => {
-      const getRole = async () => {
-        const currentRole = await AsyncStorage.getItem('role');
-        const currentUser = await AsyncStorage.getItem('user');
-        console.log('user', currentUser);
-        setRole(currentUser?.role || currentRole);
-      };
-      getRole();
-    }, []);
+  ({
+    item,
+    onPress,
+    t,
+    role,
+  }: {
+    item: Project;
+    onPress: (p: Project) => void;
+    t: (en: string) => string;
+    role: string | null;
+  }) => {
+    const handlePress = useCallback(() => onPress(item), [item, onPress]);
     const paidAmount = item.totalAmount - item.remainingAmount;
-
     return (
       <Card style={styles.card} elevation={3}>
         <TouchableOpacity onPress={handlePress} activeOpacity={0.8}>
@@ -155,7 +167,7 @@ const ProjectCard = React.memo(
               color="#0a411fff"
             />
             <Text style={styles.infoText} numberOfLines={1}>
-              {item.location?.address || 'No location'}
+              {item.location?.address || t('No location')}
             </Text>
           </View>
 
@@ -175,7 +187,7 @@ const ProjectCard = React.memo(
               color="#0a411fff"
             />
             <Text style={styles.infoText}>
-              Delivery: {dayjs(item.deliveryDate).format('DD MMM YYYY')}
+              {t('Delivery:')} {dayjs(item.deliveryDate).format('DD MMM YYYY')}
             </Text>
             <Text
               style={[
@@ -184,8 +196,8 @@ const ProjectCard = React.memo(
               ]}
             >
               {item.remainingDays > 0
-                ? `${item.remainingDays} days left`
-                : 'Overdue'}
+                ? `${item.remainingDays} ${t('days left')}`
+                : t('Overdue')}
             </Text>
           </View>
 
@@ -196,32 +208,34 @@ const ProjectCard = React.memo(
               color="#0a411fff"
             />
             <Text style={styles.infoText}>
-              Time: {formatTime(item.customerTime)}
+              {t('Time:')} {formatTime(item.customerTime)}
             </Text>
           </View>
 
           {role !== 'worker' && (
             <View style={styles.amountRow}>
               <View style={styles.amountBlock}>
-                <Text style={styles.amountLabel}>Total</Text>
+                <Text style={styles.amountLabel}>{t('Total')}</Text>
                 <Text style={styles.amountValue}>
                   ₹{item.totalAmount.toLocaleString('en-IN')}
                 </Text>
               </View>
               <View style={styles.amountDivider} />
               <View style={styles.amountBlock}>
-                <Text style={styles.amountLabel}>Paid</Text>
+                <Text style={styles.amountLabel}>{t('Paid')}</Text>
                 <Text style={[styles.amountValue, { color: '#27ae60' }]}>
                   ₹{paidAmount.toLocaleString('en-IN')}
                 </Text>
               </View>
               <View style={styles.amountDivider} />
               <View style={styles.amountBlock}>
-                <Text style={styles.amountLabel}>Remaining</Text>
+                <Text style={styles.amountLabel}>{t('Remaining')}</Text>
                 <Text
                   style={[
                     styles.amountValue,
-                    { color: item.remainingAmount > 0 ? '#e74c3c' : '#27ae60' },
+                    {
+                      color: item.remainingAmount > 0 ? '#e74c3c' : '#27ae60',
+                    },
                   ]}
                 >
                   ₹{item.remainingAmount.toLocaleString('en-IN')}
@@ -235,15 +249,14 @@ const ProjectCard = React.memo(
       </Card>
     );
   },
-  (prevProps, nextProps) => {
-    // Only re-render if these specific fields change
+  (prev, next) => {
     return (
-      prevProps.item.id === nextProps.item.id &&
-      prevProps.item.status === nextProps.item.status &&
-      prevProps.item.remainingAmount === nextProps.item.remainingAmount &&
-      prevProps.item.remainingDays === nextProps.item.remainingDays &&
-      prevProps.item.siteImages.length === nextProps.item.siteImages.length &&
-      prevProps.item.customerName === nextProps.item.customerName
+      prev.item.id === next.item.id &&
+      prev.item.status === next.item.status &&
+      prev.item.remainingAmount === next.item.remainingAmount &&
+      prev.item.remainingDays === next.item.remainingDays &&
+      prev.item.siteImages.length === next.item.siteImages.length &&
+      prev.item.customerName === next.item.customerName
     );
   },
 );
@@ -255,8 +268,54 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isTamil, setIsTamil] = useState(false);
+  const [translations, setTranslations] = useState<Record<string, string>>({});
 
-  // Load projects on mount & focus
+  const { translate } = useTranslator();
+
+  useEffect(() => {
+    const init = async () => {
+      const saved = await AsyncStorage.getItem('appLanguage');
+      const tamil = saved === 'ta';
+      setIsTamil(tamil);
+    };
+    init();
+  }, []);
+
+  useEffect(() => {
+    if (!isTamil) {
+      setTranslations({});
+      return;
+    }
+    const translateAll = async () => {
+      const result: Record<string, string> = {};
+      for (const en of Object.keys(enToTa)) {
+        try {
+          const ta = await translate('en', 'ta', en, { type: 'google' });
+          result[en] = ta;
+        } catch {
+          result[en] = enToTa[en] ?? en;
+        }
+      }
+      setTranslations(result);
+    };
+    translateAll();
+  }, [isTamil, translate]);
+
+  const t = useCallback(
+    (english: string): string => {
+      if (!isTamil) return english;
+      return translations[english] ?? enToTa[english] ?? english;
+    },
+    [isTamil, translations],
+  );
+
+  const toggleLanguage = useCallback(async () => {
+    const newLang = isTamil ? 'en' : 'ta';
+    await AsyncStorage.setItem('appLanguage', newLang);
+    setIsTamil(!isTamil);
+  }, [isTamil]);
+
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', loadProjects);
     loadProjects();
@@ -267,58 +326,52 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
     try {
       setLoading(true);
       const res = await ProjectAPI.getAll();
-      const storedRole = await AsyncStorage.getItem('role');
-      console.log(storedRole);
+      const userStr = await AsyncStorage.getItem('user');
+      const parsed = userStr ? JSON.parse(userStr) : null;
+      setRole(parsed?.role || '');
       if (res.success && Array.isArray(res.data)) {
         setProjects(res.data);
         setFilteredProjects(res.data);
       }
-
-      setRole(storedRole);
     } catch (e) {
-      console.error('Failed to load projects', e);
+      console.error(e);
     } finally {
       setLoading(false);
     }
   };
 
-  // Pull-to-refresh
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadProjects();
     setRefreshing(false);
   }, []);
 
-  // Search with debounce
   useEffect(() => {
     const timeout = setTimeout(() => {
-      const query = search.toLowerCase().trim();
+      const q = search.toLowerCase().trim();
       const filtered = projects.filter(
         p =>
-          p.customerName.toLowerCase()?.includes(query) ||
-          (p.location?.address || '').toLowerCase()?.includes(query) ||
-          p.customerContactNo?.includes(query),
+          p?.customerName?.toLowerCase()?.includes(q) ||
+          (p.location?.address || '').toLowerCase()?.includes(q) ||
+          p?.customerContactNo?.includes(q),
       );
       setFilteredProjects(filtered);
     }, 300);
-
     return () => clearTimeout(timeout);
   }, [search, projects]);
 
-  // Memoized navigation handler
-  const handleNavigateToDetails = useCallback(
+  const handleNavigate = useCallback(
     (project: Project) => {
       navigation.navigate('ProjectDetails', { project });
     },
     [navigation],
   );
 
-  // Memoized render item
   const renderItem = useCallback(
     ({ item }: { item: Project }) => (
-      <ProjectCard item={item} onPress={handleNavigateToDetails} />
+      <ProjectCard item={item} onPress={handleNavigate} t={t} role={role} />
     ),
-    [handleNavigateToDetails],
+    [handleNavigate, t, role],
   );
 
   const keyExtractor = useCallback((item: Project) => item.id.toString(), []);
@@ -327,69 +380,85 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
     () => (
       <View style={styles.emptyContainer}>
         <MaterialCommunityIcons name="folder-open" size={wp(20)} color="#ccc" />
-        <Text style={styles.emptyText}>No projects found</Text>
+        <Text style={styles.emptyText}>{t('No projects found')}</Text>
         <Text style={styles.emptySubtext}>
           {search
-            ? 'Try a different search term'
-            : 'Start by adding a new project'}
+            ? t('Try a different search term')
+            : t('Start by adding a new project')}
         </Text>
       </View>
     ),
-    [search],
+    [search, t],
   );
 
-  const handleAddProject = useCallback(() => {
-    navigation.navigate('AddProject');
-  }, [navigation]);
+  const handleAdd = useCallback(
+    () => navigation.navigate('AddProject'),
+    [navigation],
+  );
 
-  const handleClearSearch = useCallback(() => {
-    setSearch('');
-  }, []);
+  const clearSearch = useCallback(() => setSearch(''), []);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={styles.container}>
-        {/* Search Bar with Add Button */}
-        <View style={styles.searchRow}>
-          <TextInput
-            placeholder="Search by name, location or phone..."
-            value={search}
-            onChangeText={setSearch}
-            mode="outlined"
-            style={styles.search}
-            theme={{ roundness: wp(2.5) }}
-            contentStyle={styles.searchContent}
-            outlineColor="#ddd"
-            activeOutlineColor="#0a411fff"
-            left={<TextInput.Icon icon="magnify" size={wp(6)} />}
-            right={
-              search ? (
-                <TextInput.Icon
-                  icon="close"
-                  size={wp(6)}
-                  onPress={handleClearSearch}
-                  color="#999"
-                />
-              ) : null
-            }
-          />
-          <TouchableOpacity
-            style={[
-              styles.addButton,
-              role === 'worker' && styles.addButtonDisabled,
-            ]}
-            onPress={handleAddProject}
-            disabled={role === 'worker'}
-          >
-            <MaterialCommunityIcons
-              name="plus"
-              size={wp(6)}
-              color={role === 'worker' ? '#ccc' : '#fff'}
+        <View style={styles.headerRow}>
+          <View style={styles.searchRow}>
+            <TextInput
+              placeholder={t('Search by name, location or phone...')}
+              value={search}
+              onChangeText={setSearch}
+              mode="outlined"
+              style={styles.search}
+              theme={{ roundness: wp(2.5) }}
+              contentStyle={styles.searchContent}
+              outlineColor="#ddd"
+              activeOutlineColor="#0a411fff"
+              left={<TextInput.Icon icon="magnify" size={wp(6)} />}
+              right={
+                search ? (
+                  <TextInput.Icon
+                    icon="close"
+                    size={wp(6)}
+                    onPress={clearSearch}
+                    color="#999"
+                  />
+                ) : null
+              }
             />
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.addButton,
+                role === 'worker' && styles.addButtonDisabled,
+              ]}
+              onPress={handleAdd}
+              disabled={role === 'worker'}
+            >
+              <MaterialCommunityIcons
+                name="plus"
+                size={wp(6)}
+                color={role === 'worker' ? '#ccc' : '#fff'}
+              />
+            </TouchableOpacity>
+          </View>
+
+          {/*<View style={styles.langRow}>
+            <Text style={styles.langLabel}>{t('Language')}</Text>
+            <View style={styles.langToggle}>
+              <Text style={[styles.langText, !isTamil && styles.activeLang]}>
+                {t('English')}
+              </Text>
+              <Switch
+                value={isTamil}
+                onValueChange={toggleLanguage}
+                color="#0a411fff"
+              />
+              <Text style={[styles.langText, isTamil && styles.activeLang]}>
+                {t('Tamil')}
+              </Text>
+            </View>
+          </View>*/}
         </View>
 
-        {/* Project List */}
         {loading ? (
           <View style={styles.loader}>
             <ActivityIndicator size="large" color="#0a411fff" />
@@ -420,11 +489,10 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F5F5F5' },
   container: { flex: 1 },
+  headerRow: { paddingHorizontal: wp(4), paddingTop: hp(1) },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: wp(4),
-    marginTop: hp(1),
     marginBottom: hp(1),
   },
   search: {
@@ -443,6 +511,29 @@ const styles = StyleSheet.create({
   },
   addButtonDisabled: {
     backgroundColor: '#f0f0f0',
+  },
+  langRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: hp(0.5),
+  },
+  langLabel: {
+    fontSize: wp(4),
+    color: '#555',
+  },
+  langToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  langText: {
+    fontSize: wp(3.8),
+    color: '#888',
+    marginHorizontal: wp(2),
+  },
+  activeLang: {
+    color: '#0a411fff',
+    fontWeight: '600',
   },
   listContent: {
     paddingHorizontal: wp(4),

@@ -1,5 +1,5 @@
 // screens/QuotationDetail.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import dayjs from 'dayjs';
 import { rootStackParamList } from '../navigation/AppNavigation';
-import { QuotationAPI } from '../service/apiService'; // Assume a similar API service for Quotations
+import { QuotationAPI } from '../service/apiService';
 import { generatePDF } from 'react-native-html-to-pdf';
 import { WebView } from 'react-native-webview';
 import Share from 'react-native-share';
@@ -25,6 +25,8 @@ import RNFS from 'react-native-fs';
 import generateHTML from '../utils/GenerateHTML';
 import { Project } from './AdminProductList';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslator } from 'react-native-translator';
 
 const { width, height } = Dimensions.get('window');
 
@@ -50,6 +52,8 @@ export type Quotation = {
   createdAt: string;
   updatedAt: string;
   discount: number;
+  status?: string;
+  address?: string;
   items: {
     id: number;
     quotationId: number | null;
@@ -68,7 +72,6 @@ export type Quotation = {
   }[];
 };
 
-// Partial Project type for mapping (based on earlier docs; extend as needed)
 type PartialProject = {
   id: number;
   customerId: number;
@@ -77,18 +80,21 @@ type PartialProject = {
   customerAddress: string;
   deliveryDate: string;
   projectDescription: string;
+  totalBudget: number;
   totalAmount: number;
   grandTotal: number;
   remainingAmount: number;
-
+  discount?: number;
   projectItems: {
     id: number;
     itemName: string;
     quantity: number;
     rateMrp: number;
     totalCost: number;
+    unitId?: number;
+    taxPercentage?: number;
+    hsnSac?: string;
   }[];
-  // Add other required fields with defaults if needed
   status?: string;
   siteStatus?: string;
   customerTime?: string;
@@ -98,45 +104,131 @@ type PartialProject = {
   advancePayments?: [];
 };
 
+const enToTa: Record<string, string> = {
+  // Header & Status
+  CREATED: 'உருவாக்கப்பட்டது',
+  PENDING: 'நிலுவையில்',
+  APPROVED: 'அனுமதிக்கப்பட்டது',
+  REJECTED: 'நிராகரிக்கப்பட்டது',
+
+  // Labels
+  Contact: 'தொடர்பு',
+  Address: 'முகவரி',
+  'Delivery Date': 'விநியோக தேதி',
+  Created: 'உருவாக்கப்பட்டது',
+  'Total Amount': 'மொத்த தொகை',
+  'Total Budget': 'மொத்த பட்ஜெட்',
+  Description: 'விளக்கம்',
+  'No description': 'விளக்கம் இல்லை',
+  Items: 'பொருட்கள்',
+  'No items': 'பொருட்கள் இல்லை',
+  Qty: 'அளவு',
+  Tax: 'வரி',
+  'HSN/SAC': 'HSN/SAC',
+  Total: 'மொத்தம்',
+
+  // Buttons & Actions
+  'Delete Quotation': 'மேற்கோளை நீக்கு',
+  'Are you sure?': 'நிச்சயமா?',
+  Cancel: 'ரத்து செய்',
+  Delete: 'நீக்கு',
+  Error: 'பிழை',
+  'Failed to delete': 'நீக்க முடியவில்லை',
+  'Quotation Preview': 'மேற்கோள் முன்னோட்டம்',
+  Close: 'மூடு',
+  'Generate & Share PDF': 'PDF உருவாக்கி பகிரவும்',
+
+  // Tooltips (optional)
+  Edit: 'திருத்து',
+  Share: 'பகிரவும்',
+  'Convert to Project': 'திட்டமாக மாற்று',
+};
+
 const QuotationDetail: React.FC = () => {
   const route = useRoute<QuotationDetailsRouteProp>();
   const navigation = useNavigation<QuotationDetailsNavProp>();
-  const quotation: Quotation = route.params.quotation;
-  console.log('QuotationDetail route params', route.params);
-  const [quotationData, setQuotationData] = useState<Quotation>(quotation);
-  console.log('quotationData', quotationData);
-  // PDF Modal State
+  const initialQuotation: Quotation = route.params.quotation;
+  const [quotationData, setQuotationData] =
+    useState<Quotation>(initialQuotation);
   const [pdfModalVisible, setPdfModalVisible] = useState(false);
   const [htmlContent, setHtmlContent] = useState('');
+
+  const [isTamil, setIsTamil] = useState(false);
+  const [translations, setTranslations] = useState<Record<string, string>>({});
+
+  const { translate } = useTranslator();
+
+  // Initialize language
+  useEffect(() => {
+    const initLang = async () => {
+      const saved = await AsyncStorage.getItem('appLanguage');
+      const tamil = saved === 'ta';
+      setIsTamil(tamil);
+    };
+    initLang();
+  }, []);
+
+  // Translate when Tamil is enabled
+  useEffect(() => {
+    if (!isTamil) {
+      setTranslations({});
+      return;
+    }
+    const translateAll = async () => {
+      const result: Record<string, string> = {};
+      for (const en of Object.keys(enToTa)) {
+        try {
+          const ta = await translate('en', 'ta', en, { type: 'google' });
+          result[en] = ta;
+        } catch {
+          result[en] = enToTa[en] ?? en;
+        }
+      }
+      setTranslations(result);
+    };
+    translateAll();
+  }, [isTamil, translate]);
+
+  const t = useCallback(
+    (english: string): string => {
+      if (!isTamil) return english;
+      return translations[english] ?? enToTa[english] ?? english;
+    },
+    [isTamil, translations],
+  );
 
   const formatDate = (date: string) => dayjs(date).format('DD-MM-YYYY');
 
   useEffect(() => {
-    navigation.addListener('focus', () => {
-      // Reload or refresh if needed
-      const loadQuotation = async () => {
-        try {
-          const res = await QuotationAPI.getById(quotationData.id);
-          if (res && res.data) {
-            setQuotationData(res.data);
-          }
-        } catch (e) {}
-      };
-      loadQuotation();
+    const unsubscribe = navigation.addListener('focus', async () => {
+      try {
+        const res = await QuotationAPI.getById(quotationData.id);
+        if (res?.data) {
+          setQuotationData(res.data);
+        }
+      } catch (e) {
+        console.warn('Failed to reload quotation', e);
+      }
     });
-  }, []);
+    return unsubscribe;
+  }, [navigation, quotationData.id]);
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'IN_PROGRESS':
-        return '#4CAF50';
-      case 'CREATED':
+    switch (status?.toUpperCase()) {
+      case 'PENDING':
         return '#FFC107';
-      case 'COMPLETED':
-        return '#2196F3';
+      case 'APPROVED':
+        return '#4CAF50';
+      case 'REJECTED':
+        return '#e74c3c';
+      case 'CREATED':
       default:
         return '#9E9E9E';
     }
+  };
+
+  const getStatusText = (status: string) => {
+    return t(status?.toUpperCase() || 'CREATED');
   };
 
   const handleEdit = () => {
@@ -144,17 +236,17 @@ const QuotationDetail: React.FC = () => {
   };
 
   const handleDelete = () => {
-    Alert.alert('Delete Quotation', 'Are you sure?', [
-      { text: 'Cancel' },
+    Alert.alert(t('Delete Quotation'), t('Are you sure?'), [
+      { text: t('Cancel') },
       {
-        text: 'Delete',
+        text: t('Delete'),
         style: 'destructive',
         onPress: async () => {
           try {
             await QuotationAPI.delete(quotationData.id);
             navigation.goBack();
           } catch (e) {
-            Alert.alert('Error', 'Failed to delete');
+            Alert.alert(t('Error'), t('Failed to delete'));
           }
         },
       },
@@ -162,7 +254,6 @@ const QuotationDetail: React.FC = () => {
   };
 
   const handleConvertToProject = () => {
-    // Map Quotation to Partial Project
     const projectToEdit: Project = {
       id: quotationData.id,
       customerId: quotationData.customerId,
@@ -173,8 +264,8 @@ const QuotationDetail: React.FC = () => {
       projectDescription: quotationData.projectDescription,
       totalBudget: quotationData.totalBudget,
       totalAmount: quotationData.totalBudget - quotationData.discount,
-      grandTotal: quotationData.totalAmount, // Assume grandTotal = totalAmount
-      remainingAmount: quotationData.totalBudget - quotationData.totalBudget, // Example mapping
+      grandTotal: quotationData.totalAmount,
+      remainingAmount: 0,
       discount: quotationData.discount,
       projectItems: quotationData.items.map(item => ({
         id: item.id,
@@ -188,13 +279,13 @@ const QuotationDetail: React.FC = () => {
       })),
       status: 'CREATED',
       siteStatus: 'CREATED',
-      customerTime: '', // Default
-      remainingDays: 0, // Default
+      customerTime: '',
+      remainingDays: 0,
       location: null,
       siteImages: [],
       advancePayments: [],
     };
-    navigation.navigate('AddProject', { projectToEdit: projectToEdit });
+    navigation.navigate('AddProject', { projectToEdit });
   };
 
   const shareQuotationPDF = async () => {
@@ -207,43 +298,36 @@ const QuotationDetail: React.FC = () => {
     try {
       const options = {
         html: htmlContent,
-        fileName: `${quotation.customerName}_Quotation`,
+        fileName: `${quotationData.customerName}_Quotation`,
         directory: 'Documents',
       };
       const { filePath } = await generatePDF(options);
-      console.log('PDF generated at:', filePath);
 
-      const fileName = `${quotation.customerName}_Quotation.pdf`;
-      let downloadsPath;
-      if (Platform.OS === 'android') {
-        downloadsPath = `${RNFS.DownloadDirectoryPath}/${fileName}`;
-      } else {
-        downloadsPath = `${RNFS.DocumentDirectoryPath}/${fileName}`;
-      }
+      const fileName = `${quotationData.customerName}_Quotation.pdf`;
+      const downloadsPath =
+        Platform.OS === 'android'
+          ? `${RNFS.DownloadDirectoryPath}/${fileName}`
+          : `${RNFS.DocumentDirectoryPath}/${fileName}`;
 
-      // Copy to Downloads (or Documents for iOS)
       await RNFS.copyFile(filePath, downloadsPath);
 
-      // Share from Downloads path
       await Share.open({
         title: `Quotation - ${quotationData.customerName}`,
         message: `Quotation for ${quotationData.customerName}`,
         url: `file://${downloadsPath}`,
       });
 
-      // Unlink original after successful share
       await RNFS.unlink(filePath);
     } catch (error) {
       console.error('PDF/Share Error:', error);
-      Alert.alert('Error', 'Failed to generate or share PDF');
+      Alert.alert(t('Error'), 'Failed to generate or share PDF');
+    } finally {
+      setPdfModalVisible(false);
     }
-    setPdfModalVisible(false);
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Top Action Buttons */}
-
       <ScrollView contentContainerStyle={styles.content}>
         {/* Header */}
         <Card style={styles.headerCard}>
@@ -252,11 +336,15 @@ const QuotationDetail: React.FC = () => {
             <Chip
               style={[
                 styles.statusChip,
-                { backgroundColor: getStatusColor('CREATED') }, // Default status
+                {
+                  backgroundColor: getStatusColor(
+                    quotationData.status || 'CREATED',
+                  ),
+                },
               ]}
               textStyle={styles.statusText}
             >
-              {quotationData?.status?.toLowerCase() || 'CREATED'}
+              {getStatusText(quotationData.status || 'CREATED')}
             </Chip>
           </View>
         </Card>
@@ -269,7 +357,7 @@ const QuotationDetail: React.FC = () => {
               size={width * 0.05}
               color="#0a411fff"
             />
-            <Text style={styles.infoLabel}>Contact</Text>
+            <Text style={styles.infoLabel}>{t('Contact')}</Text>
             <Text style={styles.infoValue}>
               {quotationData.customerContactNo || 'N/A'}
             </Text>
@@ -281,7 +369,7 @@ const QuotationDetail: React.FC = () => {
               size={width * 0.05}
               color="#0a411fff"
             />
-            <Text style={styles.infoLabel}>Address</Text>
+            <Text style={styles.infoLabel}>{t('Address')}</Text>
             <Text style={styles.infoValue} numberOfLines={2}>
               {quotationData.customerAddress}
             </Text>
@@ -293,7 +381,7 @@ const QuotationDetail: React.FC = () => {
               size={width * 0.05}
               color="#0a411fff"
             />
-            <Text style={styles.infoLabel}>Delivery Date</Text>
+            <Text style={styles.infoLabel}>{t('Delivery Date')}</Text>
             <Text style={styles.infoValue}>
               {formatDate(quotationData.deliveryDate)}
             </Text>
@@ -305,7 +393,7 @@ const QuotationDetail: React.FC = () => {
               size={width * 0.05}
               color="#0a411fff"
             />
-            <Text style={styles.infoLabel}>Created</Text>
+            <Text style={styles.infoLabel}>{t('Created')}</Text>
             <Text style={styles.infoValue}>
               {dayjs(quotationData.createdAt).format('DD-MM-YYYY HH:mm')}
             </Text>
@@ -316,17 +404,17 @@ const QuotationDetail: React.FC = () => {
         <Card style={styles.amountCard}>
           <View style={styles.amountRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.amountLabel}>Total Amount</Text>
+              <Text style={styles.amountLabel}>{t('Total Amount')}</Text>
               <Text style={styles.amountValue}>
                 ₹
-                {Number(
-                  quotationData.totalBudget - quotationData.discount,
+                {(
+                  quotationData.totalBudget - quotationData.discount
                 ).toLocaleString('en-IN')}
               </Text>
             </View>
             <View style={styles.divider} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.amountLabel}>Total Budget</Text>
+              <Text style={styles.amountLabel}>{t('Total Budget')}</Text>
               <Text style={styles.amountValue}>
                 ₹{quotationData.totalBudget?.toLocaleString('en-IN') || 0}
               </Text>
@@ -336,17 +424,17 @@ const QuotationDetail: React.FC = () => {
 
         {/* Description */}
         <Card style={styles.descCard}>
-          <Text style={styles.descTitle}>Description</Text>
+          <Text style={styles.descTitle}>{t('Description')}</Text>
           <Text style={styles.descText}>
-            {quotationData.projectDescription || 'No description'}
+            {quotationData.projectDescription || t('No description')}
           </Text>
         </Card>
 
         {/* Items */}
         <Card style={styles.itemsCard}>
-          <Text style={styles.sectionTitle}>Items</Text>
+          <Text style={styles.sectionTitle}>{t('Items')}</Text>
           {quotationData.items.length === 0 ? (
-            <Text style={styles.emptyText}>No items</Text>
+            <Text style={styles.emptyText}>{t('No items')}</Text>
           ) : (
             quotationData.items.map(item => (
               <View key={item.id} style={styles.itemRow}>
@@ -355,8 +443,9 @@ const QuotationDetail: React.FC = () => {
                   <Text style={styles.itemDesc}>{item.itemDescription}</Text>
                 )}
                 <Text style={styles.itemDetails}>
-                  Qty: {item.quantity} {item.unit.shortName} × ₹{item.rateMrp} |
-                  Tax: {item.taxPercentage}% | HSN/SAC: {item.hsnSac} | Total: ₹
+                  {t('Qty')}: {item.quantity} {item.unit.shortName} × ₹
+                  {item.rateMrp} | {t('Tax')}: {item.taxPercentage}% |{' '}
+                  {t('HSN/SAC')}: {item.hsnSac} | {t('Total')}: ₹
                   {item.totalCost.toLocaleString('en-IN')}
                 </Text>
               </View>
@@ -364,6 +453,8 @@ const QuotationDetail: React.FC = () => {
           )}
         </Card>
       </ScrollView>
+
+      {/* Action Buttons */}
       <View style={styles.actionButtonsContainer}>
         <IconButton
           icon="pencil"
@@ -394,17 +485,16 @@ const QuotationDetail: React.FC = () => {
           iconColor="#0a411fff"
         />
       </View>
+
       {/* PDF Preview Modal */}
       <Modal
         visible={pdfModalVisible}
         onDismiss={() => setPdfModalVisible(false)}
         animationType="slide"
-        //contentContainerStyle={{ flex: 1 }}
-        style={{ maxHeight: height * 0.6 }}
       >
         <View style={styles.pdfModalContainer}>
           <View style={styles.pdfModalHeader}>
-            <Text style={styles.pdfModalTitle}>Quotation Preview</Text>
+            <Text style={styles.pdfModalTitle}>{t('Quotation Preview')}</Text>
             <TouchableOpacity onPress={() => setPdfModalVisible(false)}>
               <MaterialCommunityIcons name="close" size={24} color="#fff" />
             </TouchableOpacity>
@@ -420,7 +510,7 @@ const QuotationDetail: React.FC = () => {
               onPress={() => setPdfModalVisible(false)}
               style={styles.pdfButton}
             >
-              Close
+              {t('Close')}
             </Button>
             <Button
               mode="contained"
@@ -428,7 +518,7 @@ const QuotationDetail: React.FC = () => {
               style={styles.pdfButton}
               buttonColor="#0a411fff"
             >
-              Generate & Share PDF
+              {t('Generate & Share PDF')}
             </Button>
           </View>
         </View>
@@ -438,33 +528,8 @@ const QuotationDetail: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
-  actionButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: 10,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    elevation: 3,
-    marginBottom: 10,
-  },
-  actionButton: {
-    flex: 0.22,
-  },
-  actionButtonContent: {
-    paddingVertical: 4,
-  },
-  actionButtonLabel: {
-    fontSize: 12,
-  },
-  content: {
-    padding: width * 0.04,
-    paddingBottom: height * 0.15,
-  },
+  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  content: { padding: width * 0.04, paddingBottom: height * 0.15 },
   headerCard: {
     marginBottom: height * 0.02,
     padding: width * 0.04,
@@ -488,11 +553,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: width * 0.02,
   },
-  statusText: {
-    color: '#fff',
-    fontSize: width * 0.032,
-    fontWeight: '600',
-  },
+  statusText: { color: '#fff', fontSize: width * 0.032, fontWeight: '600' },
   detailsCard: {
     padding: width * 0.04,
     backgroundColor: '#fff',
@@ -515,11 +576,7 @@ const styles = StyleSheet.create({
     color: '#555',
     fontWeight: '500',
   },
-  infoValue: {
-    flex: 1,
-    fontSize: width * 0.036,
-    color: '#000',
-  },
+  infoValue: { flex: 1, fontSize: width * 0.036, color: '#000' },
   amountCard: {
     padding: width * 0.04,
     backgroundColor: '#fff',
@@ -534,11 +591,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#eee',
   },
-  amountLabel: {
-    fontSize: width * 0.032,
-    color: '#888',
-    textAlign: 'center',
-  },
+  amountLabel: { fontSize: width * 0.032, color: '#888', textAlign: 'center' },
   amountValue: {
     fontSize: width * 0.038,
     fontWeight: 'bold',
@@ -587,33 +640,32 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
-  itemName: {
-    fontWeight: '600',
-    fontSize: width * 0.038,
-  },
+  itemName: { fontWeight: '600', fontSize: width * 0.038 },
   itemDesc: {
     fontSize: width * 0.034,
     color: '#666',
     marginTop: 2,
     fontStyle: 'italic',
   },
-  itemDetails: {
-    color: '#666',
-    fontSize: width * 0.032,
-    marginTop: 4,
-  },
+  itemDetails: { color: '#666', fontSize: width * 0.032, marginTop: 4 },
   emptyText: {
     textAlign: 'center',
     color: '#999',
     fontStyle: 'italic',
     marginVertical: height * 0.02,
   },
-
-  // PDF Modal
-  pdfModalContainer: {
-    flex: 1,
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    padding: 10,
     backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    elevation: 3,
   },
+  actionButton: { flex: 0.22 },
+  actionButtonContent: { paddingVertical: 4 },
+  pdfModalContainer: { flex: 1, backgroundColor: '#fff' },
   pdfModalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -621,23 +673,14 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#0a411fff',
   },
-  pdfModalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  webView: {
-    flex: 1,
-  },
+  pdfModalTitle: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
+  webView: { flex: 1 },
   pdfModalActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     padding: 16,
   },
-  pdfButton: {
-    flex: 1,
-    marginHorizontal: 8,
-  },
+  pdfButton: { flex: 1, marginHorizontal: 8 },
 });
 
 export default QuotationDetail;

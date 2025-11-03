@@ -41,10 +41,75 @@ import {
 import { getLocation } from '../utils/GeoLocation';
 import { Unit } from './AdminAddProduct';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslator } from 'react-native-translator';
 
 const { width, height } = Dimensions.get('window');
 const wp = (percentage: number) => (width * percentage) / 100;
 const hp = (percentage: number) => (height * percentage) / 100;
+
+const enToTa: Record<string, string> = {
+  Contact: 'தொடர்பு',
+  Location: 'இடம்',
+  'Not set': 'அமைக்கப்படவில்லை',
+  Delivery: 'விநியோகம்',
+  'Days Left': 'மீதமுள்ள நாட்கள்',
+  'days left': 'நாட்கள் மீதம்',
+  Overdue: 'காலாவதியானது',
+  Budget: 'பட்ஜெட்',
+  'Total Amount': 'மொத்த தொகை',
+  Paid: 'செலுத்தப்பட்டது',
+  'Project Description': 'திட்ட விளக்கம்',
+  'Site Images': 'தள புகைப்படங்கள்',
+  'View All': 'பார்க்க',
+  'No site images available': 'தள புகைப்படங்கள் இல்லை',
+  Items: 'பொருட்கள்',
+  'No items': 'பொருட்கள் இல்லை',
+  'Advance Payments': 'முன்பணம்',
+  Cash: 'பணம்',
+  'Voice Recordings': 'குரல் பதிவுகள்',
+  'No Voice Recording': 'குரல் பதிவு இல்லை',
+  'Update GPS Location': 'GPS இடத்தை புதுப்பிக்கவும்',
+  'Address (Optional)': 'முகவரி (விரும்பினால்)',
+  'Fetch & Update GPS': 'GPS ஐ பெறு & புதுப்பி',
+  Cancel: 'ரத்து செய்',
+  'Add Item': 'பொருள் சேர்க்க',
+  'Item Name *': 'பொருள் பெயர் *',
+  Description: 'விளக்கம்',
+  'Quantity *': 'அளவு *',
+  'Rate (MRP) *': 'விலை (MRP) *',
+  'Select Unit *': 'அலகு தேர்ந்தெடு *',
+  'Tax (%)': 'வரி (%)',
+  'HSN/SAC': 'HSN/SAC',
+  Save: 'சேமி',
+  'Add Site Images': 'தள புகைப்படங்கள் சேர்க்க',
+  Gallery: 'கேலரி',
+  Camera: 'கேமரா',
+  'Selected:': 'தேர்ந்தெடுக்கப்பட்டவை:',
+  'image(s)': 'புகைப்படங்கள்',
+  'Uploading...': 'பதிவேற்றுகிறது...',
+  'Upload Images': 'புகைப்படங்களை பதிவேற்று',
+  'Delete Project': 'திட்டத்தை நீக்கு',
+  'Are you sure?': 'நிச்சயமா?',
+  Delete: 'நீக்கு',
+  Error: 'பிழை',
+  'Failed to delete': 'நீக்க முடியவில்லை',
+  Success: 'வெற்றி',
+  'Location updated': 'இடம் புதுப்பிக்கப்பட்டது',
+  'Could not fetch location': 'இடத்தை பெற முடியவில்லை',
+  'Failed to update location': 'இடத்தை புதுப்பிக்க முடியவில்லை',
+  'Please fill all required fields including Unit':
+    'அனைத்து தேவையான புலங்களையும் நிரப்பவும், அலகு உட்பட',
+  'Item added': 'பொருள் சேர்க்கப்பட்டது',
+  'Failed to add item': 'பொருளை சேர்க்க முடியவில்லை',
+  'Image pick failed': 'புகைப்படம் தேர்வு தோல்வி',
+  'Camera failed': 'கேமரா தோல்வி',
+  'Upload Failed': 'பதிவேற்றம் தோல்வி',
+  'Could not upload images': 'புகைப்படங்களை பதிவேற்ற முடியவில்லை',
+  'image(s) uploaded': 'புகைப்படங்கள் பதிவேற்றப்பட்டன',
+  'Playback Error': 'பிளேபேக் பிழை',
+  'Could not play audio': 'ஆடியோவை இயக்க முடியவில்லை',
+  'Delete Voice Recording': 'குரல் பதிவை நீக்கு',
+};
 
 type ProjectDetailsRouteProp = RouteProp<rootStackParamList, 'ProjectDetails'>;
 type ProjectDetailsNavProp = NativeStackNavigationProp<
@@ -155,6 +220,8 @@ const ProjectDetails: React.FC = () => {
   const [taxPercentage, setTaxPercentage] = useState('');
   const [itemHsnSac, setItemHsnSac] = useState('');
   const [role, setRole] = useState<string | null>('');
+  const [isTamil, setIsTamil] = useState(false);
+  const [translations, setTranslations] = useState<Record<string, string>>({});
 
   // Image upload state
   const [imageModalOpen, setImageModalOpen] = useState(false);
@@ -163,6 +230,47 @@ const ProjectDetails: React.FC = () => {
   const [units, setUnits] = useState<Unit[]>([]);
 
   const [refreshing, setRefreshing] = useState(false);
+
+  const { translate } = useTranslator();
+
+  // Initialize language from AsyncStorage
+  useEffect(() => {
+    const initLang = async () => {
+      const saved = await AsyncStorage.getItem('appLanguage');
+      const tamil = saved === 'ta';
+      setIsTamil(tamil);
+    };
+    initLang();
+  }, []);
+
+  // Translate strings when language changes
+  useEffect(() => {
+    if (!isTamil) {
+      setTranslations({});
+      return;
+    }
+    const translateAll = async () => {
+      const result: Record<string, string> = {};
+      for (const en of Object.keys(enToTa)) {
+        try {
+          const ta = await translate('en', 'ta', en, { type: 'google' });
+          result[en] = ta;
+        } catch {
+          result[en] = enToTa[en] ?? en;
+        }
+      }
+      setTranslations(result);
+    };
+    translateAll();
+  }, [isTamil, translate]);
+
+  const t = useCallback(
+    (english: string): string => {
+      if (!isTamil) return english;
+      return translations[english] ?? enToTa[english] ?? english;
+    },
+    [isTamil, translations],
+  );
 
   const formatTime = (time: string) => dayjs(time, 'HH:mm:ss').format('h:mm A');
   const formatDate = (date: string) => dayjs(date).format('DD-MM-YYYY');
@@ -188,11 +296,10 @@ const ProjectDetails: React.FC = () => {
     setRefreshing(true);
     try {
       const res = await ProjectAPI.getById(initialProject.id);
-      const currentUser = await AsyncStorage.getItem('user');
       if (res?.data) setProject(res.data);
-      const role = JSON.parse(currentUser)?.role || 'worker';
-      console.log(role);
-      setRole(role);
+      const currentUser = await AsyncStorage.getItem('user');
+      const parsedUser = currentUser ? JSON.parse(currentUser) : null;
+      setRole(parsedUser?.role || '');
     } catch (e) {
       console.error('Failed to refresh project', e);
     } finally {
@@ -203,8 +310,7 @@ const ProjectDetails: React.FC = () => {
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', async () => {
       try {
-        const res = await ProjectAPI.getById(initialProject.id);
-        if (res?.data) setProject(res.data);
+        onRefresh();
       } catch (e) {
         console.error('Failed to reload project', e);
       }
@@ -263,10 +369,10 @@ const ProjectDetails: React.FC = () => {
           setDuration('00:00:00');
         }
       } catch (err) {
-        Alert.alert('Playback Error', 'Could not play audio');
+        Alert.alert(t('Playback Error'), t('Could not play audio'));
       }
     },
-    [isPlaying, currentUrl],
+    [isPlaying, currentUrl, t],
   );
 
   const handleEdit = () => {
@@ -274,17 +380,17 @@ const ProjectDetails: React.FC = () => {
   };
 
   const handleDelete = () => {
-    Alert.alert('Delete Project', 'Are you sure?', [
-      { text: 'Cancel' },
+    Alert.alert(t('Delete Project'), t('Are you sure?'), [
+      { text: t('Cancel') },
       {
-        text: 'Delete',
+        text: t('Delete'),
         style: 'destructive',
         onPress: async () => {
           try {
             await ProjectAPI.delete(project.id);
             navigation.goBack();
           } catch (e) {
-            Alert.alert('Error', 'Failed to delete');
+            Alert.alert(t('Error'), t('Failed to delete'));
           }
         },
       },
@@ -315,13 +421,13 @@ const ProjectDetails: React.FC = () => {
         }));
         setGpsModalVisible(false);
         setGpsAddress('');
-        Alert.alert('Success', 'Location updated');
+        Alert.alert(t('Success'), t('Location updated'));
         onRefresh();
       } else {
-        Alert.alert('Error', 'Could not fetch location');
+        Alert.alert(t('Error'), t('Could not fetch location'));
       }
     } catch (e) {
-      Alert.alert('Error', 'Failed to update location');
+      Alert.alert(t('Error'), t('Failed to update location'));
     }
   };
 
@@ -333,7 +439,10 @@ const ProjectDetails: React.FC = () => {
     const tax = Number(taxPercentage) || 0;
 
     if (!itemName || qty <= 0 || rate <= 0 || uId <= 0) {
-      Alert.alert('Error', 'Please fill all required fields including Unit');
+      Alert.alert(
+        t('Error'),
+        t('Please fill all required fields including Unit'),
+      );
       return;
     }
 
@@ -366,10 +475,10 @@ const ProjectDetails: React.FC = () => {
       }));
       setItemModalOpen(false);
       resetItemForm();
-      Alert.alert('Success', 'Item added');
+      Alert.alert(t('Success'), t('Item added'));
       onRefresh();
     } catch (e) {
-      Alert.alert('Error', 'Failed to add item');
+      Alert.alert(t('Error'), t('Failed to add item'));
     }
   };
 
@@ -394,7 +503,10 @@ const ProjectDetails: React.FC = () => {
       (response: ImagePickerResponse) => {
         if (response.didCancel) return;
         if (response.errorCode) {
-          Alert.alert('Error', response.errorMessage || 'Image pick failed');
+          Alert.alert(
+            t('Error'),
+            response.errorMessage || t('Image pick failed'),
+          );
           return;
         }
         const uris = response.assets?.map(a => a.uri!).filter(Boolean) || [];
@@ -412,7 +524,7 @@ const ProjectDetails: React.FC = () => {
       (response: ImagePickerResponse) => {
         if (response.didCancel) return;
         if (response.errorCode) {
-          Alert.alert('Error', response.errorMessage || 'Camera failed');
+          Alert.alert(t('Error'), response.errorMessage || t('Camera failed'));
           return;
         }
         if (response.assets?.[0]?.uri) {
@@ -431,31 +543,26 @@ const ProjectDetails: React.FC = () => {
 
     setUploading(true);
     try {
-      // Assume API supports multiple uploads
-      const formData = new FormData();
-      selectedImages.forEach((uri, idx) => {
-        formData.append('images', {
-          uri,
-          type: 'image/jpeg',
-          name: `site_${project.id}_${Date.now()}_${idx}.jpg`,
-        } as any);
-      });
-
       const res = await ProjectAPI.addSiteImages(project.id, selectedImages);
-      console.log(res);
       if (res?.data) {
         setProject(prev => ({
           ...prev,
           siteImages: [...prev.siteImages, ...res.data],
         }));
-        Alert.alert('Success', `${selectedImages.length} image(s) uploaded`);
+        Alert.alert(
+          t('Success'),
+          `${selectedImages.length} ${t('image(s) uploaded')}`,
+        );
       }
 
       setSelectedImages([]);
       setImageModalOpen(false);
       onRefresh();
     } catch (e: any) {
-      Alert.alert('Upload Failed', e.message || 'Could not upload images');
+      Alert.alert(
+        t('Upload Failed'),
+        e.message || t('Could not upload images'),
+      );
     } finally {
       setUploading(false);
     }
@@ -535,7 +642,7 @@ const ProjectDetails: React.FC = () => {
                 size={wp(5)}
                 color="#2874b8"
               />
-              <Text style={styles.infoLabel}>Contact</Text>
+              <Text style={styles.infoLabel}>{t('Contact')}</Text>
               <Text style={styles.infoValue}>{project.customerContactNo}</Text>
             </View>
 
@@ -545,9 +652,9 @@ const ProjectDetails: React.FC = () => {
                 size={wp(5)}
                 color="#2874b8"
               />
-              <Text style={styles.infoLabel}>Location</Text>
+              <Text style={styles.infoLabel}>{t('Location')}</Text>
               <Text style={styles.infoValue} numberOfLines={1}>
-                {project.location?.address || 'Not set'}
+                {project.location?.address || t('Not set')}
               </Text>
               <IconButton
                 icon="map-marker-plus"
@@ -563,7 +670,7 @@ const ProjectDetails: React.FC = () => {
                 size={wp(5)}
                 color="#2874b8"
               />
-              <Text style={styles.infoLabel}>Delivery</Text>
+              <Text style={styles.infoLabel}>{t('Delivery')}</Text>
               <Text style={styles.infoValue}>
                 {formatDate(project.deliveryDate)}
               </Text>
@@ -575,7 +682,7 @@ const ProjectDetails: React.FC = () => {
                 size={wp(5)}
                 color="#2874b8"
               />
-              <Text style={styles.infoLabel}>Days Left</Text>
+              <Text style={styles.infoLabel}>{t('Days Left')}</Text>
               <Text
                 style={[
                   styles.infoValue,
@@ -583,45 +690,47 @@ const ProjectDetails: React.FC = () => {
                 ]}
               >
                 {project.remainingDays > 0
-                  ? `${project.remainingDays} days left`
-                  : 'Overdue'}
+                  ? `${project.remainingDays} ${t('days left')}`
+                  : t('Overdue')}
               </Text>
             </View>
           </Card>
 
           {/* Amount */}
-          <Card style={styles.amountCard}>
-            <View style={styles.amountRow}>
-              <View style={styles.amountBlock}>
-                <Text style={styles.amountLabel}>Budget</Text>
-                <Text style={styles.amountValue}>
-                  ₹{project.totalBudget?.toLocaleString('en-IN') || '0'}
-                </Text>
+          {role !== 'worker' && (
+            <Card style={styles.amountCard}>
+              <View style={styles.amountRow}>
+                <View style={styles.amountBlock}>
+                  <Text style={styles.amountLabel}>{t('Budget')}</Text>
+                  <Text style={styles.amountValue}>
+                    ₹{project.totalBudget?.toLocaleString('en-IN') || '0'}
+                  </Text>
+                </View>
+                <View style={styles.divider} />
+                <View style={styles.amountBlock}>
+                  <Text style={styles.amountLabel}>{t('Total Amount')}</Text>
+                  <Text style={[styles.amountValue, { color: '#27ae60' }]}>
+                    ₹{project.totalAmount.toLocaleString('en-IN')}
+                  </Text>
+                </View>
+                <View style={styles.divider} />
+                <View style={styles.amountBlock}>
+                  <Text style={styles.amountLabel}>{t('Paid')}</Text>
+                  <Text style={[styles.amountValue, { color: '#27ae60' }]}>
+                    ₹
+                    {(
+                      project.totalAmount - project.remainingAmount
+                    ).toLocaleString('en-IN')}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.divider} />
-              <View style={styles.amountBlock}>
-                <Text style={styles.amountLabel}>Total Amount</Text>
-                <Text style={[styles.amountValue, { color: '#27ae60' }]}>
-                  ₹{project.totalAmount.toLocaleString('en-IN')}
-                </Text>
-              </View>
-              <View style={styles.divider} />
-              <View style={styles.amountBlock}>
-                <Text style={styles.amountLabel}>Paid</Text>
-                <Text style={[styles.amountValue, { color: '#27ae60' }]}>
-                  ₹
-                  {(
-                    project.totalAmount - project.remainingAmount
-                  ).toLocaleString('en-IN')}
-                </Text>
-              </View>
-            </View>
-          </Card>
+            </Card>
+          )}
 
           {/* Description */}
           {project.projectDescription ? (
             <Card style={styles.descCard}>
-              <Text style={styles.descTitle}>Project Description</Text>
+              <Text style={styles.descTitle}>{t('Project Description')}</Text>
               <Text style={styles.descText}>{project.projectDescription}</Text>
             </Card>
           ) : null}
@@ -631,7 +740,7 @@ const ProjectDetails: React.FC = () => {
             <Card style={styles.imagesCard}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>
-                  Site Images ({project.siteImages.length})
+                  {t('Site Images')} ({project.siteImages.length})
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Button
@@ -639,7 +748,7 @@ const ProjectDetails: React.FC = () => {
                     onPress={() => openImageModal(0)}
                     labelStyle={styles.viewAllText}
                   >
-                    View All
+                    {t('View All')}
                   </Button>
                   <IconButton
                     icon="plus"
@@ -678,7 +787,7 @@ const ProjectDetails: React.FC = () => {
           ) : (
             <Card style={styles.imagesCard}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Site Images (0)</Text>
+                <Text style={styles.sectionTitle}>{t('Site Images')} (0)</Text>
                 <IconButton
                   icon="plus"
                   size={wp(6)}
@@ -686,7 +795,9 @@ const ProjectDetails: React.FC = () => {
                   iconColor="#2874b8"
                 />
               </View>
-              <Text style={styles.emptyText}>No site images available</Text>
+              <Text style={styles.emptyText}>
+                {t('No site images available')}
+              </Text>
             </Card>
           )}
 
@@ -694,17 +805,18 @@ const ProjectDetails: React.FC = () => {
           <Card style={styles.itemsCard}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>
-                Items ({project.projectItems.length})
+                {t('Items')} ({project.projectItems.length})
               </Text>
               <IconButton
                 icon="plus"
                 size={wp(6)}
                 onPress={() => setItemModalOpen(true)}
                 iconColor="#2874b8"
+                disabled={role === 'worker'}
               />
             </View>
             {project.projectItems.length === 0 ? (
-              <Text style={styles.emptyText}>No items</Text>
+              <Text style={styles.emptyText}>{t('No items')}</Text>
             ) : (
               project.projectItems.map(item => (
                 <View key={item.id} style={styles.itemRow}>
@@ -723,7 +835,7 @@ const ProjectDetails: React.FC = () => {
           {/* Payments */}
           {project.advancePayments.length > 0 && (
             <Card style={styles.paymentsCard}>
-              <Text style={styles.sectionTitle}>Advance Payments</Text>
+              <Text style={styles.sectionTitle}>{t('Advance Payments')}</Text>
               {project.advancePayments.map(pay => (
                 <View key={pay.id} style={styles.paymentRow}>
                   <View>
@@ -735,7 +847,7 @@ const ProjectDetails: React.FC = () => {
                     </Text>
                   </View>
                   <Chip mode="outlined" textStyle={styles.chipText}>
-                    {pay.paymentMode || 'Cash'}
+                    {pay.paymentMode || t('Cash')}
                   </Chip>
                 </View>
               ))}
@@ -752,7 +864,7 @@ const ProjectDetails: React.FC = () => {
                   color="#2874b8"
                 />
                 <Text style={styles.voiceTitle}>
-                  Voice Recordings ({sortedVoiceRecordings.length})
+                  {t('Voice Recordings')} ({sortedVoiceRecordings.length})
                 </Text>
                 <IconButton
                   icon="plus"
@@ -794,19 +906,23 @@ const ProjectDetails: React.FC = () => {
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => {
-                        Alert.alert('Delete Voice Recording', 'Are you sure?', [
-                          { text: 'Cancel', style: 'cancel' },
-                          {
-                            text: 'Delete',
-                            onPress: async () => {
-                              await ProjectAPI.deleteVoiceRecording(
-                                project.id,
-                                recording.id,
-                              );
-                              onRefresh();
+                        Alert.alert(
+                          t('Delete Voice Recording'),
+                          t('Are you sure?'),
+                          [
+                            { text: t('Cancel'), style: 'cancel' },
+                            {
+                              text: t('Delete'),
+                              onPress: async () => {
+                                await ProjectAPI.deleteVoiceRecording(
+                                  project.id,
+                                  recording.id,
+                                );
+                                onRefresh();
+                              },
                             },
-                          },
-                        ]);
+                          ],
+                        );
                       }}
                       style={{ marginLeft: wp(2) }}
                     >
@@ -854,7 +970,7 @@ const ProjectDetails: React.FC = () => {
                   color="#2874b8"
                 />
                 <Text style={styles.voiceTitle}>
-                  Voice Recordings ({sortedVoiceRecordings.length})
+                  {t('Voice Recordings')} ({sortedVoiceRecordings.length})
                 </Text>
                 <IconButton
                   icon="plus"
@@ -864,7 +980,9 @@ const ProjectDetails: React.FC = () => {
                 />
               </View>
               <View>
-                <Text style={styles.recordingName}>No Voice Recording</Text>
+                <Text style={styles.recordingName}>
+                  {t('No Voice Recording')}
+                </Text>
               </View>
             </Card>
           )}
@@ -916,7 +1034,7 @@ const ProjectDetails: React.FC = () => {
           >
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Site Images</Text>
+                <Text style={styles.modalTitle}>{t('Site Images')}</Text>
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
                   <MaterialCommunityIcons
                     name="close"
@@ -947,10 +1065,10 @@ const ProjectDetails: React.FC = () => {
             visible={gpsModalVisible}
             onDismiss={() => setGpsModalVisible(false)}
           >
-            <Dialog.Title>Update GPS Location</Dialog.Title>
+            <Dialog.Title>{t('Update GPS Location')}</Dialog.Title>
             <Dialog.Content>
               <TextInput
-                label="Address (Optional)"
+                label={t('Address (Optional)')}
                 value={gpsAddress}
                 onChangeText={setGpsAddress}
                 mode="outlined"
@@ -962,11 +1080,13 @@ const ProjectDetails: React.FC = () => {
                 style={styles.button}
                 buttonColor="#2874b8"
               >
-                Fetch & Update GPS
+                {t('Fetch & Update GPS')}
               </Button>
             </Dialog.Content>
             <Dialog.Actions>
-              <Button onPress={() => setGpsModalVisible(false)}>Cancel</Button>
+              <Button onPress={() => setGpsModalVisible(false)}>
+                {t('Cancel')}
+              </Button>
             </Dialog.Actions>
           </Dialog>
 
@@ -975,17 +1095,17 @@ const ProjectDetails: React.FC = () => {
             visible={itemModalOpen}
             onDismiss={() => setItemModalOpen(false)}
           >
-            <Dialog.Title>Add Item</Dialog.Title>
+            <Dialog.Title>{t('Add Item')}</Dialog.Title>
             <Dialog.Content>
               <TextInput
-                label="Item Name *"
+                label={t('Item Name *')}
                 value={itemName}
                 onChangeText={setItemName}
                 mode="outlined"
                 style={styles.input}
               />
               <TextInput
-                label="Description"
+                label={t('Description')}
                 value={itemDesc}
                 onChangeText={setItemDesc}
                 mode="outlined"
@@ -993,7 +1113,7 @@ const ProjectDetails: React.FC = () => {
                 multiline
               />
               <TextInput
-                label="Quantity *"
+                label={t('Quantity *')}
                 value={itemQty}
                 onChangeText={setItemQty}
                 mode="outlined"
@@ -1001,7 +1121,7 @@ const ProjectDetails: React.FC = () => {
                 style={styles.input}
               />
               <TextInput
-                label="Rate (MRP) *"
+                label={t('Rate (MRP) *')}
                 value={itemRate}
                 onChangeText={setItemRate}
                 mode="outlined"
@@ -1020,7 +1140,7 @@ const ProjectDetails: React.FC = () => {
                 maxHeight={300}
                 labelField="label"
                 valueField="value"
-                placeholder="Select Unit *"
+                placeholder={t('Select Unit *')}
                 value={selectedUnitId}
                 onChange={item => setSelectedUnitId(item.value)}
                 renderItem={item => (
@@ -1031,7 +1151,7 @@ const ProjectDetails: React.FC = () => {
               />
 
               <TextInput
-                label="Tax (%)"
+                label={t('Tax (%)')}
                 value={taxPercentage}
                 onChangeText={setTaxPercentage}
                 mode="outlined"
@@ -1039,7 +1159,7 @@ const ProjectDetails: React.FC = () => {
                 style={styles.input}
               />
               <TextInput
-                label="HSN/SAC"
+                label={t('HSN/SAC')}
                 value={itemHsnSac}
                 onChangeText={setItemHsnSac}
                 mode="outlined"
@@ -1047,12 +1167,14 @@ const ProjectDetails: React.FC = () => {
               />
             </Dialog.Content>
             <Dialog.Actions>
-              <Button onPress={() => setItemModalOpen(false)}>Cancel</Button>
+              <Button onPress={() => setItemModalOpen(false)}>
+                {t('Cancel')}
+              </Button>
               <Button
                 onPress={saveItem}
                 disabled={!itemName || !itemQty || !itemRate || !selectedUnitId}
               >
-                Save
+                {t('Save')}
               </Button>
             </Dialog.Actions>
           </Dialog>
@@ -1065,7 +1187,7 @@ const ProjectDetails: React.FC = () => {
               setSelectedImages([]);
             }}
           >
-            <Dialog.Title>Add Site Images</Dialog.Title>
+            <Dialog.Title>{t('Add Site Images')}</Dialog.Title>
             <Dialog.Content>
               <View
                 style={{
@@ -1079,17 +1201,17 @@ const ProjectDetails: React.FC = () => {
                   onPress={pickImages}
                   style={{ flex: 1, marginRight: wp(2) }}
                 >
-                  Gallery
+                  {t('Gallery')}
                 </Button>
                 <Button mode="outlined" onPress={takePhoto} style={{ flex: 1 }}>
-                  Camera
+                  {t('Camera')}
                 </Button>
               </View>
 
               {selectedImages.length > 0 && (
                 <>
                   <Text style={{ marginVertical: hp(1) }}>
-                    Selected: {selectedImages.length} image(s)
+                    {t('Selected:')} {selectedImages.length} {t('image(s)')}
                   </Text>
                   <ScrollView horizontal style={{ maxHeight: hp(20) }}>
                     {selectedImages.map((uri, idx) => (
@@ -1123,7 +1245,7 @@ const ProjectDetails: React.FC = () => {
                     style={styles.uploadBtn}
                     buttonColor="#27ae60"
                   >
-                    {uploading ? 'Uploading...' : 'Upload Images'}
+                    {uploading ? t('Uploading...') : t('Upload Images')}
                   </Button>
                 </>
               )}
@@ -1135,7 +1257,7 @@ const ProjectDetails: React.FC = () => {
                   setSelectedImages([]);
                 }}
               >
-                Cancel
+                {t('Cancel')}
               </Button>
             </Dialog.Actions>
           </Dialog>
@@ -1387,7 +1509,6 @@ const styles = StyleSheet.create({
   dropdownSelected: { fontSize: wp(4), color: '#000' },
   dropdownItem: { padding: wp(3) },
   dropdownItemText: { fontSize: wp(4) },
-  // Image Upload Styles
   previewWrapper: { marginRight: wp(2), position: 'relative' },
   previewImage: { width: wp(25), height: wp(25), borderRadius: wp(2) },
   removeBtn: { position: 'absolute', top: -wp(2), right: -wp(2) },
