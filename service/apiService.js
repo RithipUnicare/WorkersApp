@@ -25,6 +25,7 @@ api.interceptors.response.use(
 
 async function handleResponse(response, parse = 'json') {
   const { status, data } = response;
+  console.log(status, data);
   if (status >= 400) {
     const error = new Error(response.data?.message || `HTTP ${status}`);
     error.status = status;
@@ -42,7 +43,7 @@ async function handleResponse(response, parse = 'json') {
 async function jsonRequest(method, path, body, headers = {}) {
   const url = buildUrl(path);
   const config = { headers };
-  console.log(url);
+
   const response = await api.request({
     method,
     url,
@@ -207,6 +208,76 @@ export const QuotationAPI = {
     queryRequest(endpoints.quotationsByCustomerId(customerId)),
   updateQuotationStatus: (id, payload) =>
     jsonRequest('PATCH', `${endpoints.quotationById(id)}/status`, payload),
+
+  // Voice recordings
+  getVoiceRecordings: id => queryRequest(endpoints.quotationVoice(id)),
+  addVoiceRecording: (id, file) => {
+    const formData = new FormData();
+    if (file && (file.startsWith('file://') || file.includes('cache'))) {
+      const filename = file.split('/').pop() || `voice_note_${id}.mp3`;
+      const type = 'audio/mpeg';
+      formData.append('name', filename);
+      formData.append('file', {
+        uri: file,
+        name: filename,
+        type,
+      });
+    }
+    return multipartRequest('POST', endpoints.quotationVoice(id), formData);
+  },
+
+  // Location
+  updateLocation: (id, payload) =>
+    jsonRequest('POST', endpoints.quotationLocation(id), payload),
+
+  // Images (quotation-level)
+  getSiteImages: id => queryRequest(endpoints.quotationImages(id)),
+  addSiteImages: async (quotationId, imageUris = []) => {
+    const formData = new FormData();
+
+    imageUris.forEach((uri, index) => {
+      if (!uri || (!uri.startsWith('file://') && !uri.includes('cache'))) return;
+      const filename = uri.split('/').pop() || `site_image_${index}.jpg`;
+      const type = 'image/jpeg';
+      formData.append('files', {
+        uri,
+        name: filename,
+        type,
+      });
+    });
+
+    if ([...formData._parts].length === 0) return;
+
+    return multipartRequest(
+      'POST',
+      endpoints.quotationImages(quotationId),
+      formData,
+    );
+  },
+
+  // Item images (max 3 server-side)
+  addItemImages: async (itemId, imageUris = []) => {
+    const formData = new FormData();
+
+    imageUris.forEach((uri, index) => {
+      if (!uri || (!uri.startsWith('file://') && !uri.includes('cache'))) return;
+      const filename = uri.split('/').pop() || `item_image_${index}.jpg`;
+      const type = 'image/jpeg';
+      formData.append('files', {
+        uri,
+        name: filename,
+        type,
+      });
+    });
+
+    if ([...formData._parts].length === 0) return;
+
+    return multipartRequest(
+      'POST',
+      endpoints.quotationItemImages(itemId),
+      formData,
+    );
+  },
 };
 
 export const UnitAPI = {

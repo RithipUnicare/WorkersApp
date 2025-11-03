@@ -28,15 +28,15 @@ type Props = {
 
 const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState<'worker' | 'admin'>('worker');
-  
+
   // Worker Login State
   const [mobile, setMobile] = useState('');
-  
+
   // Admin Login State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  
+
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
@@ -64,7 +64,10 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
     }
 
     if (user.role !== 'worker') {
-      Alert.alert('Access Denied', 'This mobile is not registered as a worker.');
+      Alert.alert(
+        'Access Denied',
+        'This mobile is not registered as a worker.',
+      );
       return;
     }
 
@@ -78,13 +81,14 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
 
-    const user = users.find(
-      u => u.email === email && u.password === password
-    );
+    const user = users.find(u => u.email === email && u.password === password);
 
     // Superadmin hardcoded
     if (email === 'admin@indiansteel.com' && password === 'admin1234') {
-      AsyncStorage.setItem('user', JSON.stringify({ role: 'superadmin' ,name:'Super Admin' }));
+      AsyncStorage.setItem(
+        'user',
+        JSON.stringify({ role: 'superadmin', name: 'Super Admin' }),
+      );
       navigation.replace('AdminHome');
       return;
     }
@@ -112,7 +116,10 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <LinearGradient colors={['#0a411fff', '#0a411fff']} style={styles.gradient}>
-      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <SafeAreaView
+        style={styles.safeArea}
+        edges={['top', 'left', 'right', 'bottom']}
+      >
         <KeyboardAvoidingView
           style={styles.container}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -141,23 +148,30 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
               {/* Tab Switch */}
               <SegmentedButtons
                 value={activeTab}
-                onValueChange={(value) => setActiveTab(value as 'worker' | 'admin')}
+                onValueChange={value =>
+                  setActiveTab(value as 'worker' | 'admin')
+                }
                 buttons={[
                   {
                     value: 'worker',
                     label: 'Worker Login',
                     icon: 'account-hard-hat',
-                    style: activeTab === 'worker' ? styles.activeTab : styles.inactiveTab,
+                    style:
+                      activeTab === 'worker'
+                        ? styles.activeTab
+                        : styles.inactiveTab,
                   },
                   {
                     value: 'admin',
                     label: 'Admin Login',
                     icon: 'shield-account',
-                    style: activeTab === 'admin' ? styles.activeTab : styles.inactiveTab,
+                    style:
+                      activeTab === 'admin'
+                        ? styles.activeTab
+                        : styles.inactiveTab,
                   },
                 ]}
                 style={[styles.segmentedButtons]}
-                
               />
 
               {/* Worker Login Form */}
@@ -316,7 +330,7 @@ const styles = StyleSheet.create({
   },
   activeTab: {
     backgroundColor: '#518b67ff',
-    color:'#fff',
+    color: '#fff',
   },
   inactiveTab: {
     backgroundColor: '#e0e0e0',

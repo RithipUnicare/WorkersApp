@@ -10,14 +10,25 @@ import {
   Alert,
   Platform,
   Modal,
+  Image,
+  Linking,
 } from 'react-native';
-import { Card, Chip, Button, IconButton } from 'react-native-paper';
+import {
+  Card,
+  Chip,
+  Button,
+  IconButton,
+  Portal,
+  Dialog,
+  ProgressBar,
+} from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import dayjs from 'dayjs';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { QuotationAPI } from '../service/apiService';
+import ItemDialog from './components/ItemDialog';
 import { generatePDF } from 'react-native-html-to-pdf';
 import { WebView } from 'react-native-webview';
 import Share from 'react-native-share';
@@ -27,6 +38,12 @@ import { Project } from './AdminProductList';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslator } from 'react-native-translator';
+import Sound, { PlayBackType } from 'react-native-nitro-sound';
+import {
+  launchImageLibrary,
+  launchCamera,
+  ImagePickerResponse,
+} from 'react-native-image-picker';
 
 const { width, height } = Dimensions.get('window');
 
@@ -69,6 +86,13 @@ export type Quotation = {
     taxPercentage: number;
     hsnSac: string;
     totalCost: number;
+  }[];
+  siteImages?: { id: number; imageUrl: string }[];
+  voiceRecordings?: {
+    id: number;
+    name: string;
+    url: string;
+    createdAt: string;
   }[];
 };
 
@@ -151,7 +175,17 @@ const QuotationDetail: React.FC = () => {
   const [quotationData, setQuotationData] =
     useState<Quotation>(initialQuotation);
   const [pdfModalVisible, setPdfModalVisible] = useState(false);
+  const [itemModalOpen, setItemModalOpen] = useState(false);
   const [htmlContent, setHtmlContent] = useState('');
+
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playTime, setPlayTime] = useState('00:00:00');
+  const [duration, setDuration] = useState('00:00:00');
+  const [currentUrl, setCurrentUrl] = useState<string>('');
 
   const [isTamil, setIsTamil] = useState(false);
   const [translations, setTranslations] = useState<Record<string, string>>({});
@@ -212,6 +246,108 @@ const QuotationDetail: React.FC = () => {
     });
     return unsubscribe;
   }, [navigation, quotationData.id]);
+
+  const reloadQuotation = useCallback(async () => {
+    try {
+      const res = await QuotationAPI.getById(quotationData.id);
+      if (res?.data) setQuotationData(res.data);
+    } catch {}
+  }, [quotationData.id]);
+
+  useEffect(() => {
+    const playbackListener = Sound.addPlayBackListener((e: PlayBackType) => {
+      setPlayTime(Sound.mmssss(Math.floor(e.currentPosition)));
+      if (e.duration > 0) setDuration(Sound.mmssss(Math.floor(e.duration)));
+    });
+    const endListener = Sound.addPlaybackEndListener(() => {
+      setIsPlaying(false);
+      setPlayTime('00:00:00');
+      setCurrentUrl('');
+    });
+    return () => {
+      playbackListener?.remove();
+      endListener?.remove();
+    };
+  }, []);
+
+  const handleRecordVoice = () => {
+    navigation.navigate('RecoredAudio', { quotation: quotationData });
+  };
+
+  const togglePlayback = useCallback(
+    async (recordingUrl: string) => {
+      if (!recordingUrl) return;
+      try {
+        if (isPlaying && currentUrl === recordingUrl) {
+          await Sound.stopPlayer();
+          setIsPlaying(false);
+        } else {
+          await Sound.startPlayer(recordingUrl);
+          setIsPlaying(true);
+          setCurrentUrl(recordingUrl);
+          setPlayTime('00:00:00');
+          setDuration('00:00:00');
+        }
+      } catch (err) {
+        Alert.alert('Error', 'Could not play audio');
+      }
+    },
+    [isPlaying, currentUrl],
+  );
+
+  const pickImages = () => {
+    launchImageLibrary(
+      { mediaType: 'photo', quality: 0.7, selectionLimit: 10 },
+      (response: ImagePickerResponse) => {
+        if (response.didCancel) return;
+        if (response.errorCode) {
+          Alert.alert('Error', response.errorMessage || 'Image pick failed');
+          return;
+        }
+        const uris = response.assets?.map(a => a.uri!).filter(Boolean) || [];
+        setSelectedImages(prev => [...prev, ...uris]);
+      },
+    );
+  };
+
+  const takePhoto = () => {
+    launchCamera(
+      { mediaType: 'photo', quality: 0.7 },
+      (response: ImagePickerResponse) => {
+        if (response.didCancel) return;
+        if (response.errorCode) {
+          Alert.alert('Error', response.errorMessage || 'Camera failed');
+          return;
+        }
+        const uri = response.assets?.[0]?.uri;
+        if (uri) setSelectedImages(prev => [...prev, uri]);
+      },
+    );
+  };
+
+  const removeImage = (index: number) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const uploadSiteImages = async () => {
+    if (selectedImages.length === 0) return;
+    setImageUploading(true);
+    try {
+      const res = await QuotationAPI.addSiteImages(
+        quotationData.id,
+        selectedImages,
+      );
+      if (res?.data) {
+        await reloadQuotation();
+        setSelectedImages([]);
+        Alert.alert('Success', `${res.data.length} image(s) uploaded`);
+      }
+    } catch (e: any) {
+      Alert.alert('Upload Failed', e.message || 'Could not upload images');
+    } finally {
+      setImageUploading(false);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status?.toUpperCase()) {
@@ -326,6 +462,15 @@ const QuotationDetail: React.FC = () => {
     }
   };
 
+  const sortedVoiceRecordings = quotationData.voiceRecordings
+    ? quotationData.voiceRecordings
+        .slice()
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        )
+    : [];
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -430,9 +575,154 @@ const QuotationDetail: React.FC = () => {
           </Text>
         </Card>
 
+        {/* Site Images */}
+        {quotationData.siteImages && quotationData.siteImages.length > 0 ? (
+          <Card style={styles.itemsCard}>
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <Text style={styles.sectionTitle}>
+                Site Images ({quotationData.siteImages.length})
+              </Text>
+              <IconButton
+                icon="plus"
+                onPress={() => setImageModalOpen(true)}
+                iconColor="#0a411fff"
+              />
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {quotationData.siteImages.map(img => (
+                <View key={img.id} style={{ marginRight: 10 }}>
+                  <Image
+                    source={{ uri: img.imageUrl }}
+                    style={{
+                      width: width * 0.35,
+                      height: width * 0.35,
+                      borderRadius: 8,
+                    }}
+                  />
+                </View>
+              ))}
+            </ScrollView>
+          </Card>
+        ) : (
+          <Card style={styles.itemsCard}>
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <Text style={styles.sectionTitle}>Site Images (0)</Text>
+              <IconButton
+                icon="plus"
+                onPress={() => setImageModalOpen(true)}
+                iconColor="#0a411fff"
+              />
+            </View>
+            <Text style={styles.emptyText}>No site images available</Text>
+          </Card>
+        )}
+
+        {/* Voice Recordings */}
+        {sortedVoiceRecordings.length > 0 ? (
+          <Card style={styles.itemsCard}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <MaterialCommunityIcons
+                name="microphone"
+                size={width * 0.06}
+                color="#0a411fff"
+              />
+              <Text style={[styles.sectionTitle, { marginLeft: 8 }]}>
+                Voice Recordings ({sortedVoiceRecordings.length})
+              </Text>
+              <IconButton
+                icon="plus"
+                onPress={handleRecordVoice}
+                iconColor="#0a411fff"
+              />
+            </View>
+            {sortedVoiceRecordings.map(recording => (
+              <View
+                key={recording.id}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: 8,
+                }}
+              >
+                <IconButton
+                  icon={
+                    isPlaying && currentUrl === recording.url ? 'pause' : 'play'
+                  }
+                  onPress={() => togglePlayback(recording.url)}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text numberOfLines={1}>{recording.name}</Text>
+                  <Text>
+                    {dayjs(recording.createdAt).format('DD-MM-YYYY HH:mm')}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => Linking.openURL(recording.url)}
+                >
+                  <MaterialCommunityIcons
+                    name="download"
+                    size={width * 0.05}
+                    color="#0a411fff"
+                  />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </Card>
+        ) : (
+          <Card style={styles.itemsCard}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <MaterialCommunityIcons
+                name="microphone"
+                size={width * 0.06}
+                color="#0a411fff"
+              />
+              <Text style={[styles.sectionTitle, { marginLeft: 8 }]}>
+                Voice Recordings (0)
+              </Text>
+              <IconButton
+                icon="plus"
+                onPress={handleRecordVoice}
+                iconColor="#0a411fff"
+              />
+            </View>
+            <Text style={styles.emptyText}>No Voice Recording</Text>
+          </Card>
+        )}
+
         {/* Items */}
         <Card style={styles.itemsCard}>
-          <Text style={styles.sectionTitle}>{t('Items')}</Text>
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <Text style={styles.sectionTitle}>{t('Items')}</Text>
+            <IconButton
+              icon="plus"
+              onPress={() => setItemModalOpen(true)}
+              iconColor="#0a411fff"
+            />
+          </View>
           {quotationData.items.length === 0 ? (
             <Text style={styles.emptyText}>{t('No items')}</Text>
           ) : (
@@ -486,6 +776,20 @@ const QuotationDetail: React.FC = () => {
         />
       </View>
 
+      {/* Add Item Dialog */}
+      <ItemDialog
+        visible={itemModalOpen}
+        onDismiss={() => setItemModalOpen(false)}
+        mode="quotation"
+        quotationId={quotationData.id}
+        onSaved={() => {
+          setItemModalOpen(false);
+          reloadQuotation();
+        }}
+        title={t('Add Item')}
+        t={t}
+      />
+
       {/* PDF Preview Modal */}
       <Modal
         visible={pdfModalVisible}
@@ -523,6 +827,93 @@ const QuotationDetail: React.FC = () => {
           </View>
         </View>
       </Modal>
+      {/* Add Site Images Dialog */}
+      <Portal>
+        <Dialog
+          visible={imageModalOpen}
+          onDismiss={() => {
+            setImageModalOpen(false);
+            setSelectedImages([]);
+          }}
+        >
+          <Dialog.Title>Add Site Images</Dialog.Title>
+          <Dialog.Content>
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                marginBottom: 12,
+              }}
+            >
+              <Button
+                mode="contained"
+                onPress={pickImages}
+                style={{ flex: 1, marginRight: 8 }}
+              >
+                Gallery
+              </Button>
+              <Button mode="outlined" onPress={takePhoto} style={{ flex: 1 }}>
+                Camera
+              </Button>
+            </View>
+
+            {selectedImages.length > 0 && (
+              <>
+                <Text style={{ marginVertical: 8 }}>
+                  Selected: {selectedImages.length} image(s)
+                </Text>
+                <ScrollView horizontal style={{ maxHeight: 180 }}>
+                  {selectedImages.map((uri, idx) => (
+                    <View
+                      key={idx}
+                      style={{ marginRight: 8, position: 'relative' }}
+                    >
+                      <Image
+                        source={{ uri }}
+                        style={{ width: 120, height: 120, borderRadius: 8 }}
+                      />
+                      <TouchableOpacity
+                        style={{ position: 'absolute', top: -6, right: -6 }}
+                        onPress={() => removeImage(idx)}
+                      >
+                        <MaterialCommunityIcons
+                          name="close-circle"
+                          size={22}
+                          color="#e74c3c"
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </ScrollView>
+
+                {imageUploading && (
+                  <ProgressBar indeterminate style={{ marginVertical: 8 }} />
+                )}
+
+                <Button
+                  mode="contained"
+                  onPress={uploadSiteImages}
+                  disabled={imageUploading}
+                  style={{ marginTop: 8 }}
+                  buttonColor="#27ae60"
+                >
+                  {imageUploading ? 'Uploading...' : 'Upload Images'}
+                </Button>
+              </>
+            )}
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button
+              onPress={() => {
+                setImageModalOpen(false);
+                setSelectedImages([]);
+              }}
+            >
+              Cancel
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </SafeAreaView>
   );
 };

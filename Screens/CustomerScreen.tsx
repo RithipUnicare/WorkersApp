@@ -203,7 +203,10 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={styles.safeArea}
+      edges={['top', 'left', 'right', 'bottom']}
+    >
       <View style={styles.container}>
         <ScrollView
           style={styles.scrollView}

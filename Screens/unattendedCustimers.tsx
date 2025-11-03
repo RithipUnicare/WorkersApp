@@ -241,7 +241,10 @@ const UnattendedCustomers: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={styles.safeArea}
+      edges={['top', 'left', 'right', 'bottom']}
+    >
       <View style={styles.container}>
         <TextInput
           placeholder={t('Search customers...')}

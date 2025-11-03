@@ -306,7 +306,10 @@ const SplashScreen: React.FC<Props> = ({ navigation }) => {
   }, [navigation]);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={styles.safeArea}
+      edges={['top', 'left', 'right', 'bottom']}
+    >
       <StatusBar barStyle="light-content" backgroundColor="#0a411f" />
       <View style={styles.container}>
         {/* Animated Logo/Brand Box */}

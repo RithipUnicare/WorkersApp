@@ -23,6 +23,7 @@ import {
   Card,
   Chip,
 } from 'react-native-paper';
+import ItemDialog from './components/ItemDialog';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import dayjs from 'dayjs';
@@ -718,97 +719,23 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
         </Portal>
 
         {/* Item Dialog */}
-        <Portal>
-          <Dialog
-            visible={itemModalOpen}
-            onDismiss={() => setItemModalOpen(false)}
-          >
-            <Dialog.Title>
-              {editingItem ? t('Edit Item') : t('Add Item')}
-            </Dialog.Title>
-            <Dialog.ScrollArea>
-              <ScrollView style={{ maxHeight: hp(55) }}>
-                <TextInput
-                  label={t('Name *')}
-                  value={itemName}
-                  onChangeText={setItemName}
-                  mode="outlined"
-                  style={styles.dialogInput}
-                />
-                <TextInput
-                  label={t('Description')}
-                  value={itemDesc}
-                  onChangeText={setItemDesc}
-                  mode="outlined"
-                  style={styles.dialogInput}
-                />
-                <TextInput
-                  label={t('Quantity *')}
-                  value={itemQty}
-                  onChangeText={setItemQty}
-                  mode="outlined"
-                  keyboardType="numeric"
-                  style={styles.dialogInput}
-                />
-                <View style={styles.unitRow}>
-                  <View style={{ flex: 1 }}>
-                    <Dropdown
-                      style={styles.unitDropdown}
-                      placeholderStyle={styles.placeholderStyle}
-                      selectedTextStyle={styles.selectedTextStyle}
-                      data={unitDropdown}
-                      labelField="label"
-                      valueField="value"
-                      placeholder={t('Unit *')}
-                      value={selectedUnitId}
-                      onChange={item => setSelectedUnitId(item.value)}
-                    />
-                  </View>
-                  <IconButton
-                    icon="plus"
-                    size={wp(6)}
-                    onPress={() => setUnitModalOpen(true)}
-                    style={styles.addUnitBtn}
-                  />
-                </View>
-                <TextInput
-                  label={t('MRP *')}
-                  value={itemMrp}
-                  onChangeText={setItemMrp}
-                  mode="outlined"
-                  keyboardType="numeric"
-                  style={styles.dialogInput}
-                  left={<TextInput.Affix text="₹" />}
-                />
-                <TextInput
-                  label={t('HSN/SAC')}
-                  value={hsnSac}
-                  onChangeText={setHsnSac}
-                  mode="outlined"
-                  style={styles.dialogInput}
-                />
-                <TextInput
-                  label={t('Tax (%)')}
-                  value={itemTax}
-                  onChangeText={setItemTax}
-                  mode="outlined"
-                  keyboardType="numeric"
-                  style={styles.dialogInput}
-                  right={<TextInput.Affix text="%" />}
-                />
-                <Text style={styles.amountPreview}>
-                  {t('Total')}: ₹{calculateItemTotal().toFixed(2)}
-                </Text>
-              </ScrollView>
-            </Dialog.ScrollArea>
-            <Dialog.Actions>
-              <Button onPress={() => setItemModalOpen(false)}>
-                {t('Cancel')}
-              </Button>
-              <Button onPress={saveItemLocally}>{t('Save')}</Button>
-            </Dialog.Actions>
-          </Dialog>
-        </Portal>
+        <ItemDialog
+          visible={itemModalOpen}
+          onDismiss={() => setItemModalOpen(false)}
+          mode="quotation"
+          quotationId={rawQuotation?.id || 0}
+          item={editingItem}
+          onSaved={(saved: any) => {
+            setItems(prev =>
+              editingItem?.id
+                ? prev.map(i => (i.id === editingItem.id ? { ...saved } : i))
+                : [...prev, { ...saved }],
+            );
+          }}
+          title={editingItem ? t('Edit Item') : t('Add Item')}
+          maxHeight={hp(55)}
+          t={t}
+        />
 
         {/* Unit Dialog */}
         <Portal>

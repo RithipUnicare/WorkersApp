@@ -13,7 +13,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { Project } from '../Screens/AdminProductList';
-import { ProjectAPI } from '../service/apiService';
+import { Quotation } from '../Screens/QuotationDetail';
+import { ProjectAPI, QuotationAPI } from '../service/apiService';
 
 import Sound, {
   AudioSet,
@@ -33,7 +34,8 @@ type props = {
 const { width, height } = Dimensions.get('window');
 
 const RecoredAudio: React.FC<props> = ({ navigation, route }) => {
-  const project: Project = route?.params?.project;
+  const project: Project | undefined = route?.params?.project;
+  const quotation: Quotation | undefined = route?.params?.quotation;
   const [recording, setRecording] = useState<boolean>(false);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [audioPath, setAudioPath] = useState<string>('');
@@ -124,12 +126,21 @@ const RecoredAudio: React.FC<props> = ({ navigation, route }) => {
   };
   const uploadToAPI = async () => {
     try {
-      const formData = new FormData();
-      // formData.append('file', audioPath);
-      const res = await ProjectAPI.updateVoice(project.id, audioPath);
-      console.log(res);
-      Alert.alert('Success', 'Audio uploaded successfully');
-      navigation.goBack();
+      if (project?.id) {
+        const res = await ProjectAPI.updateVoice(project.id, audioPath);
+        console.log(res);
+        Alert.alert('Success', 'Audio uploaded successfully');
+        navigation.goBack();
+        return;
+      }
+      if (quotation?.id) {
+        const res = await QuotationAPI.addVoiceRecording(quotation.id, audioPath);
+        console.log(res);
+        Alert.alert('Success', 'Audio uploaded successfully');
+        navigation.goBack();
+        return;
+      }
+      Alert.alert('Error', 'Missing target to upload');
     } catch (err) {
       console.log(err);
       Alert.alert('Error', 'Failed to upload audio');

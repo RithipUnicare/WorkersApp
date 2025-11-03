@@ -287,7 +287,10 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={styles.safeArea}
+      edges={['top', 'left', 'right', 'bottom']}
+    >
       <View style={styles.container}>
         {/* Search Bar */}
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>

@@ -399,7 +399,10 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
   const clearSearch = useCallback(() => setSearch(''), []);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={styles.safeArea}
+      edges={['top', 'left', 'right', 'bottom']}
+    >
       <View style={styles.container}>
         <View style={styles.headerRow}>
           <View style={styles.searchRow}>

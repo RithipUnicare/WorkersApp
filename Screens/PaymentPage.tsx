@@ -86,8 +86,8 @@ const enToTa: Record<string, string> = {
   // Labels
   'Project Total': 'மொத்த தொகை',
   'Items Cost': 'பொருட்கள் செலவு',
-  'Payments In': 'பணம் பெறப்பட்டது',
-  'Payments Out': 'பணம் செலுத்தப்பட்டது',
+  // 'Payments In': 'பணம் பெறப்பட்டது',
+  // 'Payments Out': 'பணம் செலுத்தப்பட்டது',
   'Net Remaining': 'நிகர மீதி',
   Extra: 'கூடுதல்',
 
@@ -467,7 +467,10 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
   ]);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={styles.safeArea}
+      edges={['top', 'left', 'right', 'bottom']}
+    >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}

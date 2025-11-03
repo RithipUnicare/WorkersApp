@@ -916,7 +916,10 @@ const AdminPanel: React.FC<Props> = ({ navigation }) => {
   }, []);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={styles.safeArea}
+      edges={['top', 'left', 'right', 'bottom']}
+    >
       <TabsProvider defaultIndex={0}>
         <Tabs
           mode="scrollable"

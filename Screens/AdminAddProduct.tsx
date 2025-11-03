@@ -26,6 +26,7 @@ import {
   Snackbar,
   Chip,
 } from 'react-native-paper';
+import ItemDialog from './components/ItemDialog';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
@@ -697,7 +698,10 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   const statuses = ['CREATED', 'IN_PROGRESS', 'DISCONTINUED', 'COMPLETED'];
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={styles.safeArea}
+      edges={['top', 'left', 'right', 'bottom']}
+    >
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -1018,103 +1022,23 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
         </Portal>
 
         {/* Item Dialog */}
-        <Portal>
-          <Dialog
-            visible={itemModalOpen}
-            onDismiss={() => setItemModalOpen(false)}
-          >
-            <Dialog.Title>
-              {editingItem ? t('Edit Item') : t('Add Item')}
-            </Dialog.Title>
-            <Dialog.ScrollArea>
-              <ScrollView style={{ maxHeight: hp(50) }}>
-                <TextInput
-                  label={t('Item Name *')}
-                  value={itemName}
-                  onChangeText={setItemName}
-                  mode="outlined"
-                  style={styles.dialogInput}
-                />
-                <TextInput
-                  label={t('Description')}
-                  value={itemDesc}
-                  onChangeText={setItemDesc}
-                  mode="outlined"
-                  style={styles.dialogInput}
-                  multiline
-                  numberOfLines={2}
-                />
-                <TextInput
-                  label={t('Quantity *')}
-                  value={itemQty}
-                  onChangeText={setItemQty}
-                  mode="outlined"
-                  keyboardType="numeric"
-                  style={styles.dialogInput}
-                />
-                <TextInput
-                  label={t('Rate (MRP) *')}
-                  value={itemRate}
-                  onChangeText={setItemRate}
-                  mode="outlined"
-                  keyboardType="numeric"
-                  style={styles.dialogInput}
-                  right={<TextInput.Affix text="₹" />}
-                />
-                <View style={styles.unitRow}>
-                  <View style={{ flex: 1 }}>
-                    <Dropdown
-                      style={styles.unitDropdown}
-                      placeholderStyle={styles.placeholderStyle}
-                      selectedTextStyle={styles.selectedTextStyle}
-                      data={unitDropdown}
-                      labelField="label"
-                      valueField="value"
-                      placeholder={t('Unit *')}
-                      value={selectedItemUnitId}
-                      onChange={item => setSelectedItemUnitId(item.value)}
-                    />
-                  </View>
-                  <IconButton
-                    icon="plus"
-                    size={wp(6)}
-                    onPress={() => setUnitModalOpen(true)}
-                    style={styles.addUnitBtn}
-                  />
-                </View>
-                <TextInput
-                  label={t('Tax Percentage *')}
-                  value={itemTaxPercentage}
-                  onChangeText={setItemTaxPercentage}
-                  mode="outlined"
-                  keyboardType="numeric"
-                  style={styles.dialogInput}
-                  right={<TextInput.Affix text="%" />}
-                />
-                <TextInput
-                  label={t('HSN/SAC Code')}
-                  value={itemHsnSac}
-                  onChangeText={setItemHsnSac}
-                  mode="outlined"
-                  style={styles.dialogInput}
-                />
-              </ScrollView>
-            </Dialog.ScrollArea>
-            <Dialog.Actions>
-              <Button onPress={() => setItemModalOpen(false)}>
-                {t('Cancel')}
-              </Button>
-              <Button
-                onPress={saveItemLocally}
-                disabled={
-                  !itemName || !itemQty || !itemRate || !selectedItemUnitId
-                }
-              >
-                {t('Save')}
-              </Button>
-            </Dialog.Actions>
-          </Dialog>
-        </Portal>
+        <ItemDialog
+          visible={itemModalOpen}
+          onDismiss={() => setItemModalOpen(false)}
+          mode="project"
+          projectId={rawProject?.id || createdProjectId || 0}
+          item={editingItem}
+          onSaved={(saved: any) => {
+            setItems(prev =>
+              editingItem?.id
+                ? prev.map(i => (i.id === editingItem.id ? { ...saved } : i))
+                : [...prev, { ...saved }],
+            );
+          }}
+          title={editingItem ? t('Edit Item') : t('Add Item')}
+          maxHeight={hp(50)}
+          t={t}
+        />
 
         {/* Unit Dialog */}
         <Portal>

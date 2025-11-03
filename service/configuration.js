@@ -52,6 +52,10 @@ export const endpoints = {
     `/api/v1/quotations/customer/${customerId}`,
   quotationItems: '/api/v1/quotations/items',
   quotationItemById: itemId => `/api/v1/quotations/items/${itemId}`,
+  quotationVoice: id => `/api/v1/quotations/${id}/voice-recordings`,
+  quotationLocation: id => `/api/v1/quotations/${id}/location`,
+  quotationImages: id => `/api/v1/quotations/${id}/images`,
+  quotationItemImages: itemId => `/api/v1/quotations/items/${itemId}/images`,
 
   // Unit endpoints
   units: '/api/v1/units',

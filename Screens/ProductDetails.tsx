@@ -42,6 +42,7 @@ import { getLocation } from '../utils/GeoLocation';
 import { Unit } from './AdminAddProduct';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslator } from 'react-native-translator';
+import ItemDialog from './components/ItemDialog';
 
 const { width, height } = Dimensions.get('window');
 const wp = (percentage: number) => (width * percentage) / 100;
@@ -1091,93 +1092,36 @@ const ProjectDetails: React.FC = () => {
           </Dialog>
 
           {/* Add Item Dialog */}
-          <Dialog
+          <ItemDialog
             visible={itemModalOpen}
             onDismiss={() => setItemModalOpen(false)}
-          >
-            <Dialog.Title>{t('Add Item')}</Dialog.Title>
-            <Dialog.Content>
-              <TextInput
-                label={t('Item Name *')}
-                value={itemName}
-                onChangeText={setItemName}
-                mode="outlined"
-                style={styles.input}
-              />
-              <TextInput
-                label={t('Description')}
-                value={itemDesc}
-                onChangeText={setItemDesc}
-                mode="outlined"
-                style={styles.input}
-                multiline
-              />
-              <TextInput
-                label={t('Quantity *')}
-                value={itemQty}
-                onChangeText={setItemQty}
-                mode="outlined"
-                keyboardType="numeric"
-                style={styles.input}
-              />
-              <TextInput
-                label={t('Rate (MRP) *')}
-                value={itemRate}
-                onChangeText={setItemRate}
-                mode="outlined"
-                keyboardType="numeric"
-                style={styles.input}
-              />
-
-              <Dropdown
-                style={styles.dropdown}
-                placeholderStyle={styles.dropdownPlaceholder}
-                selectedTextStyle={styles.dropdownSelected}
-                data={units.map(u => ({
-                  label: u.name,
-                  value: u.id.toString(),
-                }))}
-                maxHeight={300}
-                labelField="label"
-                valueField="value"
-                placeholder={t('Select Unit *')}
-                value={selectedUnitId}
-                onChange={item => setSelectedUnitId(item.value)}
-                renderItem={item => (
-                  <View style={styles.dropdownItem}>
-                    <Text style={styles.dropdownItemText}>{item.label}</Text>
-                  </View>
-                )}
-              />
-
-              <TextInput
-                label={t('Tax (%)')}
-                value={taxPercentage}
-                onChangeText={setTaxPercentage}
-                mode="outlined"
-                keyboardType="numeric"
-                style={styles.input}
-              />
-              <TextInput
-                label={t('HSN/SAC')}
-                value={itemHsnSac}
-                onChangeText={setItemHsnSac}
-                mode="outlined"
-                style={styles.input}
-              />
-            </Dialog.Content>
-            <Dialog.Actions>
-              <Button onPress={() => setItemModalOpen(false)}>
-                {t('Cancel')}
-              </Button>
-              <Button
-                onPress={saveItem}
-                disabled={!itemName || !itemQty || !itemRate || !selectedUnitId}
-              >
-                {t('Save')}
-              </Button>
-            </Dialog.Actions>
-          </Dialog>
+            mode="project"
+            projectId={project.id}
+            onSaved={(saved: any) => {
+              const tax = Number(saved.taxPercentage) || 0;
+              const amount = saved.amount || (saved.quantity || 0) * (saved.rateMrp || 0);
+              setProject(prev => ({
+                ...prev,
+                projectItems: [
+                  ...prev.projectItems,
+                  {
+                    id: saved.id || Date.now(),
+                    itemName: saved.itemName,
+                    quantity: saved.quantity,
+                    rateMrp: saved.rateMrp,
+                    totalCost: amount + (amount * tax) / 100,
+                  },
+                ],
+                totalAmount: prev.totalAmount + amount + (amount * tax) / 100,
+              }));
+              setItemModalOpen(false);
+              resetItemForm();
+              Alert.alert(t('Success'), t('Item added'));
+              onRefresh();
+            }}
+            title={t('Add Item')}
+            t={t}
+          />
 
           {/* Add Site Images Dialog */}
           <Dialog

@@ -37,12 +37,9 @@ export type rootStackParamList = {
   CustomerDetail: { customer: Customer };
   ProjectDetails: { project: Project };
   unattendedCustomers: undefined;
-  RecoredAudio: { project: Project } | any;
+  RecoredAudio: { project: Project } | { quotation: Quotation } | any;
   splash: undefined;
-  AddQuotation:
-    | { customer: Customer }
-    | { quotationToEdit: Quotation }
-    | undefined;
+  AddQuotation: { customer: Customer } | { quotationToEdit: Quotation } | any;
   QuotationList: undefined;
   QuotationDetail: { quotation: Quotation };
 };
