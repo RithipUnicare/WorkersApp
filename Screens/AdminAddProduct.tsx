@@ -723,7 +723,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                 theme={{ roundness: wp(2.5) }}
                 editable={false}
                 right={
-                  <TextInput.Icon icon="percent" size={wp(6)} color="#2874b8" />
+                  <TextInput.Icon icon="percent" size={wp(6)} color="#0a411fff" />
                 }
               />
             </View>
@@ -742,7 +742,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                   icon="map-marker"
                   size={wp(6)}
                   onPress={fetchLocation}
-                  color="#2874b8"
+                  color="#0a411fff"
                 />
               }
             />
@@ -814,7 +814,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                       <MaterialCommunityIcons
                         name="image-plus"
                         size={wp(8)}
-                        color="#2874b8"
+                        color="#0a411fff"
                       />
                       <Text style={styles.uploadText}>Gallery</Text>
                     </TouchableOpacity>
@@ -825,7 +825,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                       <MaterialCommunityIcons
                         name="camera"
                         size={wp(8)}
-                        color="#2874b8"
+                        color="#0a411fff"
                       />
                       <Text style={styles.uploadText}>Camera</Text>
                     </TouchableOpacity>
@@ -881,7 +881,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
             onPress={handleSave}
             style={styles.saveButton}
             contentStyle={styles.saveButtonContent}
-            buttonColor="#2874b8"
+            buttonColor="#0a411fff"
             loading={loading}
             disabled={
               loading ||
@@ -1160,7 +1160,7 @@ const styles = StyleSheet.create({
     height: wp(25),
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: '#2874b8',
+    borderColor: '#0a411fff',
     borderRadius: wp(2),
     justifyContent: 'center',
     alignItems: 'center',
@@ -1168,7 +1168,7 @@ const styles = StyleSheet.create({
     marginBottom: hp(1),
   },
   uploadText: {
-    color: '#2874b8',
+    color: '#0a411fff',
     marginTop: hp(0.5),
     fontSize: wp(3.2),
     fontWeight: '500',
@@ -1183,7 +1183,7 @@ const styles = StyleSheet.create({
   itemName: { fontSize: wp(4.2), fontWeight: '600', color: '#1a1a1a' },
   itemCalc: {
     fontSize: wp(3.8),
-    color: '#2874b8',
+    color: '#0a411fff',
     marginTop: hp(0.3),
     fontWeight: '500',
   },
@@ -1206,7 +1206,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: wp(5),
     bottom: hp(10),
-    backgroundColor: '#2874b8',
+    backgroundColor: '#0a411fff',
   },
   dialogInput: { marginBottom: hp(2) },
   unitRow: { flexDirection: 'row', alignItems: 'center', marginBottom: hp(2) },

@@ -87,7 +87,7 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
       case 'DRAFT':
         return '#9E9E9E';
       default:
-        return '#2874b8';
+        return '#0a411fff';
     }
   };
 
@@ -115,7 +115,7 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
           <MaterialCommunityIcons
             name="phone"
             size={width * 0.045}
-            color="#2874b8"
+            color="#0a411fff"
           />
           <Text style={styles.infoText}>{item.customerContactNo}</Text>
         </View>
@@ -124,7 +124,7 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
           <MaterialCommunityIcons
             name="map-marker"
             size={width * 0.045}
-            color="#2874b8"
+            color="#0a411fff"
           />
           <Text style={styles.infoText} numberOfLines={1}>
             {item.address || 'No address'}
@@ -135,7 +135,7 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
           <MaterialCommunityIcons
             name="calendar"
             size={width * 0.045}
-            color="#2874b8"
+            color="#0a411fff"
           />
           <Text style={styles.infoText}>
             Delivery: {dayjs(item.deliveryDate).format('DD-MM-YYYY')}
@@ -146,7 +146,7 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
           <MaterialCommunityIcons
             name="text-box"
             size={width * 0.045}
-            color="#2874b8"
+            color="#0a411fff"
           />
           <Text style={styles.infoText} numberOfLines={2}>
             {item.projectDescription}
@@ -211,7 +211,7 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
           style={styles.addButton}
           contentStyle={styles.addButtonContent}
           labelStyle={styles.addButtonLabel}
-          buttonColor="#2874b8"
+          buttonColor="#0a411fff"
         >
           Add Quotation
         </Button>
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
   amountValue: {
     fontSize: width * 0.042,
     fontWeight: 'bold',
-    color: '#2874b8',
+    color: '#0a411fff',
     textAlign: 'left',
   },
   itemCount: {
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   itemCountText: {
-    color: '#2874b8',
+    color: '#0a411fff',
     fontSize: width * 0.032,
     fontWeight: '600',
   },

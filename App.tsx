@@ -52,7 +52,7 @@ function App() {
   }, []);
 
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider style={{ flex: 1 }}>
       <TranslatorProvider>
         <PaperProvider theme={theme}>
           {/* <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} /> */}

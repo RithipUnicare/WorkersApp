@@ -267,7 +267,7 @@ const QuotationDetail: React.FC = () => {
             <MaterialCommunityIcons
               name="phone"
               size={width * 0.05}
-              color="#2874b8"
+              color="#0a411fff"
             />
             <Text style={styles.infoLabel}>Contact</Text>
             <Text style={styles.infoValue}>
@@ -279,7 +279,7 @@ const QuotationDetail: React.FC = () => {
             <MaterialCommunityIcons
               name="map-marker"
               size={width * 0.05}
-              color="#2874b8"
+              color="#0a411fff"
             />
             <Text style={styles.infoLabel}>Address</Text>
             <Text style={styles.infoValue} numberOfLines={2}>
@@ -291,7 +291,7 @@ const QuotationDetail: React.FC = () => {
             <MaterialCommunityIcons
               name="calendar"
               size={width * 0.05}
-              color="#2874b8"
+              color="#0a411fff"
             />
             <Text style={styles.infoLabel}>Delivery Date</Text>
             <Text style={styles.infoValue}>
@@ -303,7 +303,7 @@ const QuotationDetail: React.FC = () => {
             <MaterialCommunityIcons
               name="clock"
               size={width * 0.05}
-              color="#2874b8"
+              color="#0a411fff"
             />
             <Text style={styles.infoLabel}>Created</Text>
             <Text style={styles.infoValue}>
@@ -370,7 +370,7 @@ const QuotationDetail: React.FC = () => {
           onPress={handleEdit}
           style={styles.actionButton}
           contentStyle={styles.actionButtonContent}
-          iconColor="#2874b8"
+          iconColor="#0a411fff"
         />
         <IconButton
           icon="delete"
@@ -384,14 +384,14 @@ const QuotationDetail: React.FC = () => {
           onPress={shareQuotationPDF}
           style={styles.actionButton}
           contentStyle={styles.actionButtonContent}
-          iconColor="#2874b8"
+          iconColor="#0a411fff"
         />
         <IconButton
           icon="plus"
           onPress={handleConvertToProject}
           style={styles.actionButton}
           contentStyle={styles.actionButtonContent}
-          iconColor="#2874b8"
+          iconColor="#0a411fff"
         />
       </View>
       {/* PDF Preview Modal */}
@@ -426,7 +426,7 @@ const QuotationDetail: React.FC = () => {
               mode="contained"
               onPress={generateAndSharePDF}
               style={styles.pdfButton}
-              buttonColor="#2874b8"
+              buttonColor="#0a411fff"
             >
               Generate & Share PDF
             </Button>
@@ -619,7 +619,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#2874b8',
+    backgroundColor: '#0a411fff',
   },
   pdfModalTitle: {
     fontSize: 18,

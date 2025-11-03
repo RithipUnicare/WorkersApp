@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     marginBottom: hp(2.5),
   },
   buttonPrimary: {
-    backgroundColor: '#2874b8',
+    backgroundColor: '#0a411fff',
     paddingVertical: hp(1.8),
     paddingHorizontal: wp(8),
     borderRadius: wp(2.5),
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     fontSize: wp(4.5),
   },
   buttonOutline: {
-    borderColor: '#2874b8',
+    borderColor: '#0a411fff',
     borderWidth: 1.5,
     paddingVertical: hp(1.8),
     paddingHorizontal: wp(8),
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   buttonOutlineText: {
-    color: '#2874b8',
+    color: '#0a411fff',
     fontWeight: '600',
     fontSize: wp(4.5),
   },

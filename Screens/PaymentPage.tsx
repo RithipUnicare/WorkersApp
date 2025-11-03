@@ -1,3 +1,4 @@
+// screens/PaymentPage.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -23,7 +24,6 @@ import {
   TextInput,
   RadioButton,
   IconButton,
-  DataTable,
 } from 'react-native-paper';
 import { WebView } from 'react-native-webview';
 import DatePicker from 'react-native-date-picker';
@@ -36,6 +36,7 @@ import RNFS from 'react-native-fs';
 import { generatePDF } from 'react-native-html-to-pdf';
 import dayjs from 'dayjs';
 import generateInvoiceHTML from '../utils/InvoiceHTML';
+import { Table, Row, Rows } from 'react-native-table-component';
 
 const { width, height } = Dimensions.get('window');
 
@@ -316,83 +317,67 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
     setEditingId(null);
   };
 
-  const renderPaymentInItem = ({ item }: { item: Payment }) => (
-    <DataTable.Row key={item.id}>
-      <DataTable.Cell style={styles.dateCell}>
-        <View>
-          <Text style={styles.cellDate}>{formatDate(item.paymentDate)}</Text>
-          <Text style={styles.cellType}>{item.type}</Text>
-        </View>
-      </DataTable.Cell>
-      <DataTable.Cell numeric style={styles.amountCell}>
-        <Text style={styles.amountIn}>
-          ₹{item.amount.toLocaleString('en-IN')}
-        </Text>
-      </DataTable.Cell>
-      <DataTable.Cell style={styles.notesCell}>
-        <Text style={styles.cellNotes} numberOfLines={2}>
-          {item.notes || '-'}
-        </Text>
-      </DataTable.Cell>
-      <DataTable.Cell style={styles.actionsCell}>
-        <View style={styles.actionButtons}>
-          <IconButton
-            icon="pencil"
-            size={wp(4.5)}
-            onPress={() => handleEditPayment(item, true)}
-            iconColor="#2874b8"
-            style={styles.iconBtn}
-          />
-          <IconButton
-            icon="delete"
-            size={wp(4.5)}
-            onPress={() => handleDeletePayment(item, true)}
-            iconColor="#e74c3c"
-            style={styles.iconBtn}
-          />
-        </View>
-      </DataTable.Cell>
-    </DataTable.Row>
-  );
+  // Prepare table data for Payments In
+  const paymentsInTableHead = ['Date & Type', 'Amount', 'Notes', 'Actions'];
+  const paymentsInTableData = paymentsIn.map(item => [
+    <View key={`in-date-${item.id}`} style={styles.dateTypeContainer}>
+      <Text style={styles.cellDate}>{formatDate(item.paymentDate)}</Text>
+      <Text style={styles.cellType}>{item.type}</Text>
+    </View>,
+    <Text key={`in-amount-${item.id}`} style={styles.amountIn}>
+      ₹{item.amount.toLocaleString('en-IN')}
+    </Text>,
+    <Text key={`in-notes-${item.id}`} style={styles.cellNotes} numberOfLines={2}>
+      {item.notes || '-'}
+    </Text>,
+    <View key={`in-actions-${item.id}`} style={styles.actionButtons}>
+      <IconButton
+        icon="pencil"
+        size={wp(4.5)}
+        onPress={() => handleEditPayment(item, true)}
+        iconColor="#0a411fff"
+        style={styles.iconBtn}
+      />
+      <IconButton
+        icon="delete"
+        size={wp(4.5)}
+        onPress={() => handleDeletePayment(item, true)}
+        iconColor="#e74c3c"
+        style={styles.iconBtn}
+      />
+    </View>,
+  ]);
 
-  const renderPaymentOutItem = ({ item }: { item: Payment }) => (
-    <DataTable.Row key={item.id}>
-      <DataTable.Cell style={styles.dateCell}>
-        <View>
-          <Text style={styles.cellDate}>{formatDate(item.paymentDate)}</Text>
-          <Text style={styles.cellType}>{item.type}</Text>
-        </View>
-      </DataTable.Cell>
-      <DataTable.Cell numeric style={styles.amountCell}>
-        <Text style={styles.amountOut}>
-          ₹{item.amount.toLocaleString('en-IN')}
-        </Text>
-      </DataTable.Cell>
-      <DataTable.Cell style={styles.notesCell}>
-        <Text style={styles.cellNotes} numberOfLines={2}>
-          {item.notes || '-'}
-        </Text>
-      </DataTable.Cell>
-      <DataTable.Cell style={styles.actionsCell}>
-        <View style={styles.actionButtons}>
-          <IconButton
-            icon="pencil"
-            size={wp(4.5)}
-            onPress={() => handleEditPayment(item, false)}
-            iconColor="#2874b8"
-            style={styles.iconBtn}
-          />
-          <IconButton
-            icon="delete"
-            size={wp(4.5)}
-            onPress={() => handleDeletePayment(item, false)}
-            iconColor="#e74c3c"
-            style={styles.iconBtn}
-          />
-        </View>
-      </DataTable.Cell>
-    </DataTable.Row>
-  );
+  // Prepare table data for Payments Out
+  const paymentsOutTableHead = ['Date & Type', 'Amount', 'Notes', 'Actions'];
+  const paymentsOutTableData = paymentsOut.map(item => [
+    <View key={`out-date-${item.id}`} style={styles.dateTypeContainer}>
+      <Text style={styles.cellDate}>{formatDate(item.paymentDate)}</Text>
+      <Text style={styles.cellType}>{item.type}</Text>
+    </View>,
+    <Text key={`out-amount-${item.id}`} style={styles.amountOut}>
+      ₹{item.amount.toLocaleString('en-IN')}
+    </Text>,
+    <Text key={`out-notes-${item.id}`} style={styles.cellNotes} numberOfLines={2}>
+      {item.notes || '-'}
+    </Text>,
+    <View key={`out-actions-${item.id}`} style={styles.actionButtons}>
+      <IconButton
+        icon="pencil"
+        size={wp(4.5)}
+        onPress={() => handleEditPayment(item, false)}
+        iconColor="#0a411fff"
+        style={styles.iconBtn}
+      />
+      <IconButton
+        icon="delete"
+        size={wp(4.5)}
+        onPress={() => handleDeletePayment(item, false)}
+        iconColor="#e74c3c"
+        style={styles.iconBtn}
+      />
+    </View>,
+  ]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -408,7 +393,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
         >
           {loading ? (
             <View style={styles.loader}>
-              <ActivityIndicator size="large" color="#2874b8" />
+              <ActivityIndicator size="large" color="#0a411fff" />
             </View>
           ) : (
             <>
@@ -511,28 +496,19 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                   {paymentsIn.length === 0 ? (
                     <Text style={styles.empty}>No payments received</Text>
                   ) : (
-                    <DataTable>
-                      <DataTable.Header style={styles.tableHeaderIn}>
-                        <DataTable.Title style={styles.dateCell}>
-                          <Text style={styles.headerText}>Date & Type</Text>
-                        </DataTable.Title>
-                        <DataTable.Title numeric style={styles.amountCell}>
-                          <Text style={styles.headerText}>Amount</Text>
-                        </DataTable.Title>
-                        <DataTable.Title style={styles.notesCell}>
-                          <Text style={styles.headerText}>Notes</Text>
-                        </DataTable.Title>
-                        <DataTable.Title style={styles.actionsCell}>
-                          <Text style={styles.headerText}>Actions</Text>
-                        </DataTable.Title>
-                      </DataTable.Header>
-                      <FlatList
-                        data={paymentsIn}
-                        keyExtractor={item => item.id.toString()}
-                        renderItem={renderPaymentInItem}
-                        scrollEnabled={false}
+                    <Table borderStyle={{ borderWidth: 1, borderColor: '#ddd' }} >
+                      <Row
+                        data={paymentsInTableHead}
+                        flexArr={[2, 1.5, 2, 1.5]}
+                        style={styles.tableHeaderIn}
+                        textStyle={styles.headerText}
                       />
-                    </DataTable>
+                      <Rows
+                        data={paymentsInTableData}
+                        flexArr={[2, 1.5, 2, 1.5]}
+                        style={styles.tableRow}
+                      />
+                    </Table>
                   )}
                 </Card.Content>
               </Card>
@@ -544,28 +520,19 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                   {paymentsOut.length === 0 ? (
                     <Text style={styles.empty}>No payments made</Text>
                   ) : (
-                    <DataTable>
-                      <DataTable.Header style={styles.tableHeaderOut}>
-                        <DataTable.Title style={styles.dateCell}>
-                          <Text style={styles.headerText}>Date & Type</Text>
-                        </DataTable.Title>
-                        <DataTable.Title numeric style={styles.amountCell}>
-                          <Text style={styles.headerText}>Amount</Text>
-                        </DataTable.Title>
-                        <DataTable.Title style={styles.notesCell}>
-                          <Text style={styles.headerText}>Notes</Text>
-                        </DataTable.Title>
-                        <DataTable.Title style={styles.actionsCell}>
-                          <Text style={styles.headerText}>Actions</Text>
-                        </DataTable.Title>
-                      </DataTable.Header>
-                      <FlatList
-                        data={paymentsOut}
-                        keyExtractor={item => item.id.toString()}
-                        renderItem={renderPaymentOutItem}
-                        scrollEnabled={false}
+                    <Table borderStyle={{ borderWidth: 1, borderColor: '#ddd' }}>
+                      <Row
+                        data={paymentsOutTableHead}
+                        flexArr={[2, 1.5, 2, 1.5]}
+                        style={styles.tableHeaderOut}
+                        textStyle={styles.headerText}
                       />
-                    </DataTable>
+                      <Rows
+                        data={paymentsOutTableData}
+                        flexArr={[2, 1.5, 2, 1.5]}
+                        style={styles.tableRow}
+                      />
+                    </Table>
                   )}
                 </Card.Content>
               </Card>
@@ -578,7 +545,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                   onPress={previewInvoice}
                   style={styles.actionBtn}
                   contentStyle={styles.actionBtnContent}
-                  textColor="#2874b8"
+                  textColor="#0a411fff"
                 >
                   Preview Invoice
                 </Button>
@@ -726,7 +693,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                 startInLoadingState={true}
                 renderLoading={() => (
                   <View style={styles.webViewLoader}>
-                    <ActivityIndicator size="large" color="#2874b8" />
+                    <ActivityIndicator size="large" color="#0a411fff" />
                     <Text style={styles.webViewLoaderText}>
                       Loading preview...
                     </Text>
@@ -792,9 +759,9 @@ const styles = StyleSheet.create({
   },
   addBtn: { flex: 1, borderRadius: wp(2) },
   addBtnContent: { height: hp(6.5) },
-  actionBtn: { flex: 1, borderRadius: wp(2), borderColor: '#2874b8' },
+  actionBtn: { flex: 1, borderRadius: wp(2), borderColor: '#0a411fff' },
   actionBtnContent: { height: hp(6.5) },
-  shareBtn: { marginTop: hp(1), borderRadius: wp(2), borderColor: '#2874b8' },
+  shareBtn: { marginTop: hp(1), borderRadius: wp(2), borderColor: '#0a411fff' },
   shareBtnContent: { height: hp(6.5) },
   empty: {
     textAlign: 'center',
@@ -804,33 +771,28 @@ const styles = StyleSheet.create({
     fontSize: wp(3.8),
   },
 
-  // DataTable Styles
+  // react-native-table-component Styles
   tableHeaderIn: {
+    height: hp(6),
     backgroundColor: '#27ae60',
-    borderRadius: wp(2),
   },
   tableHeaderOut: {
+    height: hp(6),
     backgroundColor: '#e74c3c',
-    borderRadius: wp(2),
   },
   headerText: {
     color: '#fff',
     fontWeight: '600',
     fontSize: wp(3.5),
+    textAlign: 'center',
   },
-  dateCell: {
-    flex: 2,
+  tableRow: {
+    height: hp(8),
+    borderBottomWidth: 1,
+    borderColor: '#eee',
   },
-  amountCell: {
-    flex: 1.5,
-    justifyContent: 'center',
-  },
-  notesCell: {
-    flex: 2,
-  },
-  actionsCell: {
-    flex: 1.5,
-    justifyContent: 'center',
+  dateTypeContainer: {
+    padding: wp(2),
   },
   cellDate: {
     fontSize: wp(3.6),
@@ -851,29 +813,30 @@ const styles = StyleSheet.create({
     fontSize: wp(3.2),
     color: '#555',
     fontStyle: 'italic',
+    padding: wp(2),
   },
   amountIn: {
     fontSize: wp(4),
     fontWeight: '700',
     color: '#27ae60',
+    textAlign: 'right',
+    padding: wp(2),
   },
   amountOut: {
     fontSize: wp(4),
     fontWeight: '700',
     color: '#e74c3c',
+    textAlign: 'right',
+    padding: wp(2),
   },
   actionButtons: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
+    padding: wp(2),
   },
   iconBtn: {
     margin: 0,
-  },
-
-  // Payment Card Styles (removed)
-  separator: {
-    height: hp(1.5),
   },
 
   // Modal
@@ -915,7 +878,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: wp(4),
     paddingVertical: hp(1.5),
-    backgroundColor: '#2874b8',
+    backgroundColor: '#0a411fff',
     elevation: 4,
   },
   previewTitle: {

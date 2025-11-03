@@ -118,7 +118,16 @@ const ProjectCard = React.memo(
     const handlePress = useCallback(() => {
       onPress(item);
     }, [item, onPress]);
-
+    const [role, setRole] = useState<string | null>('worker');
+    useEffect(() => {
+      const getRole = async () => {
+        const currentRole = await AsyncStorage.getItem('role');
+        const currentUser = await AsyncStorage.getItem('user');
+        console.log('user', currentUser);
+        setRole(currentUser?.role || currentRole);
+      };
+      getRole();
+    }, []);
     const paidAmount = item.totalAmount - item.remainingAmount;
 
     return (
@@ -143,7 +152,7 @@ const ProjectCard = React.memo(
             <MaterialCommunityIcons
               name="map-marker"
               size={wp(4.5)}
-              color="#2874b8"
+              color="#0a411fff"
             />
             <Text style={styles.infoText} numberOfLines={1}>
               {item.location?.address || 'No location'}
@@ -154,7 +163,7 @@ const ProjectCard = React.memo(
             <MaterialCommunityIcons
               name="phone"
               size={wp(4.5)}
-              color="#2874b8"
+              color="#0a411fff"
             />
             <Text style={styles.infoText}>{item.customerContactNo}</Text>
           </View>
@@ -163,7 +172,7 @@ const ProjectCard = React.memo(
             <MaterialCommunityIcons
               name="calendar"
               size={wp(4.5)}
-              color="#2874b8"
+              color="#0a411fff"
             />
             <Text style={styles.infoText}>
               Delivery: {dayjs(item.deliveryDate).format('DD MMM YYYY')}
@@ -184,40 +193,42 @@ const ProjectCard = React.memo(
             <MaterialCommunityIcons
               name="clock"
               size={wp(4.5)}
-              color="#2874b8"
+              color="#0a411fff"
             />
             <Text style={styles.infoText}>
               Time: {formatTime(item.customerTime)}
             </Text>
           </View>
 
-          <View style={styles.amountRow}>
-            <View style={styles.amountBlock}>
-              <Text style={styles.amountLabel}>Total</Text>
-              <Text style={styles.amountValue}>
-                ₹{item.totalAmount.toLocaleString('en-IN')}
-              </Text>
+          {role !== 'worker' && (
+            <View style={styles.amountRow}>
+              <View style={styles.amountBlock}>
+                <Text style={styles.amountLabel}>Total</Text>
+                <Text style={styles.amountValue}>
+                  ₹{item.totalAmount.toLocaleString('en-IN')}
+                </Text>
+              </View>
+              <View style={styles.amountDivider} />
+              <View style={styles.amountBlock}>
+                <Text style={styles.amountLabel}>Paid</Text>
+                <Text style={[styles.amountValue, { color: '#27ae60' }]}>
+                  ₹{paidAmount.toLocaleString('en-IN')}
+                </Text>
+              </View>
+              <View style={styles.amountDivider} />
+              <View style={styles.amountBlock}>
+                <Text style={styles.amountLabel}>Remaining</Text>
+                <Text
+                  style={[
+                    styles.amountValue,
+                    { color: item.remainingAmount > 0 ? '#e74c3c' : '#27ae60' },
+                  ]}
+                >
+                  ₹{item.remainingAmount.toLocaleString('en-IN')}
+                </Text>
+              </View>
             </View>
-            <View style={styles.amountDivider} />
-            <View style={styles.amountBlock}>
-              <Text style={styles.amountLabel}>Paid</Text>
-              <Text style={[styles.amountValue, { color: '#27ae60' }]}>
-                ₹{paidAmount.toLocaleString('en-IN')}
-              </Text>
-            </View>
-            <View style={styles.amountDivider} />
-            <View style={styles.amountBlock}>
-              <Text style={styles.amountLabel}>Remaining</Text>
-              <Text
-                style={[
-                  styles.amountValue,
-                  { color: item.remainingAmount > 0 ? '#e74c3c' : '#27ae60' },
-                ]}
-              >
-                ₹{item.remainingAmount.toLocaleString('en-IN')}
-              </Text>
-            </View>
-          </View>
+          )}
 
           <ImagePreview images={item.siteImages} />
         </TouchableOpacity>
@@ -257,7 +268,7 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
       setLoading(true);
       const res = await ProjectAPI.getAll();
       const storedRole = await AsyncStorage.getItem('role');
-      console.log(res);
+      console.log(storedRole);
       if (res.success && Array.isArray(res.data)) {
         setProjects(res.data);
         setFilteredProjects(res.data);
@@ -310,10 +321,8 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
     [handleNavigateToDetails],
   );
 
-  // Memoized key extractor
   const keyExtractor = useCallback((item: Project) => item.id.toString(), []);
 
-  // Memoized empty component
   const renderEmpty = useCallback(
     () => (
       <View style={styles.emptyContainer}>
@@ -351,7 +360,7 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
             theme={{ roundness: wp(2.5) }}
             contentStyle={styles.searchContent}
             outlineColor="#ddd"
-            activeOutlineColor="#2874b8"
+            activeOutlineColor="#0a411fff"
             left={<TextInput.Icon icon="magnify" size={wp(6)} />}
             right={
               search ? (
@@ -383,7 +392,7 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
         {/* Project List */}
         {loading ? (
           <View style={styles.loader}>
-            <ActivityIndicator size="large" color="#2874b8" />
+            <ActivityIndicator size="large" color="#0a411fff" />
           </View>
         ) : (
           <FlatList
@@ -428,7 +437,7 @@ const styles = StyleSheet.create({
     width: wp(10),
     height: wp(10),
     borderRadius: wp(5),
-    backgroundColor: '#2874b8',
+    backgroundColor: '#0a411fff',
     justifyContent: 'center',
     alignItems: 'center',
   },

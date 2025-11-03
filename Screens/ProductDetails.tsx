@@ -40,6 +40,7 @@ import {
 } from 'react-native-image-picker';
 import { getLocation } from '../utils/GeoLocation';
 import { Unit } from './AdminAddProduct';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 const wp = (percentage: number) => (width * percentage) / 100;
@@ -153,6 +154,7 @@ const ProjectDetails: React.FC = () => {
   const [selectedUnitId, setSelectedUnitId] = useState<string>('');
   const [taxPercentage, setTaxPercentage] = useState('');
   const [itemHsnSac, setItemHsnSac] = useState('');
+  const [role, setRole] = useState<string | null>('');
 
   // Image upload state
   const [imageModalOpen, setImageModalOpen] = useState(false);
@@ -186,7 +188,11 @@ const ProjectDetails: React.FC = () => {
     setRefreshing(true);
     try {
       const res = await ProjectAPI.getById(initialProject.id);
+      const currentUser = await AsyncStorage.getItem('user');
       if (res?.data) setProject(res.data);
+      const role = JSON.parse(currentUser)?.role || 'worker';
+      console.log(role);
+      setRole(role);
     } catch (e) {
       console.error('Failed to refresh project', e);
     } finally {
@@ -703,10 +709,12 @@ const ProjectDetails: React.FC = () => {
               project.projectItems.map(item => (
                 <View key={item.id} style={styles.itemRow}>
                   <Text style={styles.itemName}>{item.itemName}</Text>
-                  <Text style={styles.itemDetails}>
-                    {item.quantity} × ₹{item.rateMrp} = ₹
-                    {item.totalCost.toLocaleString('en-IN')}
-                  </Text>
+                  {role !== 'worker' && (
+                    <Text style={styles.itemDetails}>
+                      {item.quantity} × ₹{item.rateMrp} = ₹
+                      {item.totalCost.toLocaleString('en-IN')}
+                    </Text>
+                  )}
                 </View>
               ))
             )}
@@ -735,7 +743,7 @@ const ProjectDetails: React.FC = () => {
           )}
 
           {/* Voice Recordings */}
-          {sortedVoiceRecordings.length > 0 && (
+          {sortedVoiceRecordings.length > 0 ? (
             <Card style={styles.voiceCard}>
               <View style={styles.voiceHeader}>
                 <MaterialCommunityIcons
@@ -837,6 +845,28 @@ const ProjectDetails: React.FC = () => {
                 </View>
               ))}
             </Card>
+          ) : (
+            <Card style={styles.voiceCard}>
+              <View style={styles.voiceHeader}>
+                <MaterialCommunityIcons
+                  name="microphone"
+                  size={wp(6)}
+                  color="#2874b8"
+                />
+                <Text style={styles.voiceTitle}>
+                  Voice Recordings ({sortedVoiceRecordings.length})
+                </Text>
+                <IconButton
+                  icon="plus"
+                  size={wp(6)}
+                  onPress={handleRecordVoice}
+                  iconColor="#2874b8"
+                />
+              </View>
+              <View>
+                <Text style={styles.recordingName}>No Voice Recording</Text>
+              </View>
+            </Card>
           )}
 
           <View style={{ height: hp(10) }} />
@@ -850,6 +880,7 @@ const ProjectDetails: React.FC = () => {
             onPress={handleEdit}
             iconColor="#2874b8"
             style={styles.actionButton}
+            disabled={role === 'worker'}
           />
           <IconButton
             icon="delete"
@@ -857,6 +888,7 @@ const ProjectDetails: React.FC = () => {
             onPress={handleDelete}
             iconColor="#e74c3c"
             style={styles.actionButton}
+            disabled={role !== 'superadmin'}
           />
           <IconButton
             icon="microphone"
@@ -871,6 +903,7 @@ const ProjectDetails: React.FC = () => {
             onPress={handleAddPayment}
             iconColor="#27ae60"
             style={styles.actionButton}
+            disabled={role !== 'superadmin'}
           />
         </View>
 

@@ -133,7 +133,7 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
             theme={{ roundness: wp(2.5) }}
             contentStyle={styles.inputContent}
             outlineColor="#ddd"
-            activeOutlineColor="#2874b8"
+            activeOutlineColor="#0a411fff"
             left={<TextInput.Icon icon="account" size={wp(6)} />}
             error={name.trim().length === 0}
           />
@@ -155,7 +155,7 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
             maxLength={10}
             contentStyle={styles.inputContent}
             outlineColor="#ddd"
-            activeOutlineColor={isValidPhone ? '#27ae60' : '#2874b8'}
+            activeOutlineColor={isValidPhone ? '#27ae60' : '#0a411fff'}
             left={<TextInput.Icon icon="phone" size={wp(6)} />}
             right={
               phone.length > 0 && (
@@ -184,7 +184,7 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
             theme={{ roundness: wp(2.5) }}
             contentStyle={styles.inputContent}
             outlineColor="#ddd"
-            activeOutlineColor="#2874b8"
+            activeOutlineColor="#0a411fff"
             left={<TextInput.Icon icon="map-marker" size={wp(6)} />}
             error={address.trim().length === 0}
           />
@@ -204,7 +204,7 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
             theme={{ roundness: wp(2.5) }}
             contentStyle={styles.inputContent}
             outlineColor="#ddd"
-            activeOutlineColor="#2874b8"
+            activeOutlineColor="#0a411fff"
             left={<TextInput.Icon icon="text" size={wp(6)} />}
             error={description.trim().length === 0}
           />
@@ -222,7 +222,7 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
             keyboardType="numeric"
             contentStyle={styles.inputContent}
             outlineColor="#ddd"
-            activeOutlineColor="#2874b8"
+            activeOutlineColor="#0a411fff"
             left={<TextInput.Icon icon="calendar-clock" size={wp(6)} />}
           />
 
@@ -247,7 +247,7 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
             onPress={handleSave}
             style={styles.saveButton}
             contentStyle={styles.saveButtonContent}
-            buttonColor="#2874b8"
+            buttonColor="#0a411fff"
             loading={loading}
             disabled={loading || !isFormValid}
             icon="content-save"
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
     marginLeft: wp(1),
   },
   dateButton: {
-    borderColor: '#2874b8',
+    borderColor: '#0a411fff',
     borderWidth: 1.5,
   },
   dateButtonContent: {

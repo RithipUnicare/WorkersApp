@@ -44,7 +44,8 @@
     "react-native-vector-icons": "^10.3.0",
     "react-native-webview": "^13.16.0",
     "react-navigation": "^5.0.0",
-    "react-redux": "^9.2.0"
+    "react-redux": "^9.2.0",
+    "translate-google-api": "^1.0.4"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

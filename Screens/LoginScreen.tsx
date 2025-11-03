@@ -71,7 +71,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <LinearGradient colors={['#1e5a8e', '#2874b8']} style={styles.gradient}>
+    <LinearGradient colors={['#0a411fff', '#0a411fff']} style={styles.gradient}>
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <KeyboardAvoidingView
           style={styles.container}
@@ -112,7 +112,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
                   theme={{ roundness: wp(2.5) }}
                   contentStyle={styles.inputContent}
                   outlineColor="#ddd"
-                  activeOutlineColor="#2874b8"
+                  activeOutlineColor="#0a411fff"
                 />
               </View>
 
@@ -128,13 +128,13 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
                   theme={{ roundness: wp(2.5) }}
                   contentStyle={styles.inputContent}
                   outlineColor="#ddd"
-                  activeOutlineColor="#2874b8"
+                  activeOutlineColor="#0a411fff"
                   right={
                     <TextInput.Icon
                       icon={showPassword ? 'eye-off' : 'eye'}
                       size={wp(6)}
                       onPress={() => setShowPassword(!showPassword)}
-                      color="#2874b8"
+                      color="#0a411fff"
                     />
                   }
                 />
@@ -147,7 +147,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 style={styles.button}
                 contentStyle={styles.buttonContent}
                 labelStyle={styles.buttonLabel}
-                buttonColor="#2874b8"
+                buttonColor="#0a411fff"
                 rippleColor="#1e5a8e"
               >
                 Sign In
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
     width: wp(22),
     height: wp(22),
     borderRadius: wp(5),
-    backgroundColor: '#2874b8',
+    backgroundColor: '#0a411fff',
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 6,

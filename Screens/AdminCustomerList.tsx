@@ -167,7 +167,7 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
                 <MaterialCommunityIcons
                   name="phone"
                   size={wp(4.5)}
-                  color="#2874b8"
+                  color="#0a411fff"
                 />
                 <Text style={styles.infoText}>{item.contactNo}</Text>
               </View>
@@ -178,7 +178,7 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
                 <MaterialCommunityIcons
                   name="map-marker"
                   size={wp(4.5)}
-                  color="#2874b8"
+                  color="#0a411fff"
                 />
                 <Text style={styles.infoText} numberOfLines={1}>
                   {item.address}
@@ -239,7 +239,7 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
             theme={{ roundness: wp(2.5) }}
             contentStyle={styles.searchContent}
             outlineColor="#ddd"
-            activeOutlineColor="#2874b8"
+            activeOutlineColor="#0a411fff"
             left={<TextInput.Icon icon="magnify" size={wp(6)} />}
             right={
               search ? (
@@ -255,7 +255,7 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
           <TouchableOpacity
             onPress={() => navigation.navigate('AddCustomer')}
             style={{
-              backgroundColor: '#2874b8',
+              backgroundColor: '#0a411fff',
               padding: wp(2),
               borderRadius: wp(3.5),
             }}
@@ -267,7 +267,7 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
         {/* Customer List */}
         {loading ? (
           <View style={styles.loader}>
-            <ActivityIndicator size="large" color="#2874b8" />
+            <ActivityIndicator size="large" color="#0a411fff" />
           </View>
         ) : (
           <FlatList
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
   },
   visitInfo: {
     fontSize: wp(3.4),
-    color: '#2874b8',
+    color: '#0a411fff',
     marginTop: hp(0.8),
     fontWeight: '500',
   },
@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: wp(10),
   },
   fab: {
-    backgroundColor: '#2874b8',
+    backgroundColor: '#0a411fff',
   },
 });
 

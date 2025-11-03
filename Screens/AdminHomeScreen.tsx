@@ -202,9 +202,9 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        {/* ---------- Header ---------- */}
+        
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={styles.logoContainer}>
@@ -220,7 +220,6 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
             </View>
           </View>
 
-          {/* ---- Language Toggle + Logout ---- */}
           <View style={styles.headerRight}>
             <TouchableOpacity onPress={toggleLanguage} style={styles.langBtn}>
               <Text style={styles.langText}>{isTamil ? 'த' : 'EN'}</Text>
@@ -236,7 +235,7 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
           </View>
         </View>
 
-        {/* ---------- Content ---------- */}
+        
         <ScrollView
           style={styles.content}
           showsVerticalScrollIndicator={false}
@@ -283,7 +282,7 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
                         <MaterialCommunityIcons
                           name={item.icon}
                           size={wp(8)}
-                          color="#2874b8"
+                          color="#0a411fff"
                         />
                       </View>
                       <View style={styles.menuTextContainer}>
@@ -324,7 +323,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F5F5F5' },
   container: { flex: 1 },
   header: {
-    backgroundColor: '#2874b8',
+    backgroundColor: '#0a411fff',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

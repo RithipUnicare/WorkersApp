@@ -198,7 +198,7 @@ const UserManagementTab: React.FC<Props> = ({ navigation }) => {
       >
         {loading ? (
           <View style={styles.loader}>
-            <ActivityIndicator size="large" color="#2874b8" />
+            <ActivityIndicator size="large" color="#0a411fff" />
           </View>
         ) : users.length === 0 ? (
           renderEmpty()
@@ -229,7 +229,7 @@ const UserManagementTab: React.FC<Props> = ({ navigation }) => {
                   <MaterialCommunityIcons
                     name="email"
                     size={wp(5)}
-                    color="#2874b8"
+                    color="#0a411fff"
                   />
                   <Text style={styles.infoText}>{user.email}</Text>
                 </View>
@@ -238,7 +238,7 @@ const UserManagementTab: React.FC<Props> = ({ navigation }) => {
                   <MaterialCommunityIcons
                     name="phone"
                     size={wp(5)}
-                    color="#2874b8"
+                    color="#0a411fff"
                   />
                   <Text style={styles.infoText}>{user.mobile}</Text>
                 </View>
@@ -247,7 +247,7 @@ const UserManagementTab: React.FC<Props> = ({ navigation }) => {
                   <MaterialCommunityIcons
                     name={user.role === 'admin' ? 'shield-account' : 'account'}
                     size={wp(5)}
-                    color="#2874b8"
+                    color="#0a411fff"
                   />
                   <Text style={styles.infoText}>Role: {user.role}</Text>
                 </View>
@@ -278,7 +278,7 @@ const UserManagementTab: React.FC<Props> = ({ navigation }) => {
                     theme={{ roundness: wp(2.5) }}
                     contentStyle={styles.inputContent}
                     outlineColor="#ddd"
-                    activeOutlineColor="#2874b8"
+                    activeOutlineColor="#0a411fff"
                     left={
                       <TextInput.Icon icon="account-outline" size={wp(6)} />
                     }
@@ -295,7 +295,7 @@ const UserManagementTab: React.FC<Props> = ({ navigation }) => {
                     theme={{ roundness: wp(2.5) }}
                     contentStyle={styles.inputContent}
                     outlineColor="#ddd"
-                    activeOutlineColor="#2874b8"
+                    activeOutlineColor="#0a411fff"
                     left={<TextInput.Icon icon="phone" size={wp(6)} />}
                   />
 
@@ -310,7 +310,7 @@ const UserManagementTab: React.FC<Props> = ({ navigation }) => {
                     theme={{ roundness: wp(2.5) }}
                     contentStyle={styles.inputContent}
                     outlineColor="#ddd"
-                    activeOutlineColor="#2874b8"
+                    activeOutlineColor="#0a411fff"
                     left={<TextInput.Icon icon="email" size={wp(6)} />}
                   />
 
@@ -324,7 +324,7 @@ const UserManagementTab: React.FC<Props> = ({ navigation }) => {
                     theme={{ roundness: wp(2.5) }}
                     contentStyle={styles.inputContent}
                     outlineColor="#ddd"
-                    activeOutlineColor="#2874b8"
+                    activeOutlineColor="#0a411fff"
                     left={<TextInput.Icon icon="account" size={wp(6)} />}
                   />
 
@@ -358,7 +358,7 @@ const UserManagementTab: React.FC<Props> = ({ navigation }) => {
                     renderLeftIcon={() => (
                       <Ionicons
                         style={styles.dropdownIcon}
-                        color="#2874b8"
+                        color="#0a411fff"
                         name={
                           editRole === 'admin' ? 'shield-checkmark' : 'person'
                         }
@@ -371,7 +371,7 @@ const UserManagementTab: React.FC<Props> = ({ navigation }) => {
                     <MaterialCommunityIcons
                       name="calendar"
                       size={wp(5)}
-                      color="#2874b8"
+                      color="#0a411fff"
                     />
                     <Text style={styles.infoText}>
                       Created:{' '}
@@ -383,7 +383,7 @@ const UserManagementTab: React.FC<Props> = ({ navigation }) => {
                     <MaterialCommunityIcons
                       name="update"
                       size={wp(5)}
-                      color="#2874b8"
+                      color="#0a411fff"
                     />
                     <Text style={styles.infoText}>
                       Updated:{' '}
@@ -521,7 +521,7 @@ const CreateUserTab: React.FC = () => {
             theme={{ roundness: wp(2.5) }}
             contentStyle={styles.inputContent}
             outlineColor="#ddd"
-            activeOutlineColor="#2874b8"
+            activeOutlineColor="#0a411fff"
             left={<TextInput.Icon icon="account-outline" size={wp(6)} />}
           />
 
@@ -536,7 +536,7 @@ const CreateUserTab: React.FC = () => {
             theme={{ roundness: wp(2.5) }}
             contentStyle={styles.inputContent}
             outlineColor="#ddd"
-            activeOutlineColor="#2874b8"
+            activeOutlineColor="#0a411fff"
             left={<TextInput.Icon icon="phone" size={wp(6)} />}
           />
 
@@ -551,7 +551,7 @@ const CreateUserTab: React.FC = () => {
             theme={{ roundness: wp(2.5) }}
             contentStyle={styles.inputContent}
             outlineColor="#ddd"
-            activeOutlineColor="#2874b8"
+            activeOutlineColor="#0a411fff"
             left={<TextInput.Icon icon="email" size={wp(6)} />}
           />
 
@@ -565,7 +565,7 @@ const CreateUserTab: React.FC = () => {
             theme={{ roundness: wp(2.5) }}
             contentStyle={styles.inputContent}
             outlineColor="#ddd"
-            activeOutlineColor="#2874b8"
+            activeOutlineColor="#0a411fff"
             left={<TextInput.Icon icon="account" size={wp(6)} />}
           />
 
@@ -579,7 +579,7 @@ const CreateUserTab: React.FC = () => {
             theme={{ roundness: wp(2.5) }}
             contentStyle={styles.inputContent}
             outlineColor="#ddd"
-            activeOutlineColor="#2874b8"
+            activeOutlineColor="#0a411fff"
             left={<TextInput.Icon icon="lock" size={wp(6)} />}
           />
 
@@ -601,7 +601,7 @@ const CreateUserTab: React.FC = () => {
             renderLeftIcon={() => (
               <Ionicons
                 style={styles.dropdownIcon}
-                color="#2874b8"
+                color="#0a411fff"
                 name={
                   role === 'superadmin'
                     ? 'shield-checkmark'
@@ -619,7 +619,7 @@ const CreateUserTab: React.FC = () => {
             onPress={handleCreateUser}
             style={styles.createButton}
             contentStyle={styles.createButtonContent}
-            buttonColor="#2874b8"
+            buttonColor="#0a411fff"
             loading={loading}
             disabled={
               loading ||
@@ -665,7 +665,7 @@ const AdminPanel: React.FC<Props> = ({ navigation }) => {
           style={styles.tabs}
           theme={{
             colors: {
-              primary: '#2874b8',
+              primary: '#0a411fff',
             },
           }}
         >
@@ -736,7 +736,7 @@ const styles = StyleSheet.create({
   },
   userRole: {
     fontSize: wp(3.4),
-    color: '#2874b8',
+    color: '#0a411fff',
     marginTop: hp(0.3),
   },
   deleteButton: {
