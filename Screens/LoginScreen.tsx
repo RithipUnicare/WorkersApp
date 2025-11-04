@@ -48,6 +48,18 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         console.error('Error fetching users:', error);
       }
     };
+    const alreadyLogin = async () => {
+      const user = await AsyncStorage.getItem('user');
+      const UserRole = user ? JSON.parse(user).role : null;
+      if (user) {
+        if (UserRole === 'worker') {
+          navigation.navigate('WorkersHome');
+        } else {
+          navigation.navigate('AdminHome');
+        }
+      }
+    };
+    alreadyLogin();
     fetchUsers();
   }, []);
 

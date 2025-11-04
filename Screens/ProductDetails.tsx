@@ -201,8 +201,7 @@ const openMobileDialer = (phoneNumber: string) => {
 const ProjectDetails: React.FC = () => {
   const route = useRoute<ProjectDetailsRouteProp>();
   const navigation = useNavigation<ProjectDetailsNavProp>();
-  const initialProject: Project = route.params.project;
-  console.log('initialProject', initialProject);
+  const initialProject: Project | any = route?.params?.project;
   const [project, setProject] = useState<Project>(initialProject);
 
   const [modalVisible, setModalVisible] = useState(false);
@@ -340,6 +339,15 @@ const ProjectDetails: React.FC = () => {
     }
   };
 
+  const deleteSiteImage = async (imageId: number) => {
+    try {
+      await ProjectAPI.deleteSiteImage(imageId);
+      await onRefresh();
+    } catch (e) {
+      Alert.alert(t('Error'), t('Failed to delete'));
+    }
+  };
+
   // Item edit/delete
   const openAddItem = () => {
     setEditingItem(null);
@@ -457,8 +465,8 @@ const ProjectDetails: React.FC = () => {
     });
 
     return () => {
-      playbackListener?.remove();
-      endListener?.remove();
+      // playbackListener?.remove();
+      // endListener?.remove();
     };
   }, []);
 
@@ -899,23 +907,33 @@ const ProjectDetails: React.FC = () => {
                 style={styles.imageScroll}
               >
                 {project.siteImages.map((img, idx) => (
-                  <TouchableOpacity
-                    key={img.id}
-                    onPress={() => openImageModal(idx)}
-                    style={styles.thumbnailWrapper}
-                  >
-                    <Image
-                      source={{ uri: img.imageUrl }}
-                      style={styles.thumbnail}
-                    />
-                    <View style={styles.overlay}>
-                      <MaterialCommunityIcons
-                        name="magnify-plus"
-                        size={wp(6)}
-                        color="#fff"
+                  <View key={img.id} style={styles.thumbnailWrapper}>
+                    <TouchableOpacity onPress={() => openImageModal(idx)}>
+                      <Image
+                        source={{ uri: img.imageUrl }}
+                        style={styles.thumbnail}
                       />
-                    </View>
-                  </TouchableOpacity>
+                      <View style={styles.overlay}>
+                        <MaterialCommunityIcons
+                          name="magnify-plus"
+                          size={wp(6)}
+                          color="#fff"
+                        />
+                      </View>
+                    </TouchableOpacity>
+                    {/* {role !== 'worker' && (
+                      <TouchableOpacity
+                        onPress={() => deleteSiteImage(img.id)}
+                        style={{ position: 'absolute', top: -6, right: -6 }}
+                      >
+                        <MaterialCommunityIcons
+                          name="close-circle"
+                          size={wp(5)}
+                          color="#e74c3c"
+                        />
+                      </TouchableOpacity>
+                    )} */}
+                  </View>
                 ))}
               </ScrollView>
             </Card>

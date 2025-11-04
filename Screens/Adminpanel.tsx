@@ -61,6 +61,7 @@ const enToTa: Record<string, string> = {
   'Create a new user to get started': 'தொடங்க ஒரு புதிய பயனரை உருவாக்கவும்',
   Administrator: 'நிர்வாகி',
   Worker: 'தொழிலாளி',
+  Super_Administrator: 'உயர்நிர்வாகி',
   Delete: 'நீக்கு',
   'Are you sure you want to delete this user?':
     'இந்த பயனரை நிச்சயமாக நீக்க வேண்டுமா?',
@@ -159,7 +160,9 @@ const UserManagementTab: React.FC<Props> = ({ navigation }) => {
   );
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', loadUsers);
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadUsers();
+    });
     loadUsers();
     return unsubscribe;
   }, [navigation, isTamil]);
@@ -366,7 +369,13 @@ const UserManagementTab: React.FC<Props> = ({ navigation }) => {
 
                 <View style={styles.infoRow}>
                   <MaterialCommunityIcons
-                    name={user.role === 'admin' ? 'shield-account' : 'account'}
+                    name={
+                      user.role === 'superadmin'
+                        ? 'crown'
+                        : user.role === 'admin'
+                        ? 'shield-account'
+                        : 'account'
+                    }
                     size={wp(5)}
                     color="#0a411fff"
                   />
@@ -377,7 +386,15 @@ const UserManagementTab: React.FC<Props> = ({ navigation }) => {
                     ]}
                   >
                     {t('Role')}:{' '}
-                    {t(user.role === 'admin' ? 'Administrator' : 'Worker')}
+                    {t(
+                      user.role === 'superadmin'
+                        ? isTamil
+                          ? 'Super_Administrator'
+                          : 'Super Administrator'
+                        : user.role === 'admin'
+                        ? 'Administrator'
+                        : 'Worker',
+                    )}
                   </Text>
                 </View>
               </Card>

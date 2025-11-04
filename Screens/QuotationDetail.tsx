@@ -577,7 +577,6 @@ const QuotationDetail: React.FC = () => {
         images:
           item?.images?.map(img => ({
             id: img.id,
-
             imageUrl: img.imageUrl,
           })) || [],
       })),

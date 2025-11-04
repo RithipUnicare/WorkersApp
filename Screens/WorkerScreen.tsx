@@ -129,7 +129,12 @@ const WorkerHomePage: React.FC<Props> = ({ navigation }) => {
       {
         text: t('Logout'),
         onPress: async () => {
-          await AsyncStorage.multiRemove(['role', 'username', 'appLanguage']);
+          await AsyncStorage.multiRemove([
+            'role',
+            'username',
+            'appLanguage',
+            'user',
+          ]);
           navigation.dispatch(
             CommonActions.reset({
               index: 0,

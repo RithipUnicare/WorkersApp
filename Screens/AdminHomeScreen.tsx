@@ -89,7 +89,7 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
       const currentUser = await AsyncStorage.getItem('user');
       const parsedUser = currentUser ? JSON.parse(currentUser) : null;
 
-      console.log("user", parsedUser);
+      console.log('user', parsedUser);
 
       setUsername(parsedUser?.name || 'Admin User');
       // animation
@@ -192,7 +192,12 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
           text: t('Logout'),
           style: 'destructive',
           onPress: async () => {
-            await AsyncStorage.multiRemove(['role', 'username', 'appLanguage']);
+            await AsyncStorage.multiRemove([
+              'role',
+              'username',
+              'appLanguage',
+              'user',
+            ]);
             navigation.dispatch(
               CommonActions.reset({
                 index: 0,
@@ -209,7 +214,6 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={styles.logoContainer}>
@@ -240,7 +244,6 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
           </View>
         </View>
 
-        
         <ScrollView
           style={styles.content}
           showsVerticalScrollIndicator={false}

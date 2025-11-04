@@ -94,6 +94,7 @@ const enToTa: Record<string, string> = {
   // Buttons
   '+ Payment In': '+ பணம் பெறு',
   '+ Payment Out': '+ பணம் செலுத்து',
+  '+ Material expense': '+ பொருள் செலவுகள்',
   'Preview Invoice': 'விலைப்பட்டியல் முன்னோட்டம்',
   'Share Invoice': 'விலைப்பட்டியல் பகிர்',
 
@@ -602,7 +603,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                   contentStyle={styles.addBtnContent}
                   textColor="#e74c3c"
                 >
-                  {t('+ Payment Out')}
+                  {t('+ Material expense')}
                 </Button>
               </View>
 
