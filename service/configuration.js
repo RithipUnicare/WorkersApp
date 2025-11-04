@@ -45,6 +45,7 @@ export const endpoints = {
   paymentsOutById: id => `/api/v1/projects/payments-out/${id}`,
   paymentsOutByProject: projectId =>
     `/api/v1/projects/${projectId}/payments-out`,
+  pendingPayments: '/api/v1/projects/pending-payments',
 
   // Quotation endpoints
   quotations: '/api/v1/quotations',

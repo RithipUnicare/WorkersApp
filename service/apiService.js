@@ -255,6 +255,7 @@ export const ProjectAPI = {
   deleteSiteImage: id => deleteRequest(endpoints.projectImages(id)),
   deleteVoiceRecording: (id, voiceId) =>
     deleteRequest(`${endpoints.projectVoice(id)}/${voiceId}`),
+  getPendingPayments: () => queryRequest(endpoints.pendingPayments),
 };
 
 export const QuotationAPI = {

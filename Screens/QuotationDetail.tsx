@@ -606,36 +606,73 @@ const QuotationDetail: React.FC = () => {
 
   const generateAndSharePDF = async () => {
     try {
+      const sanitizedName =
+        quotationData.customerName
+          .replace(/[^a-zA-Z0-9\s]/g, '')
+          .replace(/\s+/g, '_')
+          .substring(0, 50) || 'Customer';
+
+      const fileName = `${sanitizedName}_Quotation.pdf`;
+
       const options = {
         html: htmlContent,
-        fileName: `${quotationData.customerName}_Quotation`,
+        fileName: fileName,
         directory: 'Documents',
       };
+
       const { filePath } = await generatePDF(options);
 
-      const fileName = `${quotationData.customerName}_Quotation.pdf`;
-      const downloadsPath =
-        Platform.OS === 'android'
-          ? `${RNFS.DownloadDirectoryPath}/${fileName}`
-          : `${RNFS.DocumentDirectoryPath}/${fileName}`;
+      if (!filePath) {
+        throw new Error('PDF generation failed');
+      }
 
-      await RNFS.copyFile(filePath, downloadsPath);
+      console.log('Generated PDF at:', filePath);
 
+      const cleanPath = filePath.replace(/^file:\/\//, '');
+
+      // Verify file
+      const exists = await RNFS.exists(cleanPath);
+      if (!exists) {
+        throw new Error('PDF file not found');
+      }
+
+      // Copy to cache directory for better sharing compatibility
+      const cacheFileName = `${quotationData.customerName
+        .replace('-', '')
+        .replace(' ', '_')}_${fileName}`;
+      const cachePath = `${RNFS.CachesDirectoryPath}/${cacheFileName}`;
+
+      await RNFS.copyFile(cleanPath, cachePath);
+      console.log('Copied to cache:', cachePath);
+
+      // Share using the cache path
       await Share.open({
-        title: `Quotation - ${quotationData.customerName}`,
-        message: `Quotation for ${quotationData.customerName}`,
-        url: `file://${downloadsPath}`,
+        url: `file://${cachePath}`,
+        type: 'application/pdf',
+        failOnCancel: false,
       });
 
-      await RNFS.unlink(filePath);
-    } catch (error) {
-      console.error('PDF/Share Error:', error);
-      Alert.alert(t('Error'), 'Failed to generate or share PDF');
+      // Clean up both files
+      setTimeout(async () => {
+        try {
+          await RNFS.unlink(cleanPath);
+          await RNFS.unlink(cachePath);
+          console.log('Cleaned up files');
+        } catch (e) {
+          console.log('Cleanup error:', e);
+        }
+      }, 5000);
+    } catch (error: any) {
+      if (error?.message?.includes('User did not share')) {
+        return;
+      }
+
+      console.error('Share Error:', error);
+      Alert.alert(t('Error'), 'Failed to share PDF');
     } finally {
       setPdfModalVisible(false);
     }
   };
-
   const sortedVoiceRecordings = quotationData.voiceRecordings
     ? quotationData.voiceRecordings
         .slice()

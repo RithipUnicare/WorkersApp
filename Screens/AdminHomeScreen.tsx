@@ -52,6 +52,7 @@ const enToTa: Record<string, string> = {
   'Unattended Customers': 'கவனிக்கப்படாத வாடிக்கையாளர்கள்',
   'View customers needing follow-up':
     'பின்தொடர்தல் தேவைப்படும் வாடிக்கையாளர்களைப் பார்க்கவும்',
+  'Pending Payments': 'நிலுவையில் பொருட்கள்',
 
   // Footer
   'Version 1.0 • © 2025 Indian Steel Company':
@@ -179,6 +180,13 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
       description: t('View customers needing follow-up'),
       icon: 'account-clock',
       onPress: () => navigation.navigate('unattendedCustomers'),
+    },
+    {
+      id: 6,
+      title: t('Pending Payments'),
+      description: t('View pending payments'),
+      icon: 'cash',
+      onPress: () => navigation.navigate('pendingPayments'),
     },
   ];
 
