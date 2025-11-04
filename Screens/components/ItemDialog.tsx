@@ -329,6 +329,7 @@ const ItemDialog: React.FC<Props> = ({
                       onLongPress={() =>
                         confirmDeleteUnit(item.value, item.label)
                       }
+                      onPress={() => setUnitId(item.value)}
                     >
                       <Text>{item.label}</Text>
                     </TouchableOpacity>

@@ -489,7 +489,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
           hsnSac: i.hsnSac,
         })),
       };
-
+      let currentQuotation = null;
       if (isEditMode && rawQuotation?.id) {
         await QuotationAPI.update(rawQuotation.id, payload);
         // Upload any newly added local images
@@ -497,13 +497,15 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
         if (localUris.length) {
           await QuotationAPI.addSiteImages(rawQuotation.id, localUris);
         }
+        currentQuotation = rawQuotation;
         ToastAndroid.show(t('Quotation updated!'), ToastAndroid.SHORT);
       } else {
         const res = await QuotationAPI.create(payload);
+        currentQuotation = res.data;
         ToastAndroid.show(t('Quotation created!'), ToastAndroid.SHORT);
       }
 
-      setTimeout(() => navigation.goBack(), 800);
+      setTimeout(() => navigation.replace('QuotationDetail', { quotation: currentQuotation }), 800);
     } catch (e: any) {
       ToastAndroid.show(e?.message || t('Save failed'), ToastAndroid.SHORT);
     } finally {

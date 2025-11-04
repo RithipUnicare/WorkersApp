@@ -25,7 +25,7 @@ api.interceptors.response.use(
 
 async function handleResponse(response, parse = 'json') {
   const { status, data } = response;
-  console.log(status, data);
+
   if (status >= 400) {
     const error = new Error(response.data?.message || `HTTP ${status}`);
     error.status = status;
@@ -124,10 +124,11 @@ export const ProjectAPI = {
     }
     return multipartRequest('POST', endpoints.projectVoice(id), formData);
   },
-  addSiteImages: async (projectId, imageUris = []) => {
+  addSiteImages: async (projectId, imageUris = [],fromQuotation = false) => {
     const formData = new FormData();
 
-    imageUris.forEach((uri, index) => {
+    if(!fromQuotation){
+      imageUris.forEach((uri, index) => {
       if (!uri.startsWith('file://') && !uri.includes('cache')) return;
 
       const filename = uri.split('/').pop() || `site_image_${index}.jpg`;
@@ -139,6 +140,18 @@ export const ProjectAPI = {
         type,
       });
     });
+    }else{
+      imageUris.forEach((uri, index) => {
+        if (!uri) return;
+        const filename = `site_image_${index}.jpg`;
+        const type = 'image/jpeg';
+        formData.append('files', {
+          uri,
+          name: filename,
+          type,
+        });
+      });
+    }
 
     if ([...formData._parts].length === 0) return;
 

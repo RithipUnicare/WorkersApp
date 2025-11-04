@@ -79,7 +79,7 @@ const enToTa: Record<string, string> = {
   // Titles & Sections
   'Project Financials': 'திட்ட நிதி',
   'Payments In': 'பணம் பெறப்பட்டது',
-  'Payments Out': 'பணம் செலுத்தப்பட்டது',
+  'Material Expenses': 'பொருள் செலவுகள்',
   'No payments received': 'பணம் பெறப்படவில்லை',
   'No payments made': 'பணம் செலுத்தப்படவில்லை',
 
@@ -119,6 +119,7 @@ const enToTa: Record<string, string> = {
   Material: 'பொருள்',
   Labour: 'தொழிலாளி',
   Transport: 'போக்குவரத்து',
+  M_Expense: 'செலவு',
 
   // Alerts
   Invalid: 'தவறு',
@@ -543,7 +544,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                     <Text
                       style={[styles.label, { fontSize: getFontSize(wp(3.8)) }]}
                     >
-                      {t('Payments Out')}
+                      {t('Material Expenses')}
                     </Text>
                     <Text
                       style={[
@@ -652,7 +653,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                       { fontSize: getFontSize(wp(4.5)) },
                     ]}
                   >
-                    {t('Payments Out')}
+                    {t('Material Expenses')}
                   </Text>
                   {paymentsOut.length === 0 ? (
                     <Text
@@ -748,17 +749,17 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                   >
                     {(isPaymentIn
                       ? ['Cash', 'UPI', 'Bank', 'Cheque']
-                      : ['Vendor', 'Material', 'Labour', 'Transport']
-                    ).map(t => (
-                      <View key={t} style={styles.radioRow}>
-                        <RadioButton value={t} />
+                      : ['M-expense', 'Material', 'Labour', 'Transport']
+                    ).map(type => (
+                      <View key={type} style={styles.radioRow}>
+                        <RadioButton value={type} />
                         <Text
                           style={[
                             styles.radioText,
                             { fontSize: getFontSize(wp(3.8)) },
                           ]}
                         >
-                          {t === paymentType ? t(paymentType) : t(t)}
+                          {type === paymentType ? t(paymentType) : t(type)}
                         </Text>
                       </View>
                     ))}

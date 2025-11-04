@@ -46,6 +46,7 @@ import { useNavigationState } from '@react-navigation/native';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslator } from 'react-native-translator';
+import { Project } from './AdminProductList';
 
 dayjs.extend(customParseFormat);
 
@@ -167,6 +168,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   const isFromQuotationDetail = previousScreenName === 'QuotationDetail';
   const isEditMode = !!rawProject && !isFromQuotationDetail;
   const isFromInquiry = !!rawCustomer && !isEditMode && !isFromQuotationDetail;
+  console.log('isFromInquiry', isFromInquiry);
 
   const [customerId, setCustomerId] = useState<number | null>(null);
   const [deliveryDate, setDeliveryDate] = useState('');
@@ -292,7 +294,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       })),
     [customers],
   );
-
+  console.log('customerDropdown', customerDropdown);
   const unitDropdown = useMemo(
     () =>
       units.map(u => ({
@@ -595,7 +597,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       } as any);
     });
 
-    await ProjectAPI.addSiteImages(projectId, localImages);
+    await ProjectAPI.addSiteImages(projectId, localImages, isFromQuotationDetail);
   };
 
   // Save project
@@ -648,7 +650,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           console.log(error);
         }
         setSnackbar({ visible: true, message: t('Project updated!') });
-        navigation.goBack();
+        navigation.replace('ProjectDetails', { project:rawProject });
       } else {
         const payload = {
           customerId,
@@ -704,7 +706,8 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           t('Project Created Successfully'),
           ToastAndroid.SHORT,
         );
-        navigation.goBack();
+        const currentProject: Project = created?.data;
+        navigation.replace('ProjectDetails', { project:currentProject });
         setAdvanceModalOpen(true);
       }
     } catch (e: any) {

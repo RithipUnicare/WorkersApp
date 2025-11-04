@@ -193,6 +193,11 @@ const openGoogleMaps = (
   Linking.openURL(url).catch(() => {});
 };
 
+const openMobileDialer = (phoneNumber: string) => {
+  const url = `tel:${phoneNumber}`;
+  Linking.openURL(url).catch(() => {});
+};
+
 const ProjectDetails: React.FC = () => {
   const route = useRoute<ProjectDetailsRouteProp>();
   const navigation = useNavigation<ProjectDetailsNavProp>();
@@ -754,7 +759,7 @@ const ProjectDetails: React.FC = () => {
 
           {/* Details */}
           <Card style={styles.detailsCard}>
-            <View style={styles.infoRow}>
+            <TouchableOpacity style={styles.infoRow} onPress={() => openMobileDialer(project.customerContactNo)}>
               <MaterialCommunityIcons
                 name="phone"
                 size={wp(5)}
@@ -762,9 +767,9 @@ const ProjectDetails: React.FC = () => {
               />
               <Text style={styles.infoLabel}>{t('Contact')}</Text>
               <Text style={styles.infoValue}>{project.customerContactNo}</Text>
-            </View>
+            </TouchableOpacity>
 
-            <View style={styles.infoRow}>
+            <TouchableOpacity style={styles.infoRow} onPress={()=>openGoogleMaps(project.location?.latitude || 0, project.location?.longitude || 0)}>
               <MaterialCommunityIcons
                 name="map-marker"
                 size={wp(5)}
@@ -780,7 +785,7 @@ const ProjectDetails: React.FC = () => {
                 onPress={() => setGpsModalVisible(true)}
                 iconColor="#2874b8"
               />
-            </View>
+            </TouchableOpacity>
 
             <View style={styles.infoRow}>
               <MaterialCommunityIcons
