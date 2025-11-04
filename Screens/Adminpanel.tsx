@@ -84,7 +84,7 @@ const enToTa: Record<string, string> = {
 
   // Create User
   'Password *': 'கடவுச்சொல் *',
-  'Create User': 'பயனர் உருவாக்கு',
+  //'Create User': 'பயனர் உருவாக்கு',
   'Invalid email format': 'தவறான மின்னஞ்சல் வடிவம்',
   'Invalid mobile number (10 digits required)':
     'தவறான கைபேசி எண் (10 இலக்கங்கள் தேவை)',
@@ -96,7 +96,7 @@ const enToTa: Record<string, string> = {
   // Roles
   'Super Admin': 'சூப்பர் நிர்வாகி',
   Admin: 'நிர்வாகி',
-  Worker: 'தொழிலாளி',
+  // Worker: 'தொழிலாளி',
 };
 
 const UserManagementTab: React.FC<Props> = ({ navigation }) => {
@@ -317,7 +317,7 @@ const UserManagementTab: React.FC<Props> = ({ navigation }) => {
                         { fontSize: getFontSize(wp(3.4)) },
                       ]}
                     >
-                      {user.role === 'admin' ? t('Administrator') : t('Worker')}
+                      {user.role}
                     </Text>
                   </View>
                   <Button

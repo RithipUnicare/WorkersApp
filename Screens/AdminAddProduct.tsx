@@ -70,6 +70,7 @@ export type ProjectItem = {
   unitId: number;
   taxPercentage: number;
   hsnSac: string;
+  images?: any[];
 };
 
 export type Unit = {
@@ -168,7 +169,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   const isFromQuotationDetail = previousScreenName === 'QuotationDetail';
   const isEditMode = !!rawProject && !isFromQuotationDetail;
   const isFromInquiry = !!rawCustomer && !isEditMode && !isFromQuotationDetail;
-  console.log('isFromInquiry', isFromInquiry);
 
   const [customerId, setCustomerId] = useState<number | null>(null);
   const [deliveryDate, setDeliveryDate] = useState('');
@@ -224,7 +224,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   const [isTamil, setIsTamil] = useState(false);
   const [translations, setTranslations] = useState<Record<string, string>>({});
   const { translate } = useTranslator();
-
   // Initialize language
   useEffect(() => {
     const initLang = async () => {
@@ -234,7 +233,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
     };
     initLang();
   }, []);
-
   // Translate all strings
   useEffect(() => {
     if (!isTamil) {
@@ -294,7 +292,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       })),
     [customers],
   );
-  console.log('customerDropdown', customerDropdown);
   const unitDropdown = useMemo(
     () =>
       units.map(u => ({
@@ -574,30 +571,28 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
 
   useEffect(() => {
     if (!isEditMode && itemsTotal > 0 && !isFromQuotationDetail) {
-      setTotalAmount(String(itemsTotal));
+      //setTotalAmount(String(itemsTotal));
       //setActualAmount(itemsTotal);
     }
   }, [itemsTotal, isEditMode]);
 
-  // Upload images
+  // Upload images (local: third arg false, online URLs: third arg true)
   const uploadImages = async (projectId: number) => {
-    let localImages = images.filter(img => img.isLocal).map(img => img.uri);
-    if (isFromQuotationDetail && images.some(img => img.uri)) {
-      localImages = images.map(img => img.uri);
+    const localImages = images
+      .filter(img => img.isLocal)
+      .map(img => img.uri)
+      .filter(Boolean);
+    const remoteImages = images
+      .filter(img => !img.isLocal)
+      .map(img => img.uri)
+      .filter(Boolean);
+
+    if (localImages.length > 0) {
+      await ProjectAPI.addSiteImages(projectId, localImages, false);
     }
-    if (localImages.length === 0) return;
-
-    const formData = new FormData();
-    localImages.forEach((uri, index) => {
-      const filename = uri.split('/').pop() || `site_image_${index}.jpg`;
-      formData.append('files', {
-        uri,
-        name: filename,
-        type: 'image/jpeg',
-      } as any);
-    });
-
-    await ProjectAPI.addSiteImages(projectId, localImages, isFromQuotationDetail);
+    if (remoteImages.length > 0) {
+      await ProjectAPI.addSiteImages(projectId, remoteImages, true);
+    }
   };
 
   // Save project
@@ -631,7 +626,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
         await ProjectAPI.update(rawProject.id, payload);
         projectId = rawProject.id;
 
-        if (images.some(img => img.isLocal)) {
+        if (images.some(img => img.uri)) {
           await uploadImages(projectId);
         }
 
@@ -650,7 +645,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           console.log(error);
         }
         setSnackbar({ visible: true, message: t('Project updated!') });
-        navigation.replace('ProjectDetails', { project:rawProject });
+        navigation.replace('ProjectDetails', { project: rawProject });
       } else {
         const payload = {
           customerId,
@@ -678,17 +673,82 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
         const created: any = await ProjectAPI.create(payload);
         projectId = created.data.id || created.data.projectId;
         setCreatedProjectId(projectId);
-        console.log(images);
-        if (images.some(img => img.isLocal)) {
+        if (images.some(img => img.uri)) {
           await uploadImages(projectId);
         }
+        const currentProjectForItem = created.data;
+        const voiceExist =
+          rawProject.voiceRecordings && rawProject.voiceRecordings.length > 0;
+        if (voiceExist) {
+          rawProject.voiceRecordings?.map(async (voice: any) => {
+            const res = await ProjectAPI.updateVoice(
+              projectId,
+              voice.recordingUrl,
+              true,
+            );
+          });
+        }
+        console.log('projectItems', currentProjectForItem);
 
-        if (isFromQuotationDetail && images.some(img => img.uri)) {
-          await uploadImages(projectId);
+        if (
+          Array.isArray(rawProject.projectItems) &&
+          Array.isArray(currentProjectForItem.projectItems)
+        ) {
+          await Promise.all(
+            rawProject.projectItems.map(
+              async (projectItem: any, index: number) => {
+                const newItem = currentProjectForItem.projectItems[index];
+                let itemImages: any[] = [];
+
+                console.log(
+                  'Processing item:',
+                  projectItem.id,
+                  '->',
+                  newItem.id,
+                );
+
+                if (
+                  Array.isArray(projectItem.images) &&
+                  projectItem.images.length > 0
+                ) {
+                  console.log('Images exist for item:', projectItem.images);
+                  itemImages.push(...projectItem.images);
+                }
+
+                if (itemImages.length > 0) {
+                  const imageUris = itemImages.flatMap((img: any) => {
+                    if (Array.isArray(img.imageUrl)) return img.imageUrl;
+                    if (typeof img.imageUrl === 'string') return [img.imageUrl];
+                    return [];
+                  });
+
+                  try {
+                    const res = await ProjectAPI.addItemImages(
+                      newItem.id,
+                      imageUris,
+                      true,
+                    );
+                    console.log('Uploaded images for item:', newItem.id, res);
+                  } catch (err) {
+                    console.log(
+                      'Failed to upload images for item:',
+                      newItem.id,
+                      err,
+                    );
+                  }
+                } else {
+                  console.log('No images found for item:', projectItem.id);
+                }
+              },
+            ),
+          );
+        } else {
+          console.log(
+            'Project items and current items are not aligned in size or format.',
+          );
         }
 
         // If created from a quotation and a location is available, update GPS for the new project
-        console.log(fullLocation);
         if (isFromQuotationDetail && fullLocation.address) {
           await ProjectAPI.updateGps(projectId, {
             address: fullLocation.address,
@@ -707,7 +767,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           ToastAndroid.SHORT,
         );
         const currentProject: Project = created?.data;
-        navigation.replace('ProjectDetails', { project:currentProject });
+        navigation.replace('ProjectDetails', { project: currentProject });
         setAdvanceModalOpen(true);
       }
     } catch (e: any) {

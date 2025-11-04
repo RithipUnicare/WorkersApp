@@ -76,6 +76,7 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
+  const [sortAsc, setSortAsc] = useState(true);
   const [fabVisible, setFabVisible] = useState(false);
 
   const [isTamil, setIsTamil] = useState(false);
@@ -168,11 +169,16 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
           (c.contactNo || '').toLowerCase().includes(query) ||
           (c.address || '').toLowerCase().includes(query),
       );
-      setFilteredCustomers(filtered);
+      const sorted = [...filtered].sort((a, b) => {
+        const ta = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const tb = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return sortAsc ? ta - tb : tb - ta;
+      });
+      setFilteredCustomers(sorted);
     }, 300);
 
     return () => clearTimeout(timeout);
-  }, [search, customers]);
+  }, [search, customers, sortAsc]);
 
   // Status color & label
   const getStatusInfo = (status: string) => {
@@ -317,6 +323,16 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
             }
           />
           <TouchableOpacity
+            onPress={() => setSortAsc(prev => !prev)}
+            style={styles.sortButton}
+          >
+            <MaterialCommunityIcons
+              name={sortAsc ? 'sort-ascending' : 'sort-descending'}
+              size={wp(6)}
+              color="#0a411fff"
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
             onPress={() => navigation.navigate('AddCustomer')}
             style={{
               backgroundColor: '#0a411fff',
@@ -373,6 +389,17 @@ const styles = StyleSheet.create({
     width: width * 0.8,
   },
   searchContent: { fontSize: wp(4) },
+  sortButton: {
+    width: wp(10),
+    height: wp(10),
+    borderRadius: wp(5),
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e1e1e1',
+    marginRight: wp(2),
+  },
   listContent: {
     paddingHorizontal: wp(4),
     paddingBottom: hp(15),

@@ -110,37 +110,48 @@ export const ProjectAPI = {
   delete: id => deleteRequest(endpoints.projectById(id)),
   updateGps: (id, payload) =>
     jsonRequest('PUT', endpoints.projectGps(id), payload),
-  updateVoice: (id, file) => {
+  updateVoice: (id, file, exist = false) => {
     const formData = new FormData();
-    if (file.startsWith('file://') || file.includes('cache')) {
-      const filename = file.split('/').pop() || `voice_note_${id}.mp3`;
-      const type = 'audio/mpeg';
+    if (!exist) {
+      if (file.startsWith('file://') || file.includes('cache')) {
+        const filename = file.split('/').pop() || `voice_note_${id}.mp3`;
+        const type = 'audio/mpeg';
+        formData.append('name', filename);
+        formData.append('file', {
+          uri: file,
+          name: filename,
+          type,
+        });
+      }
+    } else {
+      const filename = `voice_note_${id}.mp3`;
       formData.append('name', filename);
       formData.append('file', {
         uri: file,
         name: filename,
-        type,
+        type: 'audio/mpeg',
       });
     }
+
     return multipartRequest('POST', endpoints.projectVoice(id), formData);
   },
-  addSiteImages: async (projectId, imageUris = [],fromQuotation = false) => {
+  addSiteImages: async (projectId, imageUris = [], fromQuotation = false) => {
     const formData = new FormData();
 
-    if(!fromQuotation){
+    if (!fromQuotation) {
       imageUris.forEach((uri, index) => {
-      if (!uri.startsWith('file://') && !uri.includes('cache')) return;
+        if (!uri.startsWith('file://') && !uri.includes('cache')) return;
 
-      const filename = uri.split('/').pop() || `site_image_${index}.jpg`;
-      const type = 'image/jpeg';
+        const filename = uri.split('/').pop() || `site_image_${index}.jpg`;
+        const type = 'image/jpeg';
 
-      formData.append('files', {
-        uri,
-        name: filename,
-        type,
+        formData.append('files', {
+          uri,
+          name: filename,
+          type,
+        });
       });
-    });
-    }else{
+    } else {
       imageUris.forEach((uri, index) => {
         if (!uri) return;
         const filename = `site_image_${index}.jpg`;
@@ -177,24 +188,52 @@ export const ProjectAPI = {
   updateItem: (id, payload) =>
     jsonRequest('PUT', endpoints.itemById(id), payload),
   deleteItem: id => deleteRequest(endpoints.itemById(id)),
-  addItemImages: async (itemId, imageUris = []) => {
+  addItemImages: async (itemId, imageUris = [], exist = false) => {
     const formData = new FormData();
 
-    imageUris.forEach((uri, index) => {
-      if (!uri || (!uri.startsWith('file://') && !uri.includes('cache'))) return;
-      const filename = uri.split('/').pop() || `item_image_${index}.jpg`;
-      const type = 'image/jpeg';
-      formData.append('files', {
-        uri,
-        name: filename,
-        type,
+    if (!exist) {
+      imageUris.forEach((uri, index) => {
+        if (!uri || (!uri.startsWith('file://') && !uri.includes('cache')))
+          return;
+        const filename = uri.split('/').pop() || `item_image_${index}.jpg`;
+        const type = 'image/jpeg';
+        formData.append('files', {
+          uri,
+          name: filename,
+          type,
+        });
       });
-    });
+    } else {
+      imageUris.forEach((uri, index) => {
+        console.log('uri', uri);
+        if (!uri) return;
 
+        // ✅ Handle both string URLs and objects with imageUrl
+        const fileUri = typeof uri === 'string' ? uri : uri.imageUrl;
+
+        if (!fileUri) return;
+
+        const filename = `item_image_${index}.jpg`;
+        const type = 'image/jpeg';
+
+        formData.append('files', {
+          uri: fileUri,
+          name: filename,
+          type,
+        });
+      });
+    }
+
+    // Skip if no valid files
     if ([...formData._parts].length === 0) return;
 
-    return multipartRequest('POST', endpoints.projectItemImages(itemId), formData);
+    return multipartRequest(
+      'POST',
+      endpoints.projectItemImages(itemId),
+      formData,
+    );
   },
+
   deleteItemImage: (itemId, imageId) =>
     deleteRequest(endpoints.projectItemImageById(itemId, imageId)),
   createPaymentIn: payload =>
@@ -266,7 +305,11 @@ export const QuotationAPI = {
       const type = 'audio/mpeg';
       formData.append('file', { uri: file, name: filename, type });
     }
-    return multipartRequest('PUT', endpoints.quotationVoiceById(id, voiceId), formData);
+    return multipartRequest(
+      'PUT',
+      endpoints.quotationVoiceById(id, voiceId),
+      formData,
+    );
   },
   deleteVoiceRecording: (id, voiceId) =>
     deleteRequest(endpoints.quotationVoiceById(id, voiceId)),
@@ -281,7 +324,8 @@ export const QuotationAPI = {
     const formData = new FormData();
 
     imageUris.forEach((uri, index) => {
-      if (!uri || (!uri.startsWith('file://') && !uri.includes('cache'))) return;
+      if (!uri || (!uri.startsWith('file://') && !uri.includes('cache')))
+        return;
       const filename = uri.split('/').pop() || `site_image_${index}.jpg`;
       const type = 'image/jpeg';
       formData.append('files', {
@@ -305,7 +349,8 @@ export const QuotationAPI = {
     const formData = new FormData();
 
     imageUris.forEach((uri, index) => {
-      if (!uri || (!uri.startsWith('file://') && !uri.includes('cache'))) return;
+      if (!uri || (!uri.startsWith('file://') && !uri.includes('cache')))
+        return;
       const filename = uri.split('/').pop() || `item_image_${index}.jpg`;
       const type = 'image/jpeg';
       formData.append('files', {

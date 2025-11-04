@@ -202,6 +202,7 @@ const ProjectDetails: React.FC = () => {
   const route = useRoute<ProjectDetailsRouteProp>();
   const navigation = useNavigation<ProjectDetailsNavProp>();
   const initialProject: Project = route.params.project;
+  console.log('initialProject', initialProject);
   const [project, setProject] = useState<Project>(initialProject);
 
   const [modalVisible, setModalVisible] = useState(false);
@@ -759,7 +760,10 @@ const ProjectDetails: React.FC = () => {
 
           {/* Details */}
           <Card style={styles.detailsCard}>
-            <TouchableOpacity style={styles.infoRow} onPress={() => openMobileDialer(project.customerContactNo)}>
+            <TouchableOpacity
+              style={styles.infoRow}
+              onPress={() => openMobileDialer(project.customerContactNo)}
+            >
               <MaterialCommunityIcons
                 name="phone"
                 size={wp(5)}
@@ -769,7 +773,15 @@ const ProjectDetails: React.FC = () => {
               <Text style={styles.infoValue}>{project.customerContactNo}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.infoRow} onPress={()=>openGoogleMaps(project.location?.latitude || 0, project.location?.longitude || 0)}>
+            <TouchableOpacity
+              style={styles.infoRow}
+              onPress={() =>
+                openGoogleMaps(
+                  project.location?.latitude || 0,
+                  project.location?.longitude || 0,
+                )
+              }
+            >
               <MaterialCommunityIcons
                 name="map-marker"
                 size={wp(5)}

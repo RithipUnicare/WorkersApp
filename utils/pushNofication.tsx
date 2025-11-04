@@ -53,7 +53,6 @@ import { OneSignal } from 'react-native-onesignal';
 const ONE_SIGNAL_APP_ID = '81985d30-6da5-4f7a-8b63-e629cddfefb3';
 
 export const initNotification = async () => {
-  // 1. Android 13+ Notification Permission
   if (Platform.OS === 'android' && Platform.Version >= 33) {
     const granted = await PermissionsAndroid.request(
       PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
@@ -64,34 +63,25 @@ export const initNotification = async () => {
     }
   }
 
-  // 2. Initialize OneSignal
   OneSignal.initialize(ONE_SIGNAL_APP_ID);
 
-  // 3. Request Push Permission (iOS: shows prompt, Android: uses above)
   OneSignal.Notifications.requestPermission(true);
 
-  // 4. Foreground Handler (OneSignal shows notification automatically)
   OneSignal.Notifications.addEventListener('foregroundWillDisplay', event => {
-    // Let OneSignal show its default notification
-    // No preventDefault() → default UI appears
     console.log('Foreground push:', event.notification);
   });
 
-  // 5. Click / Tap Handler (works in background & killed state)
   OneSignal.Notifications.addEventListener('click', event => {
     const { notification } = event;
     Alert.alert(
       'Notification Tapped',
       `${notification.title}\n${notification.body}`,
     );
-    // Navigate using your navigation ref:
-    // navigation.navigate('Details', notification.additionalData);
   });
 
   return true;
 };
 
-// TEST: Send a local test (OneSignal doesn't send local, but you can simulate)
 export const triggerTestAlert = () => {
   Alert.alert('Test', 'OneSignal is ready! Send a real push from dashboard.');
 };

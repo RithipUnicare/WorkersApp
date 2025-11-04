@@ -41,6 +41,7 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [sortAsc, setSortAsc] = useState(true);
   const [isTamil, setIsTamil] = useState(false);
   const [translations, setTranslations] = useState<Record<string, string>>({});
 
@@ -106,12 +107,18 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  const filteredQuotations = quotations.filter(
-    q =>
-      q.customerName.toLowerCase().includes(search.toLowerCase()) ||
-      q.customerContactNo.includes(search) ||
-      q.projectDescription.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filteredQuotations = quotations
+    .filter(
+      q =>
+        q.customerName.toLowerCase().includes(search.toLowerCase()) ||
+        q.customerContactNo.includes(search) ||
+        q.projectDescription.toLowerCase().includes(search.toLowerCase()),
+    )
+    .sort((a, b) => {
+      const ta = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const tb = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return sortAsc ? ta - tb : tb - ta;
+    });
 
   const getStatusColor = (status: string) => {
     switch (status?.toUpperCase()) {
@@ -217,16 +224,27 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
     </Card>
   );
 
+  const toggleSort = useCallback(() => setSortAsc(prev => !prev), []);
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <TextInput
-        placeholder={t('Search by name, mobile, or description...')}
-        value={search}
-        onChangeText={setSearch}
-        mode="outlined"
-        style={styles.search}
-        left={<TextInput.Icon icon="magnify" />}
-      />
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <TextInput
+          placeholder={t('Search by name, mobile, or description...')}
+          value={search}
+          onChangeText={setSearch}
+          mode="outlined"
+          style={[styles.search, { flex: 1, marginRight: width * 0.02 }]}
+          left={<TextInput.Icon icon="magnify" />}
+        />
+        <TouchableOpacity onPress={toggleSort} style={styles.sortButton}>
+          <MaterialCommunityIcons
+            name={sortAsc ? 'sort-ascending' : 'sort-descending'}
+            size={width * 0.065}
+            color="#0a411fff"
+          />
+        </TouchableOpacity>
+      </View>
 
       <FlatList
         data={filteredQuotations}
@@ -380,6 +398,16 @@ const styles = StyleSheet.create({
   addButtonLabel: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  sortButton: {
+    width: width * 0.12,
+    height: width * 0.12,
+    borderRadius: (width * 0.12) / 2,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e1e1e1',
   },
 });
 

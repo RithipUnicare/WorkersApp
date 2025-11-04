@@ -61,6 +61,7 @@ export type Project = {
   remainingAmount: number;
   status: string;
   totalBudget?: number;
+  createdAt?: string;
   location: {
     id: number;
     address: string;
@@ -74,6 +75,11 @@ export type Project = {
     quantity: number;
     rateMrp: number;
     totalCost: number;
+  }[];
+  voiceRecordings?: {
+    id: number;
+    recordingUrl: string;
+    createdAt: string;
   }[];
   advancePayments: {
     id: number;
@@ -270,6 +276,7 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [isTamil, setIsTamil] = useState(false);
   const [translations, setTranslations] = useState<Record<string, string>>({});
+  const [sortAsc, setSortAsc] = useState(true);
 
   const { translate } = useTranslator();
 
@@ -355,10 +362,24 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
           (p.location?.address || '').toLowerCase()?.includes(q) ||
           p?.customerContactNo?.includes(q),
       );
-      setFilteredProjects(filtered);
+      const getCreatedTime = (p: any) => {
+        const ts =
+          p?.createdAt || p?.created_at || p?.createdDate || p?.created_on;
+        const t = ts ? new Date(ts).getTime() : undefined;
+        // Fallback to id if timestamp unavailable
+        return typeof t === 'number' && !Number.isNaN(t)
+          ? t
+          : Number(p?.id) || 0;
+      };
+      const sorted = [...filtered].sort((a, b) => {
+        const at = getCreatedTime(a);
+        const bt = getCreatedTime(b);
+        return sortAsc ? at - bt : bt - at;
+      });
+      setFilteredProjects(sorted);
     }, 300);
     return () => clearTimeout(timeout);
-  }, [search, projects]);
+  }, [search, projects, sortAsc]);
 
   const handleNavigate = useCallback(
     (project: Project) => {
@@ -398,6 +419,8 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
 
   const clearSearch = useCallback(() => setSearch(''), []);
 
+  const toggleSort = useCallback(() => setSortAsc(prev => !prev), []);
+
   return (
     <SafeAreaView
       style={styles.safeArea}
@@ -428,6 +451,13 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
                 ) : null
               }
             />
+            <TouchableOpacity onPress={toggleSort} style={styles.sortButton}>
+              <MaterialCommunityIcons
+                name={sortAsc ? 'sort-ascending' : 'sort-descending'}
+                size={wp(6)}
+                color="#0a411fff"
+              />
+            </TouchableOpacity>
             <TouchableOpacity
               style={[
                 styles.addButton,
@@ -511,6 +541,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#0a411fff',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  sortButton: {
+    width: wp(10),
+    height: wp(10),
+    borderRadius: wp(5),
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e1e1e1',
+    marginRight: wp(2),
   },
   addButtonDisabled: {
     backgroundColor: '#f0f0f0',

@@ -96,6 +96,7 @@ export type Quotation = {
     taxPercentage: number;
     hsnSac: string;
     totalCost: number;
+    images?: { id: number; imageUrl: string }[];
   }[];
   siteImages?: { id: number; imageUrl: string }[];
   voiceRecordings?: {
@@ -214,7 +215,7 @@ const QuotationDetail: React.FC = () => {
   const [translations, setTranslations] = useState<Record<string, string>>({});
 
   const { translate } = useTranslator();
-
+  console.log(quotationData);
   const openGoogleMaps = (
     latitude: number,
     longitude: number,
@@ -573,7 +574,20 @@ const QuotationDetail: React.FC = () => {
         unitId: item.unit.id,
         taxPercentage: item.taxPercentage,
         hsnSac: item.hsnSac,
+        images:
+          item?.images?.map(img => ({
+            id: img.id,
+
+            imageUrl: img.imageUrl,
+          })) || [],
       })),
+      voiceRecordings:
+        quotationData.voiceRecordings?.map(rec => ({
+          id: rec.id,
+          recordingUrl: rec.url,
+          createdAt: rec.createdAt,
+          name: rec.name,
+        })) || [],
       status: 'CREATED',
       siteStatus: 'CREATED',
       customerTime: '',
@@ -904,7 +918,6 @@ const QuotationDetail: React.FC = () => {
                               quotationData.id,
                               recording.id,
                             );
-                            console.log(res);
                             await reloadQuotation();
                           } catch (e) {
                             Alert.alert(t('Error'), t('Failed to delete'));
