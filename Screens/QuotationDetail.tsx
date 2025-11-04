@@ -607,10 +607,7 @@ const QuotationDetail: React.FC = () => {
   const generateAndSharePDF = async () => {
     try {
       const sanitizedName =
-        quotationData.customerName
-          .replace(/[^a-zA-Z0-9\s]/g, '')
-          .replace(/\s+/g, '_')
-          .substring(0, 50) || 'Customer';
+        quotationData.customerName.replaceAll(' ', '_') || 'Customer';
 
       const fileName = `${sanitizedName}_Quotation.pdf`;
 
@@ -637,9 +634,7 @@ const QuotationDetail: React.FC = () => {
       }
 
       // Copy to cache directory for better sharing compatibility
-      const cacheFileName = `${quotationData.customerName
-        .replace('-', '')
-        .replace(' ', '_')}_${fileName}`;
+      const cacheFileName = `${fileName}`;
       const cachePath = `${RNFS.CachesDirectoryPath}/${cacheFileName}`;
 
       await RNFS.copyFile(cleanPath, cachePath);
