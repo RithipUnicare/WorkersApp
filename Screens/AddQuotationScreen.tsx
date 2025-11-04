@@ -350,7 +350,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
   useEffect(() => {
     if (!isEditMode && grandTotal > 0) {
       setTotalBudget(grandTotal.toFixed(2));
-      setActualAmount(grandTotal);
+      // setActualAmount(grandTotal);
     }
   }, [grandTotal, isEditMode]);
 
@@ -505,7 +505,13 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
         ToastAndroid.show(t('Quotation created!'), ToastAndroid.SHORT);
       }
 
-      setTimeout(() => navigation.replace('QuotationDetail', { quotation: currentQuotation }), 800);
+      setTimeout(
+        () =>
+          navigation.replace('QuotationDetail', {
+            quotation: currentQuotation,
+          }),
+        800,
+      );
     } catch (e: any) {
       ToastAndroid.show(e?.message || t('Save failed'), ToastAndroid.SHORT);
     } finally {
@@ -705,34 +711,48 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
                       style={styles.uploadBtn}
                       onPress={() => {
                         if (images.length >= 15) return;
-                        launchImageLibrary({ mediaType: 'photo', quality: 0.6 }, r => {
-                          if (r.assets?.[0]?.uri) {
-                            setImages(p => [
-                              ...p,
-                              { uri: r.assets![0].uri!, isLocal: true },
-                            ]);
-                          }
-                        });
+                        launchImageLibrary(
+                          { mediaType: 'photo', quality: 0.6 },
+                          r => {
+                            if (r.assets?.[0]?.uri) {
+                              setImages(p => [
+                                ...p,
+                                { uri: r.assets![0].uri!, isLocal: true },
+                              ]);
+                            }
+                          },
+                        );
                       }}
                     >
-                      <MaterialCommunityIcons name="image" size={wp(8)} color="#2874b8" />
+                      <MaterialCommunityIcons
+                        name="image"
+                        size={wp(8)}
+                        color="#2874b8"
+                      />
                       <Text style={styles.uploadText}>Gallery</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.uploadBtn}
                       onPress={() => {
                         if (images.length >= 15) return;
-                        launchCamera({ mediaType: 'photo', quality: 0.6 }, r => {
-                          if (r.assets?.[0]?.uri) {
-                            setImages(p => [
-                              ...p,
-                              { uri: r.assets![0].uri!, isLocal: true },
-                            ]);
-                          }
-                        });
+                        launchCamera(
+                          { mediaType: 'photo', quality: 0.6 },
+                          r => {
+                            if (r.assets?.[0]?.uri) {
+                              setImages(p => [
+                                ...p,
+                                { uri: r.assets![0].uri!, isLocal: true },
+                              ]);
+                            }
+                          },
+                        );
                       }}
                     >
-                      <MaterialCommunityIcons name="camera" size={wp(8)} color="#2874b8" />
+                      <MaterialCommunityIcons
+                        name="camera"
+                        size={wp(8)}
+                        color="#2874b8"
+                      />
                       <Text style={styles.uploadText}>Camera</Text>
                     </TouchableOpacity>
                   </>

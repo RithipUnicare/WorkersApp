@@ -571,7 +571,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
 
   useEffect(() => {
     if (!isEditMode && itemsTotal > 0 && !isFromQuotationDetail) {
-      //setTotalAmount(String(itemsTotal));
+      setTotalAmount(String(itemsTotal));
       //setActualAmount(itemsTotal);
     }
   }, [itemsTotal, isEditMode]);
