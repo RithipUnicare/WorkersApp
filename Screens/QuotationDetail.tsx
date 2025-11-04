@@ -12,7 +12,9 @@ import {
   Modal,
   Image,
   Linking,
+  FlatList,
 } from 'react-native';
+
 import {
   Card,
   Chip,
@@ -21,6 +23,7 @@ import {
   Portal,
   Dialog,
   ProgressBar,
+  TextInput,
 } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
@@ -44,6 +47,7 @@ import {
   launchCamera,
   ImagePickerResponse,
 } from 'react-native-image-picker';
+import { getLocation } from '../utils/GeoLocation';
 
 const { width, height } = Dimensions.get('window');
 
@@ -71,6 +75,12 @@ export type Quotation = {
   discount: number;
   status?: string;
   address?: string;
+  location?: {
+    id: number;
+    address: string;
+    latitude: number;
+    longitude: number;
+  } | null;
   items: {
     id: number;
     quotationId: number | null;
@@ -176,11 +186,24 @@ const QuotationDetail: React.FC = () => {
     useState<Quotation>(initialQuotation);
   const [pdfModalVisible, setPdfModalVisible] = useState(false);
   const [itemModalOpen, setItemModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<any | null>(null);
   const [htmlContent, setHtmlContent] = useState('');
 
   const [imageUploading, setImageUploading] = useState(false);
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [siteImagesViewerOpen, setSiteImagesViewerOpen] = useState(false);
+  const [selectedSiteImageIndex, setSelectedSiteImageIndex] = useState(0);
+
+  // Item images state
+  const [itemImagesModalOpen, setItemImagesModalOpen] = useState(false);
+  const [activeItemForImages, setActiveItemForImages] = useState<any | null>(
+    null,
+  );
+  const [selectedItemImages, setSelectedItemImages] = useState<string[]>([]);
+  const [itemImageUploading, setItemImageUploading] = useState(false);
+  const [itemImagesViewerOpen, setItemImagesViewerOpen] = useState(false);
+  const [selectedItemImageIndex, setSelectedItemImageIndex] = useState(0);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [playTime, setPlayTime] = useState('00:00:00');
@@ -191,6 +214,23 @@ const QuotationDetail: React.FC = () => {
   const [translations, setTranslations] = useState<Record<string, string>>({});
 
   const { translate } = useTranslator();
+
+  const openGoogleMaps = (
+    latitude: number,
+    longitude: number,
+    label = 'Site',
+  ) => {
+    const scheme = Platform.select({
+      ios: 'maps:0,0?q=',
+      android: 'geo:0,0?q=',
+    });
+    const latLng = `${latitude},${longitude}`;
+    const url = Platform.select({
+      ios: `${scheme}${label}@${latLng}`,
+      android: `${scheme}${latLng}(${label})`,
+    })!;
+    Linking.openURL(url).catch(() => {});
+  };
 
   // Initialize language
   useEffect(() => {
@@ -265,13 +305,42 @@ const QuotationDetail: React.FC = () => {
       setCurrentUrl('');
     });
     return () => {
-      playbackListener?.remove();
-      endListener?.remove();
+      (playbackListener as any)?.remove?.();
+      (endListener as any)?.remove?.();
     };
   }, []);
 
   const handleRecordVoice = () => {
     navigation.navigate('RecoredAudio', { quotation: quotationData });
+  };
+
+  const [gpsModalVisible, setGpsModalVisible] = useState(false);
+  const [gpsAddress, setGpsAddress] = useState('');
+
+  const updateGPS = async () => {
+    try {
+      const loc: any = await getLocation();
+      if (loc?.address && loc?.pos) {
+        const newLocation = {
+          address: gpsAddress || loc.address,
+          latitude: loc.pos.coords.latitude,
+          longitude: loc.pos.coords.longitude,
+        };
+        await QuotationAPI.updateLocation(quotationData.id, newLocation);
+        setQuotationData(prev => ({
+          ...prev,
+          location: { id: Date.now(), ...newLocation },
+        }));
+        setGpsModalVisible(false);
+        setGpsAddress('');
+        Alert.alert('Success', 'Location updated');
+        await reloadQuotation();
+      } else {
+        Alert.alert('Error', 'Could not fetch location');
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Failed to update location');
+    }
   };
 
   const togglePlayback = useCallback(
@@ -349,6 +418,98 @@ const QuotationDetail: React.FC = () => {
     }
   };
 
+  // Item actions
+  const openAddItem = () => {
+    setEditingItem(null);
+    setItemModalOpen(true);
+  };
+  const openEditItem = (item: any) => {
+    setEditingItem(item);
+    setItemModalOpen(true);
+  };
+  const confirmDeleteItem = (itemId: number) => {
+    Alert.alert(t('Delete'), t('Are you sure?'), [
+      { text: t('Cancel') },
+      {
+        text: t('Delete'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await QuotationAPI.deleteItem(itemId);
+            await reloadQuotation();
+          } catch (e) {
+            Alert.alert(t('Error'), t('Failed to delete'));
+          }
+        },
+      },
+    ]);
+  };
+
+  // Item images helpers
+  const openItemImages = (item: any) => {
+    setActiveItemForImages(item);
+    setSelectedItemImages([]);
+    setItemImagesModalOpen(true);
+  };
+  const pickItemImages = () => {
+    launchImageLibrary(
+      { mediaType: 'photo', quality: 0.7, selectionLimit: 10 },
+      (response: ImagePickerResponse) => {
+        if (response.didCancel) return;
+        if (response.errorCode) {
+          Alert.alert('Error', response.errorMessage || 'Image pick failed');
+          return;
+        }
+        const uris = response.assets?.map(a => a.uri!).filter(Boolean) || [];
+        setSelectedItemImages(prev => [...prev, ...uris]);
+      },
+    );
+  };
+  const takeItemPhoto = () => {
+    launchCamera(
+      { mediaType: 'photo', quality: 0.7 },
+      (response: ImagePickerResponse) => {
+        if (response.didCancel) return;
+        if (response.errorCode) {
+          Alert.alert('Error', response.errorMessage || 'Camera failed');
+          return;
+        }
+        const uri = response.assets?.[0]?.uri;
+        if (uri) setSelectedItemImages(prev => [...prev, uri]);
+      },
+    );
+  };
+  const removeSelectedItemImage = (index: number) => {
+    setSelectedItemImages(prev => prev.filter((_, i) => i !== index));
+  };
+  const uploadItemImages = async () => {
+    if (!activeItemForImages?.id || selectedItemImages.length === 0) return;
+    setItemImageUploading(true);
+    try {
+      const res = await QuotationAPI.addItemImages(
+        activeItemForImages.id,
+        selectedItemImages,
+      );
+      if (res?.data) {
+        await reloadQuotation();
+        setSelectedItemImages([]);
+        Alert.alert('Success', `${res.data.length} image(s) uploaded`);
+      }
+    } catch (e: any) {
+      Alert.alert('Upload Failed', e.message || 'Could not upload images');
+    } finally {
+      setItemImageUploading(false);
+    }
+  };
+  const deleteItemImage = async (itemId: number, imageId: number) => {
+    try {
+      await QuotationAPI.deleteItemImage(itemId, imageId);
+      await reloadQuotation();
+    } catch (e) {
+      Alert.alert(t('Error'), t('Failed to delete'));
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status?.toUpperCase()) {
       case 'PENDING':
@@ -417,7 +578,7 @@ const QuotationDetail: React.FC = () => {
       siteStatus: 'CREATED',
       customerTime: '',
       remainingDays: 0,
-      location: null,
+      location: quotationData.location || null,
       siteImages: [],
       advancePayments: [],
     };
@@ -522,6 +683,34 @@ const QuotationDetail: React.FC = () => {
 
           <View style={styles.infoRow}>
             <MaterialCommunityIcons
+              name="map-marker"
+              size={width * 0.05}
+              color="#0a411fff"
+            />
+            <Text style={styles.infoLabel}>{t('Location')}</Text>
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              activeOpacity={0.7}
+              onPress={() => {
+                const loc = quotationData.location;
+                if (loc?.latitude && loc?.longitude) {
+                  openGoogleMaps(loc.latitude, loc.longitude, 'Site');
+                }
+              }}
+            >
+              <Text style={styles.infoValue} numberOfLines={2}>
+                {quotationData.location?.address || 'Not set'}
+              </Text>
+            </TouchableOpacity>
+            <IconButton
+              icon="map-marker-plus"
+              onPress={() => setGpsModalVisible(true)}
+              iconColor="#0a411fff"
+            />
+          </View>
+
+          <View style={styles.infoRow}>
+            <MaterialCommunityIcons
               name="calendar"
               size={width * 0.05}
               color="#0a411fff"
@@ -588,24 +777,43 @@ const QuotationDetail: React.FC = () => {
               <Text style={styles.sectionTitle}>
                 Site Images ({quotationData.siteImages.length})
               </Text>
-              <IconButton
-                icon="plus"
-                onPress={() => setImageModalOpen(true)}
-                iconColor="#0a411fff"
-              />
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Button
+                  mode="text"
+                  onPress={() => {
+                    setSelectedSiteImageIndex(0);
+                    setSiteImagesViewerOpen(true);
+                  }}
+                >
+                  View All
+                </Button>
+                <IconButton
+                  icon="plus"
+                  onPress={() => setImageModalOpen(true)}
+                  iconColor="#0a411fff"
+                />
+              </View>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {quotationData.siteImages.map(img => (
-                <View key={img.id} style={{ marginRight: 10 }}>
-                  <Image
-                    source={{ uri: img.imageUrl }}
-                    style={{
-                      width: width * 0.35,
-                      height: width * 0.35,
-                      borderRadius: 8,
-                    }}
-                  />
-                </View>
+              {quotationData.siteImages.map((img, idx) => (
+                <TouchableOpacity
+                  key={img.id}
+                  onPress={() => {
+                    setSelectedSiteImageIndex(idx);
+                    setSiteImagesViewerOpen(true);
+                  }}
+                >
+                  <View style={{ marginRight: 10 }}>
+                    <Image
+                      source={{ uri: img.imageUrl }}
+                      style={{
+                        width: width * 0.35,
+                        height: width * 0.35,
+                        borderRadius: 8,
+                      }}
+                    />
+                  </View>
+                </TouchableOpacity>
               ))}
             </ScrollView>
           </Card>
@@ -683,6 +891,36 @@ const QuotationDetail: React.FC = () => {
                     color="#0a411fff"
                   />
                 </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() =>
+                    Alert.alert(t('Delete'), t('Are you sure?'), [
+                      { text: t('Cancel'), style: 'cancel' },
+                      {
+                        text: t('Delete'),
+                        style: 'destructive',
+                        onPress: async () => {
+                          try {
+                            const res = await QuotationAPI.deleteVoiceRecording(
+                              quotationData.id,
+                              recording.id,
+                            );
+                            console.log(res);
+                            await reloadQuotation();
+                          } catch (e) {
+                            Alert.alert(t('Error'), t('Failed to delete'));
+                          }
+                        },
+                      },
+                    ])
+                  }
+                  style={{ marginLeft: 8 }}
+                >
+                  <MaterialCommunityIcons
+                    name="delete"
+                    size={width * 0.05}
+                    color="#e74c3c"
+                  />
+                </TouchableOpacity>
               </View>
             ))}
           </Card>
@@ -719,7 +957,7 @@ const QuotationDetail: React.FC = () => {
             <Text style={styles.sectionTitle}>{t('Items')}</Text>
             <IconButton
               icon="plus"
-              onPress={() => setItemModalOpen(true)}
+              onPress={openAddItem}
               iconColor="#0a411fff"
             />
           </View>
@@ -728,7 +966,28 @@ const QuotationDetail: React.FC = () => {
           ) : (
             quotationData.items.map(item => (
               <View key={item.id} style={styles.itemRow}>
-                <Text style={styles.itemName}>{item.itemName}</Text>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <Text style={styles.itemName}>{item.itemName}</Text>
+                  <View style={{ flexDirection: 'row' }}>
+                    <IconButton
+                      icon="image-plus"
+                      onPress={() => openItemImages(item)}
+                    />
+                    <IconButton
+                      icon="pencil"
+                      onPress={() => openEditItem(item)}
+                    />
+                    <IconButton
+                      icon="delete"
+                      onPress={() => confirmDeleteItem(item.id)}
+                    />
+                  </View>
+                </View>
                 {item.itemDescription && (
                   <Text style={styles.itemDesc}>{item.itemDescription}</Text>
                 )}
@@ -738,6 +997,45 @@ const QuotationDetail: React.FC = () => {
                   {t('HSN/SAC')}: {item.hsnSac} | {t('Total')}: ₹
                   {item.totalCost.toLocaleString('en-IN')}
                 </Text>
+                {Array.isArray((item as any).images) &&
+                  (item as any).images.length > 0 && (
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      style={{ marginTop: 8 }}
+                    >
+                      {(item as any).images.map((img: any, imgIdx: number) => (
+                        <View key={img.id} style={{ marginRight: 10 }}>
+                          <TouchableOpacity
+                            onPress={() => {
+                              setActiveItemForImages(item);
+                              setSelectedItemImageIndex(imgIdx);
+                              setItemImagesViewerOpen(true);
+                            }}
+                          >
+                            <Image
+                              source={{ uri: img.imageUrl }}
+                              style={{
+                                width: width * 0.28,
+                                height: width * 0.28,
+                                borderRadius: 8,
+                              }}
+                            />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => deleteItemImage(item.id, img.id)}
+                            style={{ position: 'absolute', top: -6, right: -6 }}
+                          >
+                            <MaterialCommunityIcons
+                              name="close-circle"
+                              size={22}
+                              color="#e74c3c"
+                            />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </ScrollView>
+                  )}
               </View>
             ))
           )}
@@ -779,14 +1077,19 @@ const QuotationDetail: React.FC = () => {
       {/* Add Item Dialog */}
       <ItemDialog
         visible={itemModalOpen}
-        onDismiss={() => setItemModalOpen(false)}
+        onDismiss={() => {
+          setItemModalOpen(false);
+          setEditingItem(null);
+        }}
         mode="quotation"
         quotationId={quotationData.id}
+        item={editingItem || undefined}
         onSaved={() => {
           setItemModalOpen(false);
+          setEditingItem(null);
           reloadQuotation();
         }}
-        title={t('Add Item')}
+        title={editingItem ? t('Edit') : t('Add Item')}
         t={t}
       />
 
@@ -825,6 +1128,106 @@ const QuotationDetail: React.FC = () => {
               {t('Generate & Share PDF')}
             </Button>
           </View>
+        </View>
+      </Modal>
+      {/* Full-screen viewers using RN Modal */}
+      <Modal
+        visible={siteImagesViewerOpen}
+        onRequestClose={() => setSiteImagesViewerOpen(false)}
+        animationType="fade"
+        transparent={false}
+      >
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          <View style={styles.modalHeaderLike}>
+            <Text style={styles.modalTitleLike}>Site Images</Text>
+            <TouchableOpacity onPress={() => setSiteImagesViewerOpen(false)}>
+              <MaterialCommunityIcons name="close" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
+          {quotationData.siteImages && (
+            <FlatList
+              data={quotationData.siteImages.map(x => x.imageUrl)}
+              renderItem={({
+                item,
+                index,
+              }: {
+                item: string;
+                index: number;
+              }) => (
+                <View style={styles.carouselItemLike}>
+                  <Image
+                    source={{ uri: item }}
+                    style={styles.carouselImageLike}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.imageCounterLike}>
+                    {index + 1} / {quotationData.siteImages!.length}
+                  </Text>
+                </View>
+              )}
+              keyExtractor={(_, i) => i.toString()}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              initialScrollIndex={selectedSiteImageIndex}
+              getItemLayout={(_, index) => ({
+                length: width,
+                offset: width * index,
+                index,
+              })}
+            />
+          )}
+        </View>
+      </Modal>
+
+      <Modal
+        visible={itemImagesViewerOpen}
+        onRequestClose={() => setItemImagesViewerOpen(false)}
+        animationType="fade"
+        transparent={false}
+      >
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          <View style={styles.modalHeaderLike}>
+            <Text style={styles.modalTitleLike}>Item Images</Text>
+            <TouchableOpacity onPress={() => setItemImagesViewerOpen(false)}>
+              <MaterialCommunityIcons name="close" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
+          {Array.isArray((activeItemForImages as any)?.images) && (
+            <FlatList
+              data={(activeItemForImages as any).images.map(
+                (x: any) => x.imageUrl,
+              )}
+              renderItem={({
+                item,
+                index,
+              }: {
+                item: string;
+                index: number;
+              }) => (
+                <View style={styles.carouselItemLike}>
+                  <Image
+                    source={{ uri: item }}
+                    style={styles.carouselImageLike}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.imageCounterLike}>
+                    {index + 1} / {(activeItemForImages as any).images.length}
+                  </Text>
+                </View>
+              )}
+              keyExtractor={(_, i) => i.toString()}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              initialScrollIndex={selectedItemImageIndex}
+              getItemLayout={(_, index) => ({
+                length: width,
+                offset: width * index,
+                index,
+              })}
+            />
+          )}
         </View>
       </Modal>
       {/* Add Site Images Dialog */}
@@ -914,12 +1317,127 @@ const QuotationDetail: React.FC = () => {
           </Dialog.Actions>
         </Dialog>
       </Portal>
+
+      {/* Add Item Images Dialog */}
+      <Portal>
+        <Dialog
+          visible={itemImagesModalOpen}
+          onDismiss={() => {
+            setItemImagesModalOpen(false);
+            setSelectedItemImages([]);
+            setActiveItemForImages(null);
+          }}
+        >
+          <Dialog.Title>Add Item Images</Dialog.Title>
+          <Dialog.Content>
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                marginBottom: 12,
+              }}
+            >
+              <Button
+                mode="contained"
+                onPress={pickItemImages}
+                style={{ flex: 1, marginRight: 8 }}
+              >
+                Gallery
+              </Button>
+              <Button
+                mode="outlined"
+                onPress={takeItemPhoto}
+                style={{ flex: 1 }}
+              >
+                Camera
+              </Button>
+            </View>
+
+            {selectedItemImages.length > 0 && (
+              <>
+                <Text style={{ marginVertical: 8 }}>
+                  Selected: {selectedItemImages.length} image(s)
+                </Text>
+                <ScrollView horizontal style={{ maxHeight: 180 }}>
+                  {selectedItemImages.map((uri, idx) => (
+                    <View
+                      key={idx}
+                      style={{ marginRight: 8, position: 'relative' }}
+                    >
+                      <Image
+                        source={{ uri }}
+                        style={{ width: 120, height: 120, borderRadius: 8 }}
+                      />
+                      <TouchableOpacity
+                        style={{ position: 'absolute', top: -6, right: -6 }}
+                        onPress={() => removeSelectedItemImage(idx)}
+                      >
+                        <MaterialCommunityIcons
+                          name="close-circle"
+                          size={22}
+                          color="#e74c3c"
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </ScrollView>
+
+                {itemImageUploading && (
+                  <ProgressBar indeterminate style={{ marginVertical: 8 }} />
+                )}
+
+                <Button
+                  mode="contained"
+                  onPress={uploadItemImages}
+                  disabled={itemImageUploading}
+                  style={{ marginTop: 8 }}
+                  buttonColor="#27ae60"
+                >
+                  {itemImageUploading ? 'Uploading...' : 'Upload Images'}
+                </Button>
+              </>
+            )}
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button
+              onPress={() => {
+                setItemImagesModalOpen(false);
+                setSelectedItemImages([]);
+                setActiveItemForImages(null);
+              }}
+            >
+              Close
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+      {/* GPS Update Dialog */}
+      <Portal>
+        <Dialog
+          visible={gpsModalVisible}
+          onDismiss={() => setGpsModalVisible(false)}
+        >
+          <Dialog.Title>Update GPS Location</Dialog.Title>
+          <Dialog.Content>
+            <TextInput
+              mode="outlined"
+              label="Address (Optional)"
+              value={gpsAddress}
+              onChangeText={setGpsAddress}
+            />
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setGpsModalVisible(false)}>Cancel</Button>
+            <Button onPress={updateGPS}>Fetch & Update GPS</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  container: { flex: 1 },
   content: { padding: width * 0.04, paddingBottom: height * 0.15 },
   headerCard: {
     marginBottom: height * 0.02,
@@ -1072,6 +1590,32 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   pdfButton: { flex: 1, marginHorizontal: 8 },
+  modalHeaderLike: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#0a411fff',
+  },
+  modalTitleLike: { fontSize: 18, fontWeight: '700', color: '#fff' },
+  carouselItemLike: {
+    width,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000',
+  },
+  carouselImageLike: { width: width * 0.9, height: height * 0.7 },
+  imageCounterLike: {
+    position: 'absolute',
+    bottom: 30,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    color: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+    fontWeight: '600',
+  },
 });
 
 export default QuotationDetail;

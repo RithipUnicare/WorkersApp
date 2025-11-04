@@ -341,19 +341,36 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       });
 
       if (rawProject.id) {
-        ProjectAPI.getSiteImages(rawProject.id)
-          .then(res => {
-            if (res.data?.length) {
-              setImages(
-                res.data.map((img: any) => ({
-                  uri: img.imageUrl,
-                  id: img.id,
-                  isLocal: false,
-                })),
-              );
-            }
-          })
-          .catch(() => {});
+        if (isEditMode) {
+          ProjectAPI.getSiteImages(rawProject.id)
+            .then(res => {
+              if (res.data?.length) {
+                setImages(
+                  res.data.map((img: any) => ({
+                    uri: img.imageUrl,
+                    id: img.id,
+                    isLocal: false,
+                  })),
+                );
+              }
+            })
+            .catch(() => {});
+        } else if (isFromQuotationDetail) {
+          // Coming from quotation: load quotation site images for preview
+          QuotationAPI.getSiteImages(rawProject.id)
+            .then(res => {
+              if (Array.isArray(res.data) && res.data.length) {
+                setImages(
+                  res.data.map((img: any) => ({
+                    uri: img.imageUrl,
+                    id: img.id,
+                    isLocal: false,
+                  })),
+                );
+              }
+            })
+            .catch(() => {});
+        }
       }
 
       const projectItems = rawProject.projectItems || rawProject.items || [];
@@ -562,7 +579,10 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
 
   // Upload images
   const uploadImages = async (projectId: number) => {
-    const localImages = images.filter(img => img.isLocal).map(img => img.uri);
+    let localImages = images.filter(img => img.isLocal).map(img => img.uri);
+    if (isFromQuotationDetail && images.some(img => img.uri)) {
+      localImages = images.map(img => img.uri);
+    }
     if (localImages.length === 0) return;
 
     const formData = new FormData();
@@ -656,10 +676,25 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
         const created: any = await ProjectAPI.create(payload);
         projectId = created.data.id || created.data.projectId;
         setCreatedProjectId(projectId);
-
+        console.log(images);
         if (images.some(img => img.isLocal)) {
           await uploadImages(projectId);
         }
+
+        if (isFromQuotationDetail && images.some(img => img.uri)) {
+          await uploadImages(projectId);
+        }
+
+        // If created from a quotation and a location is available, update GPS for the new project
+        console.log(fullLocation);
+        if (isFromQuotationDetail && fullLocation.address) {
+          await ProjectAPI.updateGps(projectId, {
+            address: fullLocation.address,
+            latitude: fullLocation.latitude,
+            longitude: fullLocation.longitude,
+          });
+        }
+
         if (isFromQuotationDetail) {
           await QuotationAPI.updateQuotationStatus(rawProject.id, {
             status: 'IN PROGRESS',
@@ -893,7 +928,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           )}
 
           {/* Images */}
-          {isEditMode && (
+          {(isEditMode || isFromQuotationDetail) && (
             <>
               <Text style={styles.sectionTitle}>
                 {t('Site Images')} ({images.length}/15)

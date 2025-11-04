@@ -213,6 +213,7 @@ const ProjectDetails: React.FC = () => {
   const [gpsAddress, setGpsAddress] = useState('');
 
   const [itemModalOpen, setItemModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<any | null>(null);
   const [itemName, setItemName] = useState('');
   const [itemDesc, setItemDesc] = useState('');
   const [itemQty, setItemQty] = useState('');
@@ -230,6 +231,16 @@ const ProjectDetails: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [units, setUnits] = useState<Unit[]>([]);
 
+  // Item images state (project items)
+  const [itemImagesModalOpen, setItemImagesModalOpen] = useState(false);
+  const [activeItemForImages, setActiveItemForImages] = useState<any | null>(
+    null,
+  );
+  const [selectedItemImages, setSelectedItemImages] = useState<string[]>([]);
+  const [itemImageUploading, setItemImageUploading] = useState(false);
+  const [itemImagesViewerOpen, setItemImagesViewerOpen] = useState(false);
+  const [selectedItemImageIndex, setSelectedItemImageIndex] = useState(0);
+
   const [refreshing, setRefreshing] = useState(false);
 
   const { translate } = useTranslator();
@@ -243,6 +254,112 @@ const ProjectDetails: React.FC = () => {
     };
     initLang();
   }, []);
+
+  // Item images helpers
+  const openItemImages = (item: any) => {
+    setActiveItemForImages(item);
+    setSelectedItemImages([]);
+    setItemImagesModalOpen(true);
+  };
+  const openItemImageViewer = (item: any, index: number) => {
+    setActiveItemForImages(item);
+    setSelectedItemImageIndex(index);
+    setItemImagesViewerOpen(true);
+  };
+  const pickProjectItemImages = () => {
+    launchImageLibrary(
+      { mediaType: 'photo', quality: 0.7, selectionLimit: 10 },
+      (response: ImagePickerResponse) => {
+        if (response.didCancel) return;
+        if (response.errorCode) {
+          Alert.alert(
+            t('Error'),
+            response.errorMessage || t('Image pick failed'),
+          );
+          return;
+        }
+        const uris = response.assets?.map(a => a.uri!).filter(Boolean) || [];
+        setSelectedItemImages(prev => [...prev, ...uris]);
+      },
+    );
+  };
+  const takeProjectItemPhoto = () => {
+    launchCamera(
+      { mediaType: 'photo', quality: 0.7 },
+      (response: ImagePickerResponse) => {
+        if (response.didCancel) return;
+        if (response.errorCode) {
+          Alert.alert(t('Error'), response.errorMessage || t('Camera failed'));
+          return;
+        }
+        const uri = response.assets?.[0]?.uri;
+        if (uri) setSelectedItemImages(prev => [...prev, uri]);
+      },
+    );
+  };
+  const removeSelectedItemImage = (index: number) => {
+    setSelectedItemImages(prev => prev.filter((_, i) => i !== index));
+  };
+  const uploadItemImages = async () => {
+    if (!activeItemForImages?.id || selectedItemImages.length === 0) return;
+    setItemImageUploading(true);
+    try {
+      const res = await ProjectAPI.addItemImages(
+        activeItemForImages.id,
+        selectedItemImages,
+      );
+      if (res?.data) {
+        await onRefresh();
+        setSelectedItemImages([]);
+        Alert.alert(
+          t('Success'),
+          `${res.data.length} ${t('image(s) uploaded')}`,
+        );
+      }
+    } catch (e: any) {
+      Alert.alert(
+        t('Upload Failed'),
+        e.message || t('Could not upload images'),
+      );
+    } finally {
+      setItemImageUploading(false);
+    }
+  };
+  const deleteItemImage = async (itemId: number, imageId: number) => {
+    try {
+      await ProjectAPI.deleteItemImage(itemId, imageId);
+      await onRefresh();
+    } catch (e) {
+      Alert.alert(t('Error'), t('Failed to delete'));
+    }
+  };
+
+  // Item edit/delete
+  const openAddItem = () => {
+    setEditingItem(null);
+    setItemModalOpen(true);
+  };
+  const openEditItem = (item: any) => {
+    setEditingItem(item);
+    setItemModalOpen(true);
+  };
+  const confirmDeleteItem = (itemId: number) => {
+    Alert.alert(t('Delete'), t('Are you sure?'), [
+      { text: t('Cancel') },
+      {
+        text: t('Delete'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await ProjectAPI.deleteItem(itemId);
+            await onRefresh();
+          } catch (e) {
+            Alert.alert(t('Error'), t('Failed to delete'));
+          }
+        },
+      },
+    ]);
+  };
 
   // Translate strings when language changes
   useEffect(() => {
@@ -811,7 +928,7 @@ const ProjectDetails: React.FC = () => {
               <IconButton
                 icon="plus"
                 size={wp(6)}
-                onPress={() => setItemModalOpen(true)}
+                onPress={openAddItem}
                 iconColor="#2874b8"
                 disabled={role === 'worker'}
               />
@@ -821,13 +938,82 @@ const ProjectDetails: React.FC = () => {
             ) : (
               project.projectItems.map(item => (
                 <View key={item.id} style={styles.itemRow}>
-                  <Text style={styles.itemName}>{item.itemName}</Text>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <Text style={styles.itemName}>{item.itemName}</Text>
+                    {role !== 'worker' && (
+                      <View style={{ flexDirection: 'row' }}>
+                        <IconButton
+                          icon="image-plus"
+                          onPress={() => openItemImages(item)}
+                        />
+                        <IconButton
+                          icon="pencil"
+                          onPress={() => openEditItem(item)}
+                        />
+                        <IconButton
+                          icon="delete"
+                          onPress={() => confirmDeleteItem(item.id)}
+                        />
+                      </View>
+                    )}
+                  </View>
                   {role !== 'worker' && (
                     <Text style={styles.itemDetails}>
                       {item.quantity} × ₹{item.rateMrp} = ₹
                       {item.totalCost.toLocaleString('en-IN')}
                     </Text>
                   )}
+                  {Array.isArray((item as any).images) &&
+                    (item as any).images.length > 0 && (
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={{ marginTop: 8 }}
+                      >
+                        {(item as any).images.map((img: any) => (
+                          <View key={img.id} style={{ marginRight: 10 }}>
+                            <TouchableOpacity
+                              onPress={() =>
+                                openItemImageViewer(
+                                  item,
+                                  (item as any).images.findIndex(
+                                    (x: any) => x.id === img.id,
+                                  ),
+                                )
+                              }
+                            >
+                              <Image
+                                source={{ uri: img.imageUrl }}
+                                style={{
+                                  width: wp(25),
+                                  height: wp(25),
+                                  borderRadius: 8,
+                                }}
+                              />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => deleteItemImage(item.id, img.id)}
+                              style={{
+                                position: 'absolute',
+                                top: -6,
+                                right: -6,
+                              }}
+                            >
+                              <MaterialCommunityIcons
+                                name="close-circle"
+                                size={wp(5)}
+                                color="#e74c3c"
+                              />
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                      </ScrollView>
+                    )}
                 </View>
               ))
             )}
@@ -1094,32 +1280,55 @@ const ProjectDetails: React.FC = () => {
           {/* Add Item Dialog */}
           <ItemDialog
             visible={itemModalOpen}
-            onDismiss={() => setItemModalOpen(false)}
+            onDismiss={() => {
+              setItemModalOpen(false);
+              setEditingItem(null);
+            }}
             mode="project"
             projectId={project.id}
+            item={editingItem || undefined}
             onSaved={(saved: any) => {
               const tax = Number(saved.taxPercentage) || 0;
-              const amount = saved.amount || (saved.quantity || 0) * (saved.rateMrp || 0);
-              setProject(prev => ({
-                ...prev,
-                projectItems: [
-                  ...prev.projectItems,
-                  {
-                    id: saved.id || Date.now(),
-                    itemName: saved.itemName,
-                    quantity: saved.quantity,
-                    rateMrp: saved.rateMrp,
-                    totalCost: amount + (amount * tax) / 100,
-                  },
-                ],
-                totalAmount: prev.totalAmount + amount + (amount * tax) / 100,
-              }));
+              const amount =
+                saved.amount || (saved.quantity || 0) * (saved.rateMrp || 0);
+              if (editingItem?.id) {
+                setProject(prev => ({
+                  ...prev,
+                  projectItems: prev.projectItems.map(pi =>
+                    pi.id === editingItem.id
+                      ? {
+                          id: saved.id || editingItem.id,
+                          itemName: saved.itemName,
+                          quantity: saved.quantity,
+                          rateMrp: saved.rateMrp,
+                          totalCost: amount + (amount * tax) / 100,
+                        }
+                      : pi,
+                  ),
+                }));
+              } else {
+                setProject(prev => ({
+                  ...prev,
+                  projectItems: [
+                    ...prev.projectItems,
+                    {
+                      id: saved.id || Date.now(),
+                      itemName: saved.itemName,
+                      quantity: saved.quantity,
+                      rateMrp: saved.rateMrp,
+                      totalCost: amount + (amount * tax) / 100,
+                    },
+                  ],
+                  totalAmount: prev.totalAmount + amount + (amount * tax) / 100,
+                }));
+                Alert.alert(t('Success'), t('Item added'));
+              }
               setItemModalOpen(false);
+              setEditingItem(null);
               resetItemForm();
-              Alert.alert(t('Success'), t('Item added'));
               onRefresh();
             }}
-            title={t('Add Item')}
+            title={editingItem ? t('Edit Item') : t('Add Item')}
             t={t}
           />
 
@@ -1205,6 +1414,155 @@ const ProjectDetails: React.FC = () => {
               </Button>
             </Dialog.Actions>
           </Dialog>
+
+          {/* Add Item Images Dialog */}
+          <Dialog
+            visible={itemImagesModalOpen}
+            onDismiss={() => {
+              setItemImagesModalOpen(false);
+              setSelectedItemImages([]);
+              setActiveItemForImages(null);
+            }}
+          >
+            <Dialog.Title>{t('Add Item Images')}</Dialog.Title>
+            <Dialog.Content>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  marginBottom: hp(2),
+                }}
+              >
+                <Button
+                  mode="contained"
+                  onPress={pickProjectItemImages}
+                  style={{ flex: 1, marginRight: wp(2) }}
+                >
+                  {t('Gallery')}
+                </Button>
+                <Button
+                  mode="outlined"
+                  onPress={takeProjectItemPhoto}
+                  style={{ flex: 1 }}
+                >
+                  {t('Camera')}
+                </Button>
+              </View>
+
+              {selectedItemImages.length > 0 && (
+                <>
+                  <Text style={{ marginVertical: hp(1) }}>
+                    {t('Selected:')} {selectedItemImages.length} {t('image(s)')}
+                  </Text>
+                  <ScrollView horizontal style={{ maxHeight: hp(20) }}>
+                    {selectedItemImages.map((uri, idx) => (
+                      <View key={idx} style={styles.previewWrapper}>
+                        <Image source={{ uri }} style={styles.previewImage} />
+                        <TouchableOpacity
+                          style={styles.removeBtn}
+                          onPress={() => removeSelectedItemImage(idx)}
+                        >
+                          <MaterialCommunityIcons
+                            name="close-circle"
+                            size={wp(6)}
+                            color="#e74c3c"
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </ScrollView>
+
+                  {itemImageUploading && (
+                    <ProgressBar
+                      indeterminate
+                      style={{ marginVertical: hp(1) }}
+                    />
+                  )}
+
+                  <Button
+                    mode="contained"
+                    onPress={uploadItemImages}
+                    disabled={itemImageUploading}
+                    style={styles.uploadBtn}
+                    buttonColor="#27ae60"
+                  >
+                    {itemImageUploading
+                      ? t('Uploading...')
+                      : t('Upload Images')}
+                  </Button>
+                </>
+              )}
+            </Dialog.Content>
+            <Dialog.Actions>
+              <Button
+                onPress={() => {
+                  setItemImagesModalOpen(false);
+                  setSelectedItemImages([]);
+                  setActiveItemForImages(null);
+                }}
+              >
+                {t('Cancel')}
+              </Button>
+            </Dialog.Actions>
+          </Dialog>
+
+          {/* Item Images Full View Modal */}
+          <Modal
+            visible={itemImagesViewerOpen}
+            onDismiss={() => setItemImagesViewerOpen(false)}
+            contentContainerStyle={styles.modalContainer}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>{t('Items')}</Text>
+                <TouchableOpacity
+                  onPress={() => setItemImagesViewerOpen(false)}
+                >
+                  <MaterialCommunityIcons
+                    name="close"
+                    size={wp(7)}
+                    color="#fff"
+                  />
+                </TouchableOpacity>
+              </View>
+              {Array.isArray((activeItemForImages as any)?.images) && (
+                <FlatList
+                  data={(activeItemForImages as any).images.map(
+                    (x: any) => x.imageUrl,
+                  )}
+                  renderItem={({
+                    item,
+                    index,
+                  }: {
+                    item: string;
+                    index: number;
+                  }) => (
+                    <View style={styles.carouselItem}>
+                      <Image
+                        source={{ uri: item }}
+                        style={styles.carouselImage}
+                        resizeMode="contain"
+                      />
+                      <Text style={styles.imageCounter}>
+                        {index + 1} /{' '}
+                        {(activeItemForImages as any).images.length}
+                      </Text>
+                    </View>
+                  )}
+                  keyExtractor={(_, i) => i.toString()}
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  initialScrollIndex={selectedItemImageIndex}
+                  getItemLayout={(_, index) => ({
+                    length: width,
+                    offset: width * index,
+                    index,
+                  })}
+                />
+              )}
+            </View>
+          </Modal>
         </Portal>
       </View>
     </SafeAreaView>

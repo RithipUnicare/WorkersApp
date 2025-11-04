@@ -164,6 +164,26 @@ export const ProjectAPI = {
   updateItem: (id, payload) =>
     jsonRequest('PUT', endpoints.itemById(id), payload),
   deleteItem: id => deleteRequest(endpoints.itemById(id)),
+  addItemImages: async (itemId, imageUris = []) => {
+    const formData = new FormData();
+
+    imageUris.forEach((uri, index) => {
+      if (!uri || (!uri.startsWith('file://') && !uri.includes('cache'))) return;
+      const filename = uri.split('/').pop() || `item_image_${index}.jpg`;
+      const type = 'image/jpeg';
+      formData.append('files', {
+        uri,
+        name: filename,
+        type,
+      });
+    });
+
+    if ([...formData._parts].length === 0) return;
+
+    return multipartRequest('POST', endpoints.projectItemImages(itemId), formData);
+  },
+  deleteItemImage: (itemId, imageId) =>
+    deleteRequest(endpoints.projectItemImageById(itemId, imageId)),
   createPaymentIn: payload =>
     jsonRequest('POST', endpoints.paymentsIn, payload),
   getPaymentsIn: projectId =>
@@ -225,6 +245,18 @@ export const QuotationAPI = {
     }
     return multipartRequest('POST', endpoints.quotationVoice(id), formData);
   },
+  updateVoiceRecording: (id, voiceId, { name, file } = {}) => {
+    const formData = new FormData();
+    if (name) formData.append('name', name);
+    if (file && (file.startsWith('file://') || file.includes('cache'))) {
+      const filename = file.split('/').pop() || `voice_note_${id}.mp3`;
+      const type = 'audio/mpeg';
+      formData.append('file', { uri: file, name: filename, type });
+    }
+    return multipartRequest('PUT', endpoints.quotationVoiceById(id, voiceId), formData);
+  },
+  deleteVoiceRecording: (id, voiceId) =>
+    deleteRequest(endpoints.quotationVoiceById(id, voiceId)),
 
   // Location
   updateLocation: (id, payload) =>
@@ -278,6 +310,10 @@ export const QuotationAPI = {
       formData,
     );
   },
+
+  // Delete a single image from a quotation item
+  deleteItemImage: (itemId, imageId) =>
+    deleteRequest(endpoints.quotationItemImageById(itemId, imageId)),
 };
 
 export const UnitAPI = {

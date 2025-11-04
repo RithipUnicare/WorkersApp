@@ -11,6 +11,7 @@ import {
   RefreshControl,
   TouchableOpacity,
   ToastAndroid,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -33,6 +34,8 @@ import { Dropdown } from 'react-native-element-dropdown';
 import { CustomerAPI, QuotationAPI, UnitAPI } from '../service/apiService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslator } from 'react-native-translator';
+import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const { width, height } = Dimensions.get('window');
 const wp = (p: number) => (width * p) / 100;
@@ -164,6 +167,9 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
   const [actualAmount, setActualAmount] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [images, setImages] = useState<
+    { uri: string; id?: number; isLocal: boolean }[]
+  >([]);
 
   const [isTamil, setIsTamil] = useState(false);
   const [translations, setTranslations] = useState<Record<string, string>>({});
@@ -276,6 +282,20 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
               totalCost: it.totalCost,
             })),
           );
+
+          // Load quotation site images
+          try {
+            const imgRes = await QuotationAPI.getSiteImages(rawQuotation.id);
+            if (Array.isArray(imgRes.data) && imgRes.data.length) {
+              setImages(
+                imgRes.data.map((img: any) => ({
+                  uri: img.imageUrl,
+                  id: img.id,
+                  isLocal: false,
+                })),
+              );
+            }
+          } catch {}
         } catch (e) {
           ToastAndroid.show(t('Failed to load quotation'), ToastAndroid.SHORT);
         } finally {
@@ -472,6 +492,11 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
 
       if (isEditMode && rawQuotation?.id) {
         await QuotationAPI.update(rawQuotation.id, payload);
+        // Upload any newly added local images
+        const localUris = images.filter(img => img.isLocal).map(img => img.uri);
+        if (localUris.length) {
+          await QuotationAPI.addSiteImages(rawQuotation.id, localUris);
+        }
         ToastAndroid.show(t('Quotation updated!'), ToastAndroid.SHORT);
       } else {
         const res = await QuotationAPI.create(payload);
@@ -640,6 +665,78 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
                 }
               />
             </View>
+          )}
+
+          {/* Site Images (Edit mode) */}
+          {isEditMode && (
+            <>
+              <Text style={styles.sectionTitle}>
+                Site Images ({images.length}/15)
+              </Text>
+              <View style={styles.imageContainer}>
+                {images.map((img, i) => (
+                  <View key={i} style={styles.imageWrapper}>
+                    <Image
+                      source={{ uri: img.uri }}
+                      style={styles.thumbnail}
+                      resizeMode="cover"
+                    />
+                    {img.isLocal && (
+                      <TouchableOpacity
+                        style={styles.removeBtn}
+                        onPress={() =>
+                          setImages(prev => prev.filter((_, idx) => idx !== i))
+                        }
+                      >
+                        <MaterialCommunityIcons
+                          name="close"
+                          size={wp(4)}
+                          color="#fff"
+                        />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ))}
+                {images.length < 15 && (
+                  <>
+                    <TouchableOpacity
+                      style={styles.uploadBtn}
+                      onPress={() => {
+                        if (images.length >= 15) return;
+                        launchImageLibrary({ mediaType: 'photo', quality: 0.6 }, r => {
+                          if (r.assets?.[0]?.uri) {
+                            setImages(p => [
+                              ...p,
+                              { uri: r.assets![0].uri!, isLocal: true },
+                            ]);
+                          }
+                        });
+                      }}
+                    >
+                      <MaterialCommunityIcons name="image" size={wp(8)} color="#2874b8" />
+                      <Text style={styles.uploadText}>Gallery</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.uploadBtn}
+                      onPress={() => {
+                        if (images.length >= 15) return;
+                        launchCamera({ mediaType: 'photo', quality: 0.6 }, r => {
+                          if (r.assets?.[0]?.uri) {
+                            setImages(p => [
+                              ...p,
+                              { uri: r.assets![0].uri!, isLocal: true },
+                            ]);
+                          }
+                        });
+                      }}
+                    >
+                      <MaterialCommunityIcons name="camera" size={wp(8)} color="#2874b8" />
+                      <Text style={styles.uploadText}>Camera</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            </>
           )}
 
           <View style={styles.itemsHeader}>
@@ -864,6 +961,40 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   dialogInput: { marginBottom: hp(2) },
+  imageContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: wp(3),
+    alignItems: 'center',
+  },
+  imageWrapper: {
+    position: 'relative',
+  },
+  thumbnail: {
+    width: wp(26),
+    height: wp(26),
+    borderRadius: wp(2),
+    backgroundColor: '#f2f2f2',
+  },
+  removeBtn: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 12,
+    padding: 2,
+  },
+  uploadBtn: {
+    width: wp(26),
+    height: wp(26),
+    borderWidth: 1,
+    borderColor: '#2874b8',
+    borderStyle: 'dashed',
+    borderRadius: wp(2),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  uploadText: { marginTop: 4, color: '#2874b8', fontSize: wp(3) },
 });
 
 export default AddQuotation;
