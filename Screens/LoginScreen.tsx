@@ -14,7 +14,7 @@ import { Card, TextInput, Button, SegmentedButtons } from 'react-native-paper';
 import LinearGradient from 'react-native-linear-gradient';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { UserAPI } from '../service/apiService';
+import { AuthAPI, UserAPI } from '../service/apiService';
 import { User } from './Adminpanel';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -37,17 +37,9 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const [users, setUsers] = useState<User[]>([]);
+  // const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await UserAPI.getAll();
-        setUsers(response.data);
-      } catch (error) {
-        console.error('Error fetching users:', error);
-      }
-    };
     const alreadyLogin = async () => {
       const user = await AsyncStorage.getItem('user');
       const UserRole = user ? JSON.parse(user).role : null;
@@ -60,7 +52,6 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
       }
     };
     alreadyLogin();
-    fetchUsers();
   }, []);
 
   const handleWorkerLogin = async () => {
@@ -68,53 +59,63 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
       Alert.alert('Invalid Input', 'Please enter your mobile number.');
       return;
     }
-
-    const user = users.find(u => u.mobile === mobile.trim());
-    if (!user) {
-      Alert.alert('Not Found', 'No worker found with this mobile number.');
-      return;
+    try {
+      await AuthAPI.workerLogin({ mobile: mobile.trim() });
+      // Now fetch users with Authorization header and find this worker
+      try {
+        const response: any = await UserAPI.getAll();
+        const allUsers = response?.data || response || [];
+        const matched = allUsers.find(
+          (u: any) => `${u.mobile || u.contactNo || ''}` === mobile.trim(),
+        );
+        if (matched) {
+          await AsyncStorage.setItem('user', JSON.stringify(matched));
+        } else {
+          // Fallback minimal user
+          await AsyncStorage.setItem(
+            'user',
+            JSON.stringify({ role: 'worker', mobile: mobile.trim() }),
+          );
+        }
+      } catch {}
+      navigation.replace('WorkersHome');
+    } catch (e: any) {
+      Alert.alert('Login Failed', e?.message || 'Unable to login as worker');
     }
-
-    if (user.role !== 'worker') {
-      Alert.alert(
-        'Access Denied',
-        'This mobile is not registered as a worker.',
-      );
-      return;
-    }
-
-    await AsyncStorage.setItem('user', JSON.stringify(user));
-    navigation.replace('WorkersHome');
   };
 
-  const handleAdminLogin = () => {
+  const handleAdminLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Invalid Input', 'Email and password are required.');
+      Alert.alert('Invalid Input', 'Username and password are required.');
       return;
     }
-
-    const user = users.find(u => u.email === email && u.password === password);
-
-    // Superadmin hardcoded
-    if (email === 'admin@indiansteel.com' && password === 'admin1234') {
-      AsyncStorage.setItem(
-        'user',
-        JSON.stringify({ role: 'superadmin', name: 'Super Admin' }),
-      );
-      navigation.replace('AdminHome');
-      return;
-    }
-
-    if (!user) {
-      Alert.alert('Invalid Credentials', 'Email or password is incorrect.');
-      return;
-    }
-
-    if (user.role === 'admin' || user.role === 'superadmin') {
-      AsyncStorage.setItem('user', JSON.stringify(user));
-      navigation.replace('AdminHome');
-    } else {
-      Alert.alert('Access Denied', 'You do not have admin access.');
+    try {
+      await AuthAPI.login({ username: email.trim(), password });
+      // Fetch all users with auth and find by username/email
+      try {
+        const response: any = await UserAPI.getAll();
+        const allUsers = response?.data || response || [];
+        const matched = allUsers.find(
+          (u: any) =>
+            (u.username && u.username.toLowerCase() === email.trim().toLowerCase()) ||
+            (u.email && u.email.toLowerCase() === email.trim().toLowerCase()),
+        );
+        if (matched) {
+          const role = `${matched.role || ''}`.toLowerCase();
+          if (role === 'admin' || role === 'superadmin') {
+            await AsyncStorage.setItem('user', JSON.stringify(matched));
+            navigation.replace('AdminHome');
+          } else {
+            Alert.alert('Access Denied', 'You do not have admin access.');
+          }
+        } else {
+          Alert.alert('Login Failed', 'User not found after login.');
+        }
+      } catch (err) {
+        Alert.alert('Login Failed', 'Unable to fetch user profile.');
+      }
+    } catch (e: any) {
+      Alert.alert('Login Failed', e?.message || 'Invalid username or password');
     }
   };
 
@@ -210,7 +211,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 <>
                   <View style={styles.inputContainer}>
                     <TextInput
-                      label="Email"
+                      label="Username"
                       value={email}
                       onChangeText={setEmail}
                       mode="outlined"

@@ -431,7 +431,8 @@ const ProjectDetails: React.FC = () => {
       if (res?.data) setProject(res.data);
       const currentUser = await AsyncStorage.getItem('user');
       const parsedUser = currentUser ? JSON.parse(currentUser) : null;
-      setRole(parsedUser?.role || '');
+      console.log('current user', parsedUser.role);
+      setRole(parsedUser?.role || 'worker');
     } catch (e) {
       console.error('Failed to refresh project', e);
     } finally {
@@ -804,6 +805,7 @@ const ProjectDetails: React.FC = () => {
                 size={wp(6)}
                 onPress={() => setGpsModalVisible(true)}
                 iconColor="#2874b8"
+                disabled={role === 'worker'}
               />
             </TouchableOpacity>
 
@@ -1038,6 +1040,7 @@ const ProjectDetails: React.FC = () => {
                                 top: -6,
                                 right: -6,
                               }}
+                              disabled={role === 'worker'}
                             >
                               <MaterialCommunityIcons
                                 name="close-circle"
@@ -1147,6 +1150,7 @@ const ProjectDetails: React.FC = () => {
                         );
                       }}
                       style={{ marginLeft: wp(2) }}
+                      disabled={role === 'worker'}
                     >
                       <MaterialCommunityIcons
                         name="delete"

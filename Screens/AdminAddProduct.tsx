@@ -195,6 +195,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   const [items, setItems] = useState<ProjectItem[]>([]);
   const [itemModalOpen, setItemModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ProjectItem | null>(null);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [itemName, setItemName] = useState('');
   const [itemDesc, setItemDesc] = useState('');
   const [itemQty, setItemQty] = useState('');
@@ -485,9 +486,12 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   };
 
   // Item modal
-  const openItemModal = (item?: ProjectItem) => {
+  const openItemModal = (item?: ProjectItem, index?: number) => {
     if (item) {
       setEditingItem(item);
+      setEditingIndex(
+        typeof index === 'number' ? index : items.findIndex(i => i === item),
+      );
       setItemName(item.itemName);
       setItemDesc(item.itemDescription || '');
       setItemQty(String(item.quantity));
@@ -497,6 +501,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       setItemHsnSac(item.hsnSac);
     } else {
       setEditingItem(null);
+      setEditingIndex(null);
       setItemName('');
       setItemDesc('');
       setItemQty('');
@@ -572,11 +577,10 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   useEffect(() => {
     if (!isEditMode && itemsTotal > 0 && !isFromQuotationDetail) {
       setTotalAmount(String(itemsTotal));
-      //setActualAmount(itemsTotal);
+      if (actualAmount === 0) setActualAmount(itemsTotal);
     }
   }, [itemsTotal, isEditMode]);
 
-  // Upload images (local: third arg false, online URLs: third arg true)
   const uploadImages = async (projectId: number) => {
     const localImages = images
       .filter(img => img.isLocal)
@@ -845,19 +849,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
             />
           )}
 
-          {/* Delivery Date */}
-          <TouchableOpacity onPress={() => setDatePickerOpen(true)}>
-            <TextInput
-              label={t('Delivery Date *')}
-              value={deliveryDate}
-              mode="outlined"
-              editable={false}
-              right={<TextInput.Icon icon="calendar" size={wp(6)} />}
-              style={styles.input}
-              theme={{ roundness: wp(2.5) }}
-            />
-          </TouchableOpacity>
-
           <TextInput
             label={t('Project Description *')}
             value={projectDescription}
@@ -868,88 +859,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
             style={[styles.input, styles.textArea]}
             theme={{ roundness: wp(2.5) }}
           />
-
-          <TextInput
-            label={t('Total Budjet *')}
-            value={actualAmount.toString()}
-            onChangeText={text => {
-              setActualAmount(Number(text));
-              if (Number(text) > Number(totalAmount)) {
-                setTotalAmount(text);
-              }
-            }}
-            mode="outlined"
-            keyboardType="numeric"
-            style={styles.input}
-            theme={{ roundness: wp(2.5) }}
-            right={<TextInput.Affix text="₹" />}
-            disabled={false}
-          />
-
-          <TextInput
-            label={t('Total Amount *')}
-            value={totalAmount}
-            onChangeText={setTotalAmount}
-            mode="outlined"
-            keyboardType="numeric"
-            style={styles.input}
-            theme={{ roundness: wp(2.5) }}
-            right={<TextInput.Affix text="₹" />}
-            disabled={false}
-          />
-
-          {Number(totalAmount) > 0 && (
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: wp(2),
-              }}
-            >
-              <TextInput
-                label={t('Discount')}
-                value={discount === 0 ? '' : String(discount)}
-                onChangeText={text => {
-                  const discountValue = text === '' ? 0 : Number(text);
-                  setDiscount(discountValue);
-                  if (discountValue === 0 || text === '') {
-                    setTotalAmount(String(actualAmount));
-                    setDisCountPercentage(0);
-                  } else {
-                    const percentage = (discountValue / actualAmount) * 100;
-                    setDisCountPercentage(percentage);
-                    setTotalAmount(String(actualAmount - discountValue));
-                  }
-                }}
-                mode="outlined"
-                keyboardType="numeric"
-                style={[styles.input, { width: wp(60) }]}
-                theme={{ roundness: wp(2.5) }}
-                disabled={false}
-              />
-              <TextInput
-                label={t('Percentage')}
-                value={
-                  discountPercentage === 0
-                    ? '0.00'
-                    : discountPercentage.toFixed(2)
-                }
-                mode="outlined"
-                keyboardType="numeric"
-                style={[styles.input, { width: wp(30) }]}
-                theme={{ roundness: wp(2.5) }}
-                editable={false}
-                right={
-                  <TextInput.Icon
-                    icon="percent"
-                    size={wp(6)}
-                    color="#0a411fff"
-                  />
-                }
-              />
-            </View>
-          )}
 
           {/* Location */}
           {isEditMode && (
@@ -970,6 +879,22 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               }
             />
           )}
+          <TextInput
+            label={t('Total Budjet *')}
+            value={actualAmount.toString()}
+            onChangeText={text => {
+              setActualAmount(Number(text));
+              // if (Number(text) > Number(totalAmount)) {
+              //   setTotalAmount(text);
+              // }
+            }}
+            mode="outlined"
+            keyboardType="numeric"
+            style={styles.input}
+            theme={{ roundness: wp(2.5) }}
+            right={<TextInput.Affix text="₹" />}
+            disabled={false}
+          />
 
           {/* Status */}
           {isEditMode && (
@@ -1076,7 +1001,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                   <IconButton
                     icon="pencil"
                     size={wp(5)}
-                    onPress={() => openItemModal(item)}
+                    onPress={() => openItemModal(item, index)}
                   />
                   <IconButton
                     icon="delete"
@@ -1087,6 +1012,80 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               </Card>
             ))
           )}
+
+          {/* Budget (kept editable) */}
+
+          {/* Total Amount (display only) */}
+          <Text style={styles.totalText}>
+            {t('Total Amount *')}: ₹
+            {Number(totalAmount || 0).toLocaleString('en-IN')}
+          </Text>
+
+          {Number(totalAmount) > 0 && (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: wp(2),
+              }}
+            >
+              <TextInput
+                label={t('Discount')}
+                value={discount === 0 ? '' : String(discount)}
+                onChangeText={text => {
+                  const discountValue = text === '' ? 0 : Number(text);
+                  setDiscount(discountValue);
+                  if (discountValue === 0 || text === '') {
+                    setTotalAmount(String(actualAmount));
+                    setDisCountPercentage(0);
+                  } else {
+                    const percentage = (discountValue / actualAmount) * 100;
+                    setDisCountPercentage(percentage);
+                    setTotalAmount(String(actualAmount - discountValue));
+                  }
+                }}
+                mode="outlined"
+                keyboardType="numeric"
+                style={[styles.input, { width: wp(60) }]}
+                theme={{ roundness: wp(2.5) }}
+                disabled={false}
+              />
+              <TextInput
+                label={t('Percentage')}
+                value={
+                  discountPercentage === 0
+                    ? '0.00'
+                    : discountPercentage.toFixed(2)
+                }
+                mode="outlined"
+                keyboardType="numeric"
+                style={[styles.input, { width: wp(30) }]}
+                theme={{ roundness: wp(2.5) }}
+                editable={false}
+                right={
+                  <TextInput.Icon
+                    icon="percent"
+                    size={wp(6)}
+                    color="#0a411fff"
+                  />
+                }
+              />
+            </View>
+          )}
+
+          {/* Delivery Date (last field) */}
+          <TouchableOpacity onPress={() => setDatePickerOpen(true)}>
+            <TextInput
+              label={t('Delivery Date *')}
+              value={deliveryDate}
+              mode="outlined"
+              editable={false}
+              right={<TextInput.Icon icon="calendar" size={wp(6)} />}
+              style={styles.input}
+              theme={{ roundness: wp(2.5) }}
+            />
+          </TouchableOpacity>
 
           {/* Save Button */}
           <Button
@@ -1127,11 +1126,25 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           projectId={rawProject?.id || createdProjectId || 0}
           item={editingItem}
           onSaved={(saved: any) => {
-            setItems(prev =>
-              editingItem?.id
-                ? prev.map(i => (i.id === editingItem.id ? { ...saved } : i))
-                : [...prev, { ...saved }],
-            );
+            setItems(prev => {
+              if (editingItem?.id) {
+                return prev.map(i =>
+                  i.id === editingItem.id ? { ...saved } : i,
+                );
+              }
+              if (
+                editingIndex !== null &&
+                editingIndex >= 0 &&
+                editingIndex < prev.length
+              ) {
+                const next = [...prev];
+                next[editingIndex] = { ...saved };
+                return next;
+              }
+              return [...prev, { ...saved }];
+            });
+            setEditingItem(null);
+            setEditingIndex(null);
           }}
           title={editingItem ? t('Edit Item') : t('Add Item')}
           maxHeight={hp(50)}
@@ -1333,6 +1346,13 @@ const styles = StyleSheet.create({
     color: '#888',
     marginTop: hp(0.3),
     fontStyle: 'italic',
+  },
+  totalText: {
+    fontSize: wp(4.2),
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginTop: hp(1),
+    marginBottom: hp(1),
   },
   emptyText: {
     textAlign: 'center',

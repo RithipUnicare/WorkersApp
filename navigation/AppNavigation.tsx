@@ -1,5 +1,10 @@
-import { NavigationContainer } from '@react-navigation/native';
+import {
+  NavigationContainer,
+  useNavigationContainerRef,
+} from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useEffect } from 'react';
+import { setupSessionTimeout } from '../utils/sessionManager';
 import LoginScreen from '../Screens/LoginScreen';
 import AdminHomePage from '../Screens/AdminHomeScreen';
 import WorkerHomePage from '../Screens/WorkerScreen';
@@ -51,8 +56,22 @@ const Stack = createNativeStackNavigator<rootStackParamList>();
 const AppNavigation = () => {
   const theme = useColorScheme() === 'dark';
 
+  const navigationRef = useNavigationContainerRef<rootStackParamList>();
+
+  useEffect(() => {
+    // Setup session timeout when component mounts
+    const cleanupSessionTimeout = setupSessionTimeout(navigationRef);
+
+    // Clean up session timeout when component unmounts
+    return () => {
+      if (cleanupSessionTimeout) {
+        cleanupSessionTimeout();
+      }
+    };
+  }, [navigationRef]);
+
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator
         initialRouteName="splash"
         screenOptions={{

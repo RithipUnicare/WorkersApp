@@ -1,5 +1,7 @@
 import { BASE_URL, endpoints, buildUrl } from './configuration';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { Alert } from 'react-native';
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -9,9 +11,36 @@ const api = axios.create({
   },
 });
 
+let logoutCallback = null;
+export const setLogoutCallback = cb => {
+  logoutCallback = cb;
+};
+
+const clearAuthStorage = async () => {
+  try {
+    await AsyncStorage.multiRemove(['token', 'user']);
+  } catch (e) {
+    console.error('Error clearing auth storage:', e);
+  }
+};
+
+api.interceptors.request.use(
+  async config => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (token) {
+        config.headers = config.headers || {};
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (e) {}
+    return config;
+  },
+  error => Promise.reject(error),
+);
+
 api.interceptors.response.use(
   response => response,
-  error => {
+  async error => {
     const customError = new Error(
       error.response?.data?.message ||
         error.message ||
@@ -19,6 +48,17 @@ api.interceptors.response.use(
     );
     customError.status = error.response?.status;
     customError.data = error.response?.data || {};
+
+    if (customError.status === 401) {
+      await clearAuthStorage();
+
+      Alert.alert('Session Expired', 'Please log in again.', [{ text: 'OK' }]);
+
+      if (logoutCallback && typeof logoutCallback === 'function') {
+        logoutCallback();
+      }
+    }
+
     return Promise.reject(customError);
   },
 );
@@ -208,7 +248,6 @@ export const ProjectAPI = {
         console.log('uri', uri);
         if (!uri) return;
 
-        // ✅ Handle both string URLs and objects with imageUrl
         const fileUri = typeof uri === 'string' ? uri : uri.imageUrl;
 
         if (!fileUri) return;
@@ -224,7 +263,6 @@ export const ProjectAPI = {
       });
     }
 
-    // Skip if no valid files
     if ([...formData._parts].length === 0) return;
 
     return multipartRequest(
@@ -282,7 +320,6 @@ export const QuotationAPI = {
   updateQuotationStatus: (id, payload) =>
     jsonRequest('PATCH', `${endpoints.quotationById(id)}/status`, payload),
 
-  // Voice recordings
   getVoiceRecordings: id => queryRequest(endpoints.quotationVoice(id)),
   addVoiceRecording: (id, file) => {
     const formData = new FormData();
@@ -315,11 +352,9 @@ export const QuotationAPI = {
   deleteVoiceRecording: (id, voiceId) =>
     deleteRequest(endpoints.quotationVoiceById(id, voiceId)),
 
-  // Location
   updateLocation: (id, payload) =>
     jsonRequest('POST', endpoints.quotationLocation(id), payload),
 
-  // Images (quotation-level)
   getSiteImages: id => queryRequest(endpoints.quotationImages(id)),
   addSiteImages: async (quotationId, imageUris = []) => {
     const formData = new FormData();
@@ -345,7 +380,6 @@ export const QuotationAPI = {
     );
   },
 
-  // Item images (max 3 server-side)
   addItemImages: async (itemId, imageUris = []) => {
     const formData = new FormData();
 
@@ -370,7 +404,6 @@ export const QuotationAPI = {
     );
   },
 
-  // Delete a single image from a quotation item
   deleteItemImage: (itemId, imageId) =>
     deleteRequest(endpoints.quotationItemImageById(itemId, imageId)),
 };
@@ -402,4 +435,25 @@ export const UserAPI = {
     jsonRequest('PUT', endpoints.userPassword(id), payload),
   getPasswordByUsername: username =>
     queryRequest(endpoints.userPasswordByUsername(username)),
+};
+
+export const AuthAPI = {
+  login: async payload => {
+    const res = await jsonRequest('POST', endpoints.authLogin, payload);
+    try {
+      const token =
+        res?.data || res?.token || res?.data?.accessToken || res?.accessToken;
+      if (token) await AsyncStorage.setItem('token', token);
+    } catch (e) {}
+    return res;
+  },
+  workerLogin: async payload => {
+    const res = await jsonRequest('POST', endpoints.authWorkerLogin, payload);
+    try {
+      const token =
+        res?.data || res?.token || res?.data?.accessToken || res?.accessToken;
+      if (token) await AsyncStorage.setItem('token', token);
+    } catch (e) {}
+    return res;
+  },
 };

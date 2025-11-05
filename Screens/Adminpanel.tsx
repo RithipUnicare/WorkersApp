@@ -172,7 +172,9 @@ const UserManagementTab: React.FC<Props> = ({ navigation }) => {
       setLoading(true);
       const res = await UserAPI.getAll();
       if (res.success) {
-        setUsers(res.data);
+        // Filter out users with username 'admin'
+        const filteredUsers = res.data.filter((u: User) => u.username !== 'admin');
+        setUsers(filteredUsers);
       } else {
         setSnackbar({
           visible: true,

@@ -350,7 +350,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
   useEffect(() => {
     if (!isEditMode && grandTotal > 0) {
       setTotalBudget(grandTotal.toFixed(2));
-      // setActualAmount(grandTotal);
+      if(actualAmount === 0) setActualAmount(grandTotal);
     }
   }, [grandTotal, isEditMode]);
 
@@ -478,16 +478,6 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
         deliveryDate: dayjs(deliveryDate, 'DD-MM-YYYY').format('YYYY-MM-DD'),
         totalBudget: Number(actualAmount),
         discount: Number(discount),
-        items: items.map(i => ({
-          quotationId: rawQuotation?.id || 0,
-          itemName: i.itemName,
-          itemDescription: i.itemDescription,
-          rateMrp: i.rateMrp,
-          quantity: i.quantity,
-          unitId: i.unitId,
-          taxPercentage: i.taxPercentage,
-          hsnSac: i.hsnSac,
-        })),
       };
       let currentQuotation = null;
       if (isEditMode && rawQuotation?.id) {
@@ -496,6 +486,23 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
         const localUris = images.filter(img => img.isLocal).map(img => img.uri);
         if (localUris.length) {
           await QuotationAPI.addSiteImages(rawQuotation.id, localUris);
+        }
+        if (items.length) {
+          items.forEach(async item => {
+            if (item.id) {
+              const payload = {
+                quotationId: rawQuotation.id,
+                itemName: item.itemName,
+                itemDescription: item.itemDescription,
+                rateMrp: item.rateMrp,
+                quantity: item.quantity,
+                unitId: item.unitId,
+                taxPercentage: item.taxPercentage,
+                hsnSac: item.hsnSac,
+              };
+              await QuotationAPI.updateItem(item.id, payload);
+            }
+          });
         }
         currentQuotation = rawQuotation;
         ToastAndroid.show(t('Quotation updated!'), ToastAndroid.SHORT);
@@ -593,23 +600,14 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             style={[styles.input, styles.textArea]}
           />
 
-          <TouchableOpacity onPress={() => setDatePickerOpen(true)}>
-            <TextInput
-              label={t('Delivery Date *')}
-              value={deliveryDate}
-              mode="outlined"
-              editable={false}
-              style={styles.input}
-              right={<TextInput.Icon icon="calendar" size={wp(6)} />}
-            />
-          </TouchableOpacity>
+          
 
           <TextInput
             label={t('Total Budget *')}
             value={actualAmount.toString()}
             onChangeText={text => {
               setActualAmount(Number(text));
-              setTotalBudget(text);
+              //setTotalBudget(text);
             }}
             mode="outlined"
             keyboardType="numeric"
@@ -617,7 +615,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             editable={!isEditMode}
             left={<TextInput.Affix text="₹" />}
           />
-          <TextInput
+          {/* <TextInput
             label={t('Total Amount *')}
             value={totalBudget}
             onChangeText={setTotalBudget}
@@ -626,54 +624,9 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             style={styles.input}
             editable={!isEditMode}
             left={<TextInput.Affix text="₹" />}
-          />
+          /> */}
 
-          {Number(totalBudget) > 0 && (
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: wp(2),
-              }}
-            >
-              <TextInput
-                label={t('Discount')}
-                value={discount === 0 ? '' : String(discount)}
-                onChangeText={text => {
-                  const discountValue = text === '' ? 0 : Number(text);
-                  setDiscount(discountValue);
-                  if (discountValue === 0 || text === '') {
-                    setTotalBudget(String(actualAmount));
-                    setDiscountPercent(0);
-                  } else {
-                    const percentage = (discountValue / actualAmount) * 100;
-                    setDiscountPercent(percentage);
-                    setTotalBudget(String(actualAmount - discountValue));
-                  }
-                }}
-                mode="outlined"
-                keyboardType="numeric"
-                style={[styles.input, { width: wp(60) }]}
-                theme={{ roundness: wp(2.5) }}
-                disabled={false}
-              />
-              <TextInput
-                label={t('Percentage')}
-                value={
-                  discountPercent === 0 ? '0.00' : discountPercent.toFixed(2)
-                }
-                mode="outlined"
-                keyboardType="numeric"
-                style={[styles.input, { width: wp(30) }]}
-                theme={{ roundness: wp(2.5) }}
-                editable={false}
-                right={
-                  <TextInput.Icon icon="percent" size={wp(6)} color="#2874b8" />
-                }
-              />
-            </View>
-          )}
+          
 
           {/* Site Images (Edit mode) */}
           {isEditMode && (
@@ -807,6 +760,69 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
               );
             })
           )}
+
+          <View style={{ marginTop: 16, marginBottom: 8 }}>
+            <Text style={{ fontSize: wp(5), fontWeight: 'bold', color: '#2874b8' }}>{`Total Amount* : ${totalBudget}` }</Text>
+          </View>
+
+          {Number(totalBudget) > 0 && (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: wp(2),
+              }}
+            >
+              <TextInput
+                label={t('Discount')}
+                value={discount === 0 ? '' : String(discount)}
+                onChangeText={text => {
+                  const discountValue = text === '' ? 0 : Number(text);
+                  setDiscount(discountValue);
+                  if (discountValue === 0 || text === '') {
+                    setTotalBudget(String(actualAmount));
+                    setDiscountPercent(0);
+                  } else {
+                    const percentage = (discountValue / Number(totalBudget)) * 100;
+                    setDiscountPercent(percentage);
+                    setTotalBudget(String(Number(totalBudget) - discountValue));
+                  }
+                }}
+                mode="outlined"
+                keyboardType="numeric"
+                style={[styles.input, { width: wp(60) }]}
+                theme={{ roundness: wp(2.5) }}
+                disabled={false}
+              />
+              <TextInput
+                label={t('Percentage')}
+                value={
+                  discountPercent === 0 ? '0.00' : discountPercent.toFixed(2)
+                }
+                mode="outlined"
+                keyboardType="numeric"
+                style={[styles.input, { width: wp(30) }]}
+                theme={{ roundness: wp(2.5) }}
+                editable={false}
+                right={
+                  <TextInput.Icon icon="percent" size={wp(6)} color="#2874b8" />
+                }
+              />
+            </View>
+          )}
+
+
+          <TouchableOpacity onPress={() => setDatePickerOpen(true)}>
+            <TextInput
+              label={t('Delivery Date *')}
+              value={deliveryDate}
+              mode="outlined"
+              editable={false}
+              style={styles.input}
+              right={<TextInput.Icon icon="calendar" size={wp(6)} />}
+            />
+          </TouchableOpacity>
 
           <Button
             mode="contained"

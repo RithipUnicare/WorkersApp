@@ -3,6 +3,10 @@ export const BASE_URL =
   'http://indian-steel-env.eba-emsdmyth.ap-south-1.elasticbeanstalk.com';
 
 export const endpoints = {
+  // Auth endpoints
+  authLogin: '/auth/login',
+  authWorkerLogin: '/auth/worker-login',
+
   // Customer endpoints
   customers: '/api/v1/customers',
   customersByStatus: status =>
