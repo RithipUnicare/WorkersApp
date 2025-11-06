@@ -156,6 +156,7 @@ type Project = {
     quantity: number;
     rateMrp: number;
     totalCost: number;
+    unit?: { id: number; name: string; shortName: string };
   }[];
   advancePayments: {
     id: number;
@@ -999,12 +1000,12 @@ const ProjectDetails: React.FC = () => {
                       </View>
                     )}
                   </View>
-                  {role !== 'worker' && (
-                    <Text style={styles.itemDetails}>
-                      {item.quantity} × ₹{item.rateMrp} = ₹
-                      {item.totalCost.toLocaleString('en-IN')}
-                    </Text>
-                  )}
+
+                  <Text style={styles.itemDetails}>
+                    {item.quantity} {item.unit?.shortName} × ₹{item.rateMrp} = ₹
+                    {item.totalCost.toLocaleString('en-IN')}
+                  </Text>
+
                   {Array.isArray((item as any).images) &&
                     (item as any).images.length > 0 && (
                       <ScrollView

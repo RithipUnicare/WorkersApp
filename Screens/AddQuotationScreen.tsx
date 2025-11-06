@@ -377,7 +377,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
     setItemModalOpen(true);
   };
 
-  const saveItemLocally = () => {
+  const saveItemLocally = async () => {
     if (!itemName || !itemQty || selectedUnitId === null || !itemMrp) {
       ToastAndroid.show(t('Name, Qty, Unit, MRP required'), ToastAndroid.SHORT);
       return;
@@ -396,7 +396,13 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
       hsnSac,
       totalCost,
     };
-
+    try {
+      if (editingItem?.id)
+        await QuotationAPI.updateItem(editingItem.id, newItem);
+      else await QuotationAPI.createItem(newItem);
+    } catch (e) {
+      ToastAndroid.show(t('Failed to add item'), ToastAndroid.SHORT);
+    }
     setItems(prev =>
       editingItem?.id
         ? prev.map(i => (i.id === editingItem.id ? newItem : i))

@@ -987,8 +987,10 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                 <Card.Content>
                   <Text style={styles.itemName}>{item.itemName}</Text>
                   <Text style={styles.itemCalc}>
-                    {item.quantity} × ₹{item.rateMrp.toLocaleString('en-IN')} =
-                    ₹{(item.amount || 0).toLocaleString('en-IN')}
+                    {item.quantity}{' '}
+                    {units.find(u => u.id === item.unitId)?.shortName} × ₹
+                    {item.rateMrp.toLocaleString('en-IN')} = ₹
+                    {(item.amount || 0).toLocaleString('en-IN')}
                   </Text>
                   {item.itemDescription && (
                     <Text style={styles.itemDesc}>{item.itemDescription}</Text>
