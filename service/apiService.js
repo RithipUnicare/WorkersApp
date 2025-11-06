@@ -2,6 +2,7 @@ import { BASE_URL, endpoints, buildUrl } from './configuration';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Alert } from 'react-native';
+import { logoutUser } from '../utils/sessionManager';
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -52,7 +53,9 @@ api.interceptors.response.use(
     if (customError.status === 401) {
       await clearAuthStorage();
 
-      Alert.alert('Session Expired', 'Please log in again.', [{ text: 'OK' }]);
+      Alert.alert('Session Expired', 'Please log in again.', [
+        { text: 'OK', onPress: () => logoutUser() },
+      ]);
 
       if (logoutCallback && typeof logoutCallback === 'function') {
         logoutCallback();

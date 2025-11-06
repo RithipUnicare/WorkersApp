@@ -173,7 +173,9 @@ const UserManagementTab: React.FC<Props> = ({ navigation }) => {
       const res = await UserAPI.getAll();
       if (res.success) {
         // Filter out users with username 'admin'
-        const filteredUsers = res.data.filter((u: User) => u.username !== 'admin');
+        const filteredUsers = res.data.filter(
+          (u: User) => u.username !== 'admin',
+        );
         setUsers(filteredUsers);
       } else {
         setSnackbar({
@@ -712,6 +714,7 @@ const CreateUserTab: React.FC = () => {
 
     try {
       const res = await UserAPI.create(payload);
+      console.log('user creation', res);
       if (res.success) {
         setSnackbar({
           visible: true,

@@ -116,6 +116,7 @@ export default function generateInvoiceHTML(projectData) {
       .company-info { 
         flex: 1; 
         text-align: right; 
+        align-items: flex-end;
       }
       
       .company-header { 
@@ -123,7 +124,7 @@ export default function generateInvoiceHTML(projectData) {
         color: white; 
         padding: 8px; 
         font-weight: bold; 
-        text-align: center; 
+        text-align: right; 
         margin-bottom: 10px; 
       }
       
@@ -341,6 +342,7 @@ export default function generateInvoiceHTML(projectData) {
           <th>Description</th>
           <th>Quantity</th>
           <th>Rate Per Unit</th>
+          <th>Tax</th>
           <th>Total Amount</th>
         </tr>
       </thead>
@@ -366,74 +368,81 @@ export default function generateInvoiceHTML(projectData) {
   `;
 
   // Payments In Section
-  if (projectData.paymentsIn && projectData.paymentsIn.length > 0) {
-    html += `
-    <div class="section-header" style="background-color: #27ae60;">PAYMENTS RECEIVED</div>
-    <table class="payment-table">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Type</th>
-          <th>Notes</th>
-          <th>Amount</th>
-        </tr>
-      </thead>
-      <tbody>
-    `;
+  // if (projectData.paymentsIn && projectData.paymentsIn.length > 0) {
+  //   html += `
+  //   <div class="section-header" style="background-color: #27ae60;">PAYMENTS RECEIVED</div>
+  //   <table class="payment-table">
+  //     <thead>
+  //       <tr>
+  //         <th>Date</th>
+  //         <th>Type</th>
+  //         <th>Notes</th>
+  //         <th>Amount</th>
+  //       </tr>
+  //     </thead>
+  //     <tbody>
+  //   `;
 
-    projectData.paymentsIn.forEach(payment => {
-      html += `
-        <tr>
-          <td>${formatDate(payment.paymentDate)}</td>
-          <td>${payment.type}</td>
-          <td>${payment.notes || '-'}</td>
-          <td style="text-align: right; color: #27ae60; font-weight: bold;">₹${payment.amount.toLocaleString(
-            'en-IN',
-          )}</td>
-        </tr>
-      `;
-    });
+  //   projectData.paymentsIn.forEach(payment => {
+  //     html += `
+  //       <tr>
+  //         <td>${formatDate(payment.paymentDate)}</td>
+  //         <td>${payment.type}</td>
+  //         <td>${payment.notes || '-'}</td>
+  //         <td style="text-align: right; color: #27ae60; font-weight: bold;">₹${payment.amount.toLocaleString(
+  //           'en-IN',
+  //         )}</td>
+  //       </tr>
+  //     `;
+  //   });
 
-    html += `
-      </tbody>
-    </table>
-    `;
-  }
+  //   html += `
+  //     </tbody>
+  //   </table>
+  //   `;
+  // }
 
-  // Payments Out Section
-  if (projectData.paymentsOut && projectData.paymentsOut.length > 0) {
-    html += `
-    <div class="section-header" style="background-color: #e74c3c;">PAYMENTS MADE</div>
-    <table class="payment-table out">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Type</th>
-          <th>Notes</th>
-          <th>Amount</th>
-        </tr>
-      </thead>
-      <tbody>
-    `;
+  // // Payments Out Section
+  // if (projectData.paymentsOut && projectData.paymentsOut.length > 0) {
+  //   html += `
+  //   <div class="section-header" style="background-color: #e74c3c;">PAYMENTS MADE</div>
+  //   <table class="payment-table out">
+  //     <thead>
+  //       <tr>
+  //         <th>Date</th>
+  //         <th>Type</th>
+  //         <th>Notes</th>
+  //         <th>Amount</th>
+  //       </tr>
+  //     </thead>
+  //     <tbody>
+  //   `;
 
-    projectData.paymentsOut.forEach(payment => {
-      html += `
-        <tr>
-          <td>${formatDate(payment.paymentDate)}</td>
-          <td>${payment.type}</td>
-          <td>${payment.notes || '-'}</td>
-          <td style="text-align: right; color: #e74c3c; font-weight: bold;">₹${payment.amount.toLocaleString(
-            'en-IN',
-          )}</td>
-        </tr>
-      `;
-    });
+  //   projectData.paymentsOut.forEach(payment => {
+  //     html += `
+  //       <tr>
+  //         <td>${formatDate(payment.paymentDate)}</td>
+  //         <td>${payment.type}</td>
+  //         <td>${payment.notes || '-'}</td>
+  //         <td style="text-align: right; color: #e74c3c; font-weight: bold;">₹${payment.amount.toLocaleString(
+  //           'en-IN',
+  //         )}</td>
+  //       </tr>
+  //     `;
+  //   });
 
-    html += `
-      </tbody>
-    </table>
-    `;
-  }
+  //   html += `
+  //     </tbody>
+  //   </table>
+  //   `;
+  // }
+
+  //  <div class="totals-row">
+  //       <div class="total-label">TOTAL PAYMENTS MADE</div>
+  //       <div class="total-value negative">₹${paymentsOutTotal.toLocaleString(
+  //         'en-IN',
+  //       )}</div>
+  //     </div>
 
   html += `
     <div class="totals-section">
@@ -449,12 +458,7 @@ export default function generateInvoiceHTML(projectData) {
         )}</div>
       </div>
       
-      <div class="totals-row">
-        <div class="total-label">TOTAL PAYMENTS MADE</div>
-        <div class="total-value negative">₹${paymentsOutTotal.toLocaleString(
-          'en-IN',
-        )}</div>
-      </div>
+     
       
       <div class="totals-row grand-total">
         <div class="total-label" style="font-size: 16px;">GRAND TOTAL</div>

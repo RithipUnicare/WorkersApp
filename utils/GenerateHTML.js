@@ -25,7 +25,7 @@ export default function generateHTML(quotationData) {
       .quotation-to { flex: 1; }
       .quotation-to-header { background-color: #2196F3; color: white; padding: 8px; font-weight: bold; margin-bottom: 10px; }
       .company-info { flex: 1; text-align: right; }
-      .company-header { background-color: #2196F3; color: white; padding: 8px; font-weight: bold; text-align: center; margin-bottom: 10px; }
+      .company-header { background-color: #2196F3; color: white; padding: 8px; font-weight: bold; text-align: right; margin-bottom: 10px; }
       .info-text { margin: 3px 0; line-height: 1.6; }
 
       .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; }

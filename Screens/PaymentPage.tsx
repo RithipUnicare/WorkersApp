@@ -599,7 +599,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                     setIsPaymentIn(false);
                     setModalVisible(true);
                   }}
-                  style={styles.addBtn}
+                  style={[styles.addBtn]}
                   contentStyle={styles.addBtnContent}
                   textColor="#e74c3c"
                 >
@@ -836,13 +836,13 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                       setPreviewModalVisible(false);
                       shareInvoice();
                     }}
-                    iconColor="#27ae60"
+                    iconColor="#f7f7f7ff"
                   />
                   <IconButton
                     icon="close"
                     size={wp(6)}
                     onPress={() => setPreviewModalVisible(false)}
-                    iconColor="#e74c3c"
+                    iconColor="#f7f7f7ff"
                   />
                 </View>
               </View>

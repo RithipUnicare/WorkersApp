@@ -1,5 +1,4 @@
-import { AppState, AppStateStatus, Platform } from 'react-native';
-import { Alert } from 'react-native';
+import { AppState, AppStateStatus, Platform, ToastAndroid } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   CommonActions,
@@ -80,7 +79,7 @@ export const setupSessionTimeout = (
   };
 };
 
-const logoutUser = async () => {
+export const logoutUser = async () => {
   try {
     // Clear all stored data
     await AsyncStorage.multiRemove([
@@ -101,10 +100,9 @@ const logoutUser = async () => {
       );
     }
 
-    Alert.alert(
-      'Session Expired',
+    ToastAndroid.show(
       'You have been logged out due to inactivity.',
-      [{ text: 'OK' }],
+      ToastAndroid.LONG,
     );
   } catch (error) {
     console.error('Error during logout:', error);
