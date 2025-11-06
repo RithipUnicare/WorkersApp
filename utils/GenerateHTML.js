@@ -131,17 +131,19 @@ export default function generateHTML(quotationData) {
     `;
   });
 
+  // <div class="totals-row">
+  //     <div class="total-label">TOTAL BUDGET</div>
+  //     <div class="total-value">₹${Number(
+  //       quotationData.totalBudget,
+  //     ).toLocaleString('en-IN')}</div>
+  //   </div>
+
   html += `
       </tbody>
     </table>
 
     <div class="totals-section">
-    <div class="totals-row">
-      <div class="total-label">TOTAL BUDGET</div>
-      <div class="total-value">₹${Number(
-        quotationData.totalBudget,
-      ).toLocaleString('en-IN')}</div>
-    </div>
+    
       <div class="totals-row">
         <div class="total-label">TOTAL AMOUNT</div>
         <div class="total-value">₹${Number(
