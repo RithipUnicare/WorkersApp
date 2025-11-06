@@ -562,7 +562,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
         style: 'destructive',
         onPress: () => {
           setItems(p => p.filter((_, i) => i !== idx));
-          ProjectAPI.deleteItem(items[idx].id);
+          if (items[idx].id) ProjectAPI.deleteItem(items[idx].id);
         },
       },
     ]);
@@ -682,9 +682,10 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
         }
         const currentProjectForItem = created.data;
         const voiceExist =
-          rawProject.voiceRecordings && rawProject.voiceRecordings.length > 0;
+          rawProject?.voiceRecordings &&
+          rawProject?.voiceRecordings?.length > 0;
         if (voiceExist) {
-          rawProject.voiceRecordings?.map(async (voice: any) => {
+          rawProject?.voiceRecordings?.map(async (voice: any) => {
             const res = await ProjectAPI.updateVoice(
               projectId,
               voice.recordingUrl,
@@ -695,13 +696,13 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
         console.log('projectItems', currentProjectForItem);
 
         if (
-          Array.isArray(rawProject.projectItems) &&
-          Array.isArray(currentProjectForItem.projectItems)
+          Array.isArray(rawProject?.projectItems) &&
+          Array.isArray(currentProjectForItem?.projectItems)
         ) {
           await Promise.all(
-            rawProject.projectItems.map(
+            rawProject?.projectItems?.map(
               async (projectItem: any, index: number) => {
-                const newItem = currentProjectForItem.projectItems[index];
+                const newItem = currentProjectForItem?.projectItems?.[index];
                 let itemImages: any[] = [];
 
                 console.log(
@@ -712,8 +713,8 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                 );
 
                 if (
-                  Array.isArray(projectItem.images) &&
-                  projectItem.images.length > 0
+                  Array.isArray(projectItem?.images) &&
+                  projectItem?.images?.length > 0
                 ) {
                   console.log('Images exist for item:', projectItem.images);
                   itemImages.push(...projectItem.images);

@@ -338,7 +338,7 @@ const SplashScreen: React.FC<Props> = ({ navigation }) => {
             },
           ]}
         >
-          WorkersApp
+          Indian Steels
         </Animated.Text>
 
         {/* Animated Subtitle */}

@@ -959,11 +959,11 @@ const QuotationDetail: React.FC = () => {
                   }
                   style={{ marginLeft: 8 }}
                 >
-                  <MaterialCommunityIcons
+                  {/* <MaterialCommunityIcons
                     name="delete"
                     size={width * 0.05}
                     color="#e74c3c"
-                  />
+                  /> */}
                 </TouchableOpacity>
               </View>
             ))}

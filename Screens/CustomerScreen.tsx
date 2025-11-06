@@ -186,8 +186,14 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
         {
           text: t('Delete'),
           style: 'destructive',
-          onPress: () => {
-            Alert.alert(t('Deleted'), `${name} ${t('has been removed.')}`);
+          onPress: async () => {
+            try {
+              const res = await CustomerAPI.delete(customer.id);
+              console.log('Customer deleted:', res, customer.id);
+              Alert.alert(t('Deleted'), `${name} ${t('has been removed.')}`);
+            } catch (e) {
+              console.log('Error deleting customer:', customer.id);
+            }
             navigation.goBack();
           },
         },

@@ -614,6 +614,7 @@ const CreateUserTab: React.FC = () => {
   const [role, setRole] = useState<'admin' | 'worker' | 'superadmin'>('worker');
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
+  const [passwordVisible, setPasswordVisible] = useState(false);
 
   const [isTamil, setIsTamil] = useState(false);
   const [translations, setTranslations] = useState<Record<string, string>>({});
@@ -832,7 +833,7 @@ const CreateUserTab: React.FC = () => {
               onChangeText={setPassword}
               mode="outlined"
               style={styles.input}
-              secureTextEntry
+              secureTextEntry={!passwordVisible}
               theme={{ roundness: wp(2.5) }}
               contentStyle={[
                 styles.inputContent,
@@ -841,6 +842,13 @@ const CreateUserTab: React.FC = () => {
               outlineColor="#ddd"
               activeOutlineColor="#0a411fff"
               left={<TextInput.Icon icon="lock" size={wp(6)} />}
+              right={
+                <TextInput.Icon
+                  icon={passwordVisible ? 'eye-off' : 'eye'}
+                  size={wp(6)}
+                  onPress={() => setPasswordVisible(!passwordVisible)}
+                />
+              }
             />
 
             <Dropdown

@@ -80,7 +80,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
       } catch {}
       navigation.replace('WorkersHome');
     } catch (e: any) {
-      Alert.alert('Login Failed', e?.message || 'Unable to login as worker');
+      Alert.alert('Login Failed', 'Unable to login as worker');
     }
   };
 
@@ -97,7 +97,8 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         const allUsers = response?.data || response || [];
         const matched = allUsers.find(
           (u: any) =>
-            (u.username && u.username.toLowerCase() === email.trim().toLowerCase()) ||
+            (u.username &&
+              u.username.toLowerCase() === email.trim().toLowerCase()) ||
             (u.email && u.email.toLowerCase() === email.trim().toLowerCase()),
         );
         if (matched) {
@@ -115,7 +116,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         Alert.alert('Login Failed', 'Unable to fetch user profile.');
       }
     } catch (e: any) {
-      Alert.alert('Login Failed', e?.message || 'Invalid username or password');
+      Alert.alert('Login Failed ', 'Invalid username or password');
     }
   };
 

@@ -350,7 +350,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
   useEffect(() => {
     if (!isEditMode && grandTotal > 0) {
       setTotalBudget(grandTotal.toFixed(2));
-      if(actualAmount === 0) setActualAmount(grandTotal);
+      if (actualAmount === 0) setActualAmount(grandTotal);
     }
   }, [grandTotal, isEditMode]);
 
@@ -472,15 +472,15 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
 
     setLoading(true);
     try {
-      const payload: any = {
-        customerId,
-        projectDescription: description,
-        deliveryDate: dayjs(deliveryDate, 'DD-MM-YYYY').format('YYYY-MM-DD'),
-        totalBudget: Number(actualAmount),
-        discount: Number(discount),
-      };
       let currentQuotation = null;
       if (isEditMode && rawQuotation?.id) {
+        const payload: any = {
+          customerId,
+          projectDescription: description,
+          deliveryDate: dayjs(deliveryDate, 'DD-MM-YYYY').format('YYYY-MM-DD'),
+          totalBudget: Number(actualAmount),
+          discount: Number(discount),
+        };
         await QuotationAPI.update(rawQuotation.id, payload);
         // Upload any newly added local images
         const localUris = images.filter(img => img.isLocal).map(img => img.uri);
@@ -500,13 +500,30 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
                 taxPercentage: item.taxPercentage,
                 hsnSac: item.hsnSac,
               };
-              await QuotationAPI.updateItem(item.id, payload);
+              const res = await QuotationAPI.updateItem(item.id, payload);
+              console.log(res, payload);
             }
           });
         }
         currentQuotation = rawQuotation;
         ToastAndroid.show(t('Quotation updated!'), ToastAndroid.SHORT);
       } else {
+        const payload: any = {
+          customerId,
+          projectDescription: description,
+          deliveryDate: dayjs(deliveryDate, 'DD-MM-YYYY').format('YYYY-MM-DD'),
+          totalBudget: Number(actualAmount),
+          discount: Number(discount),
+          items: items.map(item => ({
+            itemName: item.itemName,
+            itemDescription: item.itemDescription,
+            rateMrp: item.rateMrp,
+            quantity: item.quantity,
+            unitId: item.unitId,
+            taxPercentage: item.taxPercentage,
+            hsnSac: item.hsnSac,
+          })),
+        };
         const res = await QuotationAPI.create(payload);
         currentQuotation = res.data;
         ToastAndroid.show(t('Quotation created!'), ToastAndroid.SHORT);
@@ -600,8 +617,6 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             style={[styles.input, styles.textArea]}
           />
 
-          
-
           <TextInput
             label={t('Total Budget *')}
             value={actualAmount.toString()}
@@ -625,8 +640,6 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             editable={!isEditMode}
             left={<TextInput.Affix text="₹" />}
           /> */}
-
-          
 
           {/* Site Images (Edit mode) */}
           {isEditMode && (
@@ -762,7 +775,9 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
           )}
 
           <View style={{ marginTop: 16, marginBottom: 8 }}>
-            <Text style={{ fontSize: wp(5), fontWeight: 'bold', color: '#2874b8' }}>{`Total Amount* : ${totalBudget}` }</Text>
+            <Text
+              style={{ fontSize: wp(5), fontWeight: 'bold', color: '#2874b8' }}
+            >{`Total Amount* : ${totalBudget}`}</Text>
           </View>
 
           {Number(totalBudget) > 0 && (
@@ -784,7 +799,8 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
                     setTotalBudget(String(actualAmount));
                     setDiscountPercent(0);
                   } else {
-                    const percentage = (discountValue / Number(totalBudget)) * 100;
+                    const percentage =
+                      (discountValue / Number(totalBudget)) * 100;
                     setDiscountPercent(percentage);
                     setTotalBudget(String(Number(totalBudget) - discountValue));
                   }
@@ -811,7 +827,6 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
               />
             </View>
           )}
-
 
           <TouchableOpacity onPress={() => setDatePickerOpen(true)}>
             <TextInput
