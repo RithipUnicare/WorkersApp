@@ -57,13 +57,9 @@ export const navigationRef = createNavigationContainerRef<rootStackParamList>();
 const AppNavigation = () => {
   const theme = useColorScheme() === 'dark';
 
-  //const navigationRef = useNavigationContainerRef<rootStackParamList>();
-
   useEffect(() => {
-    // Setup session timeout when component mounts
     const cleanupSessionTimeout = setupSessionTimeout(navigationRef);
 
-    // Clean up session timeout when component unmounts
     return () => {
       if (cleanupSessionTimeout) {
         cleanupSessionTimeout();

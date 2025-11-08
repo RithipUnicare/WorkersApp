@@ -24,6 +24,7 @@ import {
   Dialog,
   TextInput,
   ProgressBar,
+  RadioButton,
 } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
@@ -95,6 +96,9 @@ const enToTa: Record<string, string> = {
   Error: 'பிழை',
   'Failed to delete': 'நீக்க முடியவில்லை',
   Success: 'வெற்றி',
+  'Update Status': 'நிலையைப் புதுப்பிக்கவும்',
+  'Status updated': 'நிலை புதுப்பிக்கப்பட்டது',
+  'Failed to update status': 'நிலையை புதுப்பிக்க முடியவில்லை',
   'Location updated': 'இடம் புதுப்பிக்கப்பட்டது',
   'Could not fetch location': 'இடத்தை பெற முடியவில்லை',
   'Failed to update location': 'இடத்தை புதுப்பிக்க முடியவில்லை',
@@ -110,7 +114,13 @@ const enToTa: Record<string, string> = {
   'Playback Error': 'பிளேபேக் பிழை',
   'Could not play audio': 'ஆடியோவை இயக்க முடியவில்லை',
   'Delete Voice Recording': 'குரல் பதிவை நீக்கு',
+  CREATED: 'உருவாக்கப்பட்டது',
+  IN_PROGRESS: 'செயல்பாட்டில்',
+  DISCONTINUED: 'நிறுத்தப்பட்டது',
+  COMPLETED: 'முடிக்கப்பட்டது',
 };
+
+const STATUS_OPTIONS = ['CREATED', 'IN_PROGRESS', 'DISCONTINUED', 'COMPLETED'];
 
 type ProjectDetailsRouteProp = RouteProp<rootStackParamList, 'ProjectDetails'>;
 type ProjectDetailsNavProp = NativeStackNavigationProp<
@@ -248,6 +258,11 @@ const ProjectDetails: React.FC = () => {
   const [selectedItemImageIndex, setSelectedItemImageIndex] = useState(0);
 
   const [refreshing, setRefreshing] = useState(false);
+  const [statusModalVisible, setStatusModalVisible] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState(
+    project.status || 'CREATED',
+  );
+  const [statusUpdating, setStatusUpdating] = useState(false);
 
   const { translate } = useTranslator();
 
@@ -480,12 +495,15 @@ const ProjectDetails: React.FC = () => {
         return '#FFC107';
       case 'COMPLETED':
         return '#2196F3';
+      case 'DISCONTINUED':
+        return '#FF7043';
       default:
         return '#9E9E9E';
     }
   };
 
-  const displayStatus = project.status || project.siteStatus;
+  const displayStatusRaw = project.status || project.siteStatus || 'CREATED';
+  const displayStatus = t(displayStatusRaw);
 
   const togglePlayback = useCallback(
     async (recordingUrl: string) => {
@@ -537,6 +555,26 @@ const ProjectDetails: React.FC = () => {
 
   const handleAddPayment = () => {
     navigation.navigate('PaymentPage', { project });
+  };
+
+  const openStatusDialog = () => {
+    setSelectedStatus(project.status || 'CREATED');
+    setStatusModalVisible(true);
+  };
+
+  const handleStatusUpdate = async () => {
+    if (statusUpdating || !selectedStatus) return;
+    setStatusUpdating(true);
+    try {
+      await ProjectAPI.updateStatus(project.id, selectedStatus);
+      setProject(prev => ({ ...prev, status: selectedStatus }));
+      setStatusModalVisible(false);
+      Alert.alert(t('Success'), t('Status updated'));
+    } catch (e: any) {
+      Alert.alert(t('Error'), e.message || t('Failed to update status'));
+    } finally {
+      setStatusUpdating(false);
+    }
   };
 
   const updateGPS = async () => {
@@ -756,15 +794,20 @@ const ProjectDetails: React.FC = () => {
               <Text style={styles.name} numberOfLines={1}>
                 {project.customerName}
               </Text>
-              <Chip
-                style={[
-                  styles.statusChip,
-                  { backgroundColor: getStatusColor(project.status) },
-                ]}
-                textStyle={styles.statusText}
+              <TouchableOpacity
+                onPress={openStatusDialog}
+                disabled={role !== 'superadmin'}
               >
-                {displayStatus}
-              </Chip>
+                <Chip
+                  style={[
+                    styles.statusChip,
+                    { backgroundColor: getStatusColor(project.status) },
+                  ]}
+                  textStyle={styles.statusText}
+                >
+                  {displayStatus}
+                </Chip>
+              </TouchableOpacity>
             </View>
           </Card>
 
@@ -1287,6 +1330,49 @@ const ProjectDetails: React.FC = () => {
             </View>
           </Modal>
 
+          {/* Status Update Dialog */}
+          <Dialog
+            visible={statusModalVisible}
+            onDismiss={() => setStatusModalVisible(false)}
+          >
+            <Dialog.Title>{t('Update Status')}</Dialog.Title>
+            <Dialog.Content>
+              <Text style={styles.statusDialogLabel}>{t('Select Status')}</Text>
+              <RadioButton.Group
+                onValueChange={value => setSelectedStatus(value)}
+                value={selectedStatus}
+              >
+                {STATUS_OPTIONS.map(option => (
+                  <View
+                    key={option}
+                    // value={option}
+                    // label={t(option)}
+                    // position="leading"
+                    // style={styles.statusOption}
+                    style={styles.statusOption}
+                  >
+                    <RadioButton.Android value={option} />
+                    <Text style={styles.statusOptionLabel}>{t(option)}</Text>
+                  </View>
+                ))}
+              </RadioButton.Group>
+            </Dialog.Content>
+            <Dialog.Actions>
+              <Button onPress={() => setStatusModalVisible(false)}>
+                {t('Cancel')}
+              </Button>
+              <Button
+                mode="contained"
+                onPress={handleStatusUpdate}
+                loading={statusUpdating}
+                disabled={statusUpdating}
+                style={{ paddingHorizontal: wp(2) }}
+              >
+                {t('Update Status')}
+              </Button>
+            </Dialog.Actions>
+          </Dialog>
+
           {/* GPS Update Dialog */}
           <Dialog
             visible={gpsModalVisible}
@@ -1638,6 +1724,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: wp(2.5),
   },
   statusText: { color: '#fff', fontSize: wp(3.2), fontWeight: '600' },
+  statusDialogLabel: {
+    fontSize: wp(3.6),
+    marginBottom: hp(1),
+    color: '#555',
+    fontWeight: '500',
+  },
+  statusOption: {
+    borderRadius: wp(2),
+    paddingHorizontal: wp(1),
+    flexDirection: 'row',
+    alignItems: 'center',
+    //justifyContent: 'center',
+  },
+  statusOptionLabel: {
+    //fontSize: wp(3.6),
+    color: '#333',
+  },
   detailsCard: {
     padding: wp(4),
     backgroundColor: '#fff',
