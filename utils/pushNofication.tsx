@@ -49,6 +49,7 @@
 
 import { PermissionsAndroid, Platform, Alert } from 'react-native';
 import { OneSignal } from 'react-native-onesignal';
+import { navigationRef } from '../navigation/AppNavigation';
 
 const ONE_SIGNAL_APP_ID = '81985d30-6da5-4f7a-8b63-e629cddfefb3';
 
@@ -73,10 +74,12 @@ export const initNotification = async () => {
 
   OneSignal.Notifications.addEventListener('click', event => {
     const { notification } = event;
-    Alert.alert(
-      'Notification Tapped',
-      `${notification.title}\n${notification.body}`,
-    );
+    console.log('notification clicked', notification);
+    if (navigationRef.isReady()) {
+      navigationRef.current?.navigate('unattendedCustomers');
+    } else {
+      console.log('navigationRef is not ready');
+    }
   });
 
   return true;

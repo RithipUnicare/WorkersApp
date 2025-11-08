@@ -548,7 +548,11 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
 
     setItems(prev =>
       editingItem?.id
-        ? prev.map(i => (i.id === editingItem.id ? newItem : i))
+        ? prev.map(i =>
+            i.id === editingItem.id || i.itemName === editingItem.itemName
+              ? newItem
+              : i,
+          )
         : [...prev, newItem],
     );
     setItemModalOpen(false);
@@ -575,9 +579,10 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   );
 
   useEffect(() => {
-    if (!isEditMode && itemsTotal > 0 && !isFromQuotationDetail) {
+    if (itemsTotal > 0 && !isFromQuotationDetail) {
       setTotalAmount(String(itemsTotal));
-      if (actualAmount === 0) setActualAmount(itemsTotal);
+      if (actualAmount === 0 || itemsTotal > actualAmount)
+        setActualAmount(itemsTotal);
     }
   }, [itemsTotal, isEditMode]);
 
@@ -626,6 +631,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           status,
           discount,
           totalBudget: actualAmount,
+          totalAmount,
         };
         await ProjectAPI.update(rawProject.id, payload);
         projectId = rawProject.id;

@@ -182,12 +182,13 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
 
   // Status color & label
   const getStatusInfo = (status: string) => {
+    console.log(status);
     const s = status.toUpperCase();
     switch (s) {
       case 'PAID':
         return { color: '#27ae60', label: t('Paid') };
       case 'INQUIRED':
-        return { color: '#3498db', label: t('Inquired') };
+        return { color: '#e6b518ff', label: t('Enquired') };
       case 'PENDING':
         return { color: '#f39c12', label: t('Pending') };
       case 'CANCELLED':

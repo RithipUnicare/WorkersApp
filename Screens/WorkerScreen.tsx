@@ -27,7 +27,7 @@ type Props = {
 
 const enToTa: Record<string, string> = {
   // Header
-  'Indian Steel Company': 'இந்தியன் ஸ்டீல் நிறுவனம்',
+  'Indian Steel Company': 'Indian Steel Company',
   'Worker App': 'தொழிலாளி ஆப்',
 
   // Welcome

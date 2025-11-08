@@ -256,7 +256,7 @@ const ItemDialog: React.FC<Props> = ({
         const returned = res?.data || {};
         saved.id = returned.id || saved.id;
       }
-
+      console.log('Saved item', saved);
       onSaved(saved);
       onDismiss();
     } catch (e) {

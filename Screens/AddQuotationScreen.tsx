@@ -141,6 +141,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
   const [totalBudget, setTotalBudget] = useState('');
   const [selectedDateObj, setSelectedDateObj] = useState<Date>(new Date());
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const [customers, setCustomers] = useState<any[]>([]);
   const [selectedCustomerIdx, setSelectedCustomerIdx] = useState<number | null>(
@@ -348,13 +349,14 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
   );
 
   useEffect(() => {
-    if (!isEditMode && grandTotal > 0) {
+    if (grandTotal > 0) {
       setTotalBudget(grandTotal.toFixed(2));
-      if (actualAmount === 0) setActualAmount(grandTotal);
+      if (actualAmount === 0 || grandTotal > actualAmount)
+        setActualAmount(grandTotal);
     }
-  }, [grandTotal, isEditMode]);
+  }, [grandTotal]);
 
-  const openItemModal = (item?: QuotationItem) => {
+  const openItemModal = (item?: QuotationItem, index?: number) => {
     if (item) {
       setEditingItem(item);
       setItemName(item.itemName);
@@ -364,11 +366,15 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
       setItemMrp(String(item.rateMrp));
       setItemTax(String(item.taxPercentage));
       setHsnSac(item.hsnSac || '');
+      setEditingIndex(
+        typeof index === 'number' ? index : items.findIndex(i => i === item),
+      );
     } else {
       setEditingItem(null);
       setItemName('');
       setItemDesc('');
       setItemQty('');
+      setEditingIndex(null);
       setSelectedUnitId(null);
       setItemMrp('');
       setItemTax('');
@@ -405,7 +411,11 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
     }
     setItems(prev =>
       editingItem?.id
-        ? prev.map(i => (i.id === editingItem.id ? newItem : i))
+        ? prev.map(i =>
+            i.id === editingItem.id || i.itemName === editingItem.itemName
+              ? newItem
+              : i,
+          )
         : [...prev, newItem],
     );
     setItemModalOpen(false);
@@ -767,7 +777,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
                     <IconButton
                       icon="pencil"
                       size={wp(5)}
-                      onPress={() => openItemModal(item)}
+                      onPress={() => openItemModal(item, index)}
                     />
                     <IconButton
                       icon="delete"
@@ -802,13 +812,13 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
                   const discountValue = text === '' ? 0 : Number(text);
                   setDiscount(discountValue);
                   if (discountValue === 0 || text === '') {
-                    setTotalBudget(String(actualAmount));
+                    setTotalBudget(grandTotal.toFixed(2));
                     setDiscountPercent(0);
                   } else {
                     const percentage =
                       (discountValue / Number(totalBudget)) * 100;
                     setDiscountPercent(percentage);
-                    setTotalBudget(String(Number(totalBudget) - discountValue));
+                    setTotalBudget(String(grandTotal - discountValue));
                   }
                 }}
                 mode="outlined"
@@ -882,11 +892,25 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
           quotationId={rawQuotation?.id || 0}
           item={editingItem}
           onSaved={(saved: any) => {
-            setItems(prev =>
-              editingItem?.id
-                ? prev.map(i => (i.id === editingItem.id ? { ...saved } : i))
-                : [...prev, { ...saved }],
-            );
+            setItems(prev => {
+              if (editingItem?.id) {
+                return prev.map(i =>
+                  i.id === editingItem.id ? { ...saved } : i,
+                );
+              }
+              if (
+                editingIndex !== null &&
+                editingIndex >= 0 &&
+                editingIndex < prev.length
+              ) {
+                const next = [...prev];
+                next[editingIndex] = { ...saved };
+                return next;
+              }
+              return [...prev, { ...saved }];
+            });
+            setEditingItem(null);
+            setEditingIndex(null);
           }}
           title={editingItem ? t('Edit Item') : t('Add Item')}
           maxHeight={hp(55)}

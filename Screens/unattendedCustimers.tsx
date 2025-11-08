@@ -157,7 +157,7 @@ const UnattendedCustomers: React.FC<Props> = ({ navigation }) => {
       case 'PAID':
         return t('Paid');
       case 'INQUIRED':
-        return t('Inquired');
+        return t('Enquired');
       case 'PENDING':
         return t('Pending');
       case 'CANCELLED':
@@ -197,7 +197,7 @@ const UnattendedCustomers: React.FC<Props> = ({ navigation }) => {
                         : item.status === 'INQUIRED'
                         ? '#3498db'
                         : item.status === 'PENDING'
-                        ? '#f39c12'
+                        ? '#e6b518ff'
                         : item.status === 'CANCELLED'
                         ? '#e74c3c'
                         : '#95a5a6',

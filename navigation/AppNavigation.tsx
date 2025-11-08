@@ -2,6 +2,7 @@ import {
   NavigationContainer,
   useNavigationContainerRef,
 } from '@react-navigation/native';
+import { createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useEffect } from 'react';
 import { setupSessionTimeout } from '../utils/sessionManager';
@@ -52,11 +53,11 @@ export type rootStackParamList = {
 };
 
 const Stack = createNativeStackNavigator<rootStackParamList>();
-
+export const navigationRef = createNavigationContainerRef<rootStackParamList>();
 const AppNavigation = () => {
   const theme = useColorScheme() === 'dark';
 
-  const navigationRef = useNavigationContainerRef<rootStackParamList>();
+  //const navigationRef = useNavigationContainerRef<rootStackParamList>();
 
   useEffect(() => {
     // Setup session timeout when component mounts
@@ -68,7 +69,7 @@ const AppNavigation = () => {
         cleanupSessionTimeout();
       }
     };
-  }, [navigationRef]);
+  }, []);
 
   return (
     <NavigationContainer ref={navigationRef}>
