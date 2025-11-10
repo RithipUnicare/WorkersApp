@@ -182,7 +182,6 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
 
   // Status color & label
   const getStatusInfo = (status: string) => {
-    console.log(status);
     const s = status.toUpperCase();
     switch (s) {
       case 'PAID':

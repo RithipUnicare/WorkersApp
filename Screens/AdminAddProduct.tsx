@@ -655,7 +655,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           console.log(error);
         }
         setSnackbar({ visible: true, message: t('Project updated!') });
-        navigation.replace('ProjectDetails', { project: rawProject });
+        navigation.navigate('ProjectDetails', { project: rawProject });
       } else {
         const payload = {
           customerId,
@@ -778,7 +778,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           ToastAndroid.SHORT,
         );
         const currentProject: Project = created?.data;
-        navigation.replace('ProjectDetails', { project: currentProject });
+        navigation.navigate('ProjectDetails', { project: currentProject });
         setAdvanceModalOpen(true);
       }
     } catch (e: any) {
@@ -1090,7 +1090,13 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               value={deliveryDate}
               mode="outlined"
               editable={false}
-              right={<TextInput.Icon icon="calendar" size={wp(6)} />}
+              right={
+                <TextInput.Icon
+                  icon="calendar"
+                  size={wp(6)}
+                  onPress={() => setDatePickerOpen(true)}
+                />
+              }
               style={styles.input}
               theme={{ roundness: wp(2.5) }}
             />

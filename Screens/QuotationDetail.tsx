@@ -520,6 +520,7 @@ const QuotationDetail: React.FC = () => {
       case 'REJECTED':
         return '#e74c3c';
       case 'CREATED':
+        return '#0a660dff';
       default:
         return '#9E9E9E';
     }

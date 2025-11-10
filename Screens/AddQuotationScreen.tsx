@@ -315,6 +315,9 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
         setAddress(cust.address || '');
       }
     }
+    if (isFromInquiry) {
+      setDescription(rawCustomer.workDescription);
+    }
   }, [rawQuotation, rawCustomer, customers, isEditMode, isFromInquiry, t]);
 
   const customerDropdown = useMemo(
@@ -517,7 +520,6 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
                 hsnSac: item.hsnSac,
               };
               const res = await QuotationAPI.updateItem(item.id, payload);
-              console.log(res, payload);
             }
           });
         }
@@ -547,7 +549,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
 
       setTimeout(
         () =>
-          navigation.replace('QuotationDetail', {
+          navigation.navigate('QuotationDetail', {
             quotation: currentQuotation,
           }),
         800,
@@ -851,7 +853,13 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
               mode="outlined"
               editable={false}
               style={styles.input}
-              right={<TextInput.Icon icon="calendar" size={wp(6)} />}
+              right={
+                <TextInput.Icon
+                  icon="calendar"
+                  size={wp(6)}
+                  onPress={() => setDatePickerOpen(true)}
+                />
+              }
             />
           </TouchableOpacity>
 

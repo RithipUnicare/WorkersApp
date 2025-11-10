@@ -44,6 +44,7 @@ import { Unit } from './AdminAddProduct';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslator } from 'react-native-translator';
 import ItemDialog from './components/ItemDialog';
+import { addTextWatermark } from '../utils/Watermarker';
 
 const { width, height } = Dimensions.get('window');
 const wp = (percentage: number) => (width * percentage) / 100;
@@ -292,6 +293,7 @@ const ProjectDetails: React.FC = () => {
       { mediaType: 'photo', quality: 0.7, selectionLimit: 10 },
       (response: ImagePickerResponse) => {
         if (response.didCancel) return;
+
         if (response.errorCode) {
           Alert.alert(
             t('Error'),
@@ -299,11 +301,31 @@ const ProjectDetails: React.FC = () => {
           );
           return;
         }
-        const uris = response.assets?.map(a => a.uri!).filter(Boolean) || [];
-        setSelectedItemImages(prev => [...prev, ...uris]);
+
+        const processed: string[] = [];
+        const promises: Promise<void>[] = [];
+
+        for (const asset of response.assets || []) {
+          if (!asset.uri) continue;
+
+          const p = addTextWatermark(asset.uri)
+            .then(wmUri => {
+              processed.push(wmUri);
+            })
+            .catch(err => {
+              console.log('Watermark failed:', err);
+            });
+
+          promises.push(p);
+        }
+
+        Promise.all(promises).then(() => {
+          setSelectedItemImages(prev => [...prev, ...processed]);
+        });
       },
     );
   };
+
   const takeProjectItemPhoto = () => {
     launchCamera(
       { mediaType: 'photo', quality: 0.7 },
@@ -892,7 +914,7 @@ const ProjectDetails: React.FC = () => {
                 <View style={styles.amountBlock}>
                   <Text style={styles.amountLabel}>{t('Budget')}</Text>
                   <Text style={styles.amountValue}>
-                    ₹{project.totalBudget?.toLocaleString('en-IN') || '0'}
+                    ₹{project.grandTotal?.toLocaleString('en-IN') || '0'}
                   </Text>
                 </View>
                 <View style={styles.divider} />

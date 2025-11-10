@@ -126,7 +126,9 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
   );
 
   // Form validation
-  const isValidPhone = phone.length === 10 && /^\d+$/.test(phone);
+  const isValidPhone =
+    phone.split(' ')[1].length === 10 && /^\d+$/.test(phone.split(' ')[1]);
+  console.log(phone.split(' ')[1]);
   const isFormValid =
     name.trim().length > 0 && isValidPhone && address.trim().length > 0;
 
@@ -229,13 +231,13 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
             label={t('Phone Number *')}
             value={phone}
             onChangeText={text =>
-              setPhone(text.replace(/[^0-9]/g, '').slice(0, 10))
+              setPhone(text.replace(/[^0-9+ ]/g, '').slice(0, 14))
             }
             mode="outlined"
             style={styles.input}
             theme={{ roundness: wp(2.5) }}
-            keyboardType="numeric"
-            maxLength={10}
+            keyboardType="phone-pad"
+            maxLength={14}
             contentStyle={styles.inputContent}
             outlineColor="#ddd"
             activeOutlineColor={isValidPhone ? '#27ae60' : '#0a411fff'}

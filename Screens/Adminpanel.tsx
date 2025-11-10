@@ -674,17 +674,11 @@ const CreateUserTab: React.FC = () => {
   const validatePassword = (password: string) => password.length >= 6;
 
   const handleCreateUser = async () => {
-    if (
-      !name.trim() ||
-      !mobile.trim() ||
-      !email.trim() ||
-      !username.trim() ||
-      !password.trim()
-    ) {
+    if (openButton()) {
       setSnackbar({ visible: true, message: t('All fields are required') });
       return;
     }
-    if (!validateEmail(email)) {
+    if (!validateEmail(email) && role !== 'worker') {
       setSnackbar({ visible: true, message: t('Invalid email format') });
       return;
     }
@@ -695,7 +689,7 @@ const CreateUserTab: React.FC = () => {
       });
       return;
     }
-    if (!validatePassword(password)) {
+    if (!validatePassword(password) && role !== 'worker') {
       setSnackbar({
         visible: true,
         message: t('Password must be at least 6 characters'),
@@ -740,6 +734,20 @@ const CreateUserTab: React.FC = () => {
     }
   };
 
+  const openButton = () => {
+    if (role === 'worker') {
+      return !username.trim() || !mobile.trim() || loading || !name.trim();
+    }
+    return (
+      loading ||
+      !name.trim() ||
+      !mobile.trim() ||
+      !email.trim() ||
+      !username.trim() ||
+      !password.trim()
+    );
+  };
+
   return (
     <>
       <KeyboardAvoidingView
@@ -776,7 +784,7 @@ const CreateUserTab: React.FC = () => {
               mode="outlined"
               style={styles.input}
               keyboardType="phone-pad"
-              maxLength={10}
+              maxLength={14}
               theme={{ roundness: wp(2.5) }}
               contentStyle={[
                 styles.inputContent,
@@ -792,23 +800,25 @@ const CreateUserTab: React.FC = () => {
               }
             />
 
-            <TextInput
-              label={t('Email *')}
-              value={email}
-              onChangeText={setEmail}
-              mode="outlined"
-              style={styles.input}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              theme={{ roundness: wp(2.5) }}
-              contentStyle={[
-                styles.inputContent,
-                { fontSize: getFontSize(wp(4)) },
-              ]}
-              outlineColor="#ddd"
-              activeOutlineColor="#0a411fff"
-              left={<TextInput.Icon icon="email" size={wp(6)} />}
-            />
+            {role !== 'worker' && (
+              <TextInput
+                label={t('Email *')}
+                value={email}
+                onChangeText={setEmail}
+                mode="outlined"
+                style={styles.input}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                theme={{ roundness: wp(2.5) }}
+                contentStyle={[
+                  styles.inputContent,
+                  { fontSize: getFontSize(wp(4)) },
+                ]}
+                outlineColor="#ddd"
+                activeOutlineColor="#0a411fff"
+                left={<TextInput.Icon icon="email" size={wp(6)} />}
+              />
+            )}
 
             <TextInput
               label={t('Username *')}
@@ -827,29 +837,31 @@ const CreateUserTab: React.FC = () => {
               left={<TextInput.Icon icon="account" size={wp(6)} />}
             />
 
-            <TextInput
-              label={t('Password *')}
-              value={password}
-              onChangeText={setPassword}
-              mode="outlined"
-              style={styles.input}
-              secureTextEntry={!passwordVisible}
-              theme={{ roundness: wp(2.5) }}
-              contentStyle={[
-                styles.inputContent,
-                { fontSize: getFontSize(wp(4)) },
-              ]}
-              outlineColor="#ddd"
-              activeOutlineColor="#0a411fff"
-              left={<TextInput.Icon icon="lock" size={wp(6)} />}
-              right={
-                <TextInput.Icon
-                  icon={passwordVisible ? 'eye-off' : 'eye'}
-                  size={wp(6)}
-                  onPress={() => setPasswordVisible(!passwordVisible)}
-                />
-              }
-            />
+            {role !== 'worker' && (
+              <TextInput
+                label={t('Password *')}
+                value={password}
+                onChangeText={setPassword}
+                mode="outlined"
+                style={styles.input}
+                secureTextEntry={!passwordVisible}
+                theme={{ roundness: wp(2.5) }}
+                contentStyle={[
+                  styles.inputContent,
+                  { fontSize: getFontSize(wp(4)) },
+                ]}
+                outlineColor="#ddd"
+                activeOutlineColor="#0a411fff"
+                left={<TextInput.Icon icon="lock" size={wp(6)} />}
+                right={
+                  <TextInput.Icon
+                    icon={passwordVisible ? 'eye-off' : 'eye'}
+                    size={wp(6)}
+                    onPress={() => setPasswordVisible(!passwordVisible)}
+                  />
+                }
+              />
+            )}
 
             <Dropdown
               style={styles.dropdown}
@@ -898,14 +910,7 @@ const CreateUserTab: React.FC = () => {
               contentStyle={styles.createButtonContent}
               buttonColor="#0a411fff"
               loading={loading}
-              disabled={
-                loading ||
-                !name.trim() ||
-                !mobile.trim() ||
-                !email.trim() ||
-                !username.trim() ||
-                !password.trim()
-              }
+              disabled={openButton()}
               icon="account-plus"
             >
               {t('Create User')}
