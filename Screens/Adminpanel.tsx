@@ -699,7 +699,7 @@ const CreateUserTab: React.FC = () => {
 
     setLoading(true);
     const payload = {
-      name: name.trim(),
+      name: name,
       mobile: mobile.trim(),
       email: email.trim(),
       username: username.trim(),

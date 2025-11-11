@@ -181,47 +181,53 @@ const WorkerHomePage: React.FC<Props> = ({ navigation }) => {
       </View>
 
       {/* Content */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Welcome Section */}
-        <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeText}>{`${t(
-            'Welcome',
-          )}, ${username}`}</Text>
-          <Text style={styles.accountType}>{t('Worker Account')}</Text>
-        </View>
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View>
+          {/* Welcome Section */}
+          <View style={styles.welcomeSection}>
+            <Text style={styles.welcomeText}>{`${t(
+              'Welcome',
+            )}, ${username}`}</Text>
+            <Text style={styles.accountType}>{t('Worker Account')}</Text>
+          </View>
 
-        {/* Menu Items */}
-        <View style={styles.menuContainer}>
-          {menuItems.map(item => (
-            <TouchableOpacity
-              key={item.id}
-              onPress={item.onPress}
-              activeOpacity={0.7}
-            >
-              <Card style={styles.menuCard}>
-                <View style={styles.menuCardContent}>
-                  <View
-                    style={[
-                      styles.iconContainer,
-                      { backgroundColor: item.iconBg },
-                    ]}
-                  >
-                    <MaterialCommunityIcons
-                      name={item.icon}
-                      size={width * 0.08}
-                      color={item.iconColor}
-                    />
+          {/* Menu Items */}
+          <View style={styles.menuContainer}>
+            {menuItems.map(item => (
+              <TouchableOpacity
+                key={item.id}
+                onPress={item.onPress}
+                activeOpacity={0.7}
+              >
+                <Card style={styles.menuCard}>
+                  <View style={styles.menuCardContent}>
+                    <View
+                      style={[
+                        styles.iconContainer,
+                        { backgroundColor: item.iconBg },
+                      ]}
+                    >
+                      <MaterialCommunityIcons
+                        name={item.icon}
+                        size={width * 0.08}
+                        color={item.iconColor}
+                      />
+                    </View>
+                    <View style={styles.menuTextContainer}>
+                      <Text style={styles.menuTitle}>{item.title}</Text>
+                      <Text style={styles.menuDescription}>
+                        {item.description}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={styles.menuTextContainer}>
-                    <Text style={styles.menuTitle}>{item.title}</Text>
-                    <Text style={styles.menuDescription}>
-                      {item.description}
-                    </Text>
-                  </View>
-                </View>
-              </Card>
-            </TouchableOpacity>
-          ))}
+                </Card>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         {/* Footer */}
@@ -280,6 +286,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'space-between',
   },
   welcomeSection: {
     paddingHorizontal: width * 0.05,
