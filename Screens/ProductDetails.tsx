@@ -302,26 +302,8 @@ const ProjectDetails: React.FC = () => {
           return;
         }
 
-        const processed: string[] = [];
-        const promises: Promise<void>[] = [];
-
-        for (const asset of response.assets || []) {
-          if (!asset.uri) continue;
-
-          const p = addTextWatermark(asset.uri)
-            .then(wmUri => {
-              processed.push(wmUri);
-            })
-            .catch(err => {
-              console.log('Watermark failed:', err);
-            });
-
-          promises.push(p);
-        }
-
-        Promise.all(promises).then(() => {
-          setSelectedItemImages(prev => [...prev, ...processed]);
-        });
+        const uris = response.assets?.map(a => a.uri!).filter(Boolean) || [];
+        setSelectedItemImages(prev => [...prev, ...uris]);
       },
     );
   };
@@ -696,6 +678,7 @@ const ProjectDetails: React.FC = () => {
       },
       (response: ImagePickerResponse) => {
         if (response.didCancel) return;
+
         if (response.errorCode) {
           Alert.alert(
             t('Error'),
@@ -703,8 +686,28 @@ const ProjectDetails: React.FC = () => {
           );
           return;
         }
-        const uris = response.assets?.map(a => a.uri!).filter(Boolean) || [];
-        setSelectedImages(prev => [...prev, ...uris]);
+
+        const processed: string[] = [];
+        const promises: Promise<void>[] = [];
+
+        for (const asset of response.assets || []) {
+          if (!asset.uri) continue;
+
+          const p = addTextWatermark(asset.uri)
+            .then(wmUri => {
+              processed.push(wmUri);
+            })
+            .catch(err => {
+              console.log('Watermark failed:', err);
+            });
+
+          promises.push(p);
+        }
+
+        // When all watermark jobs finish
+        Promise.all(promises).then(() => {
+          setSelectedImages(prev => [...prev, ...processed]);
+        });
       },
     );
   };
@@ -722,7 +725,27 @@ const ProjectDetails: React.FC = () => {
           return;
         }
         if (response.assets?.[0]?.uri) {
-          setSelectedImages(prev => [...prev, response.assets![0].uri!]);
+          const processed: string[] = [];
+          const promises: Promise<void>[] = [];
+
+          for (const asset of response.assets || []) {
+            if (!asset.uri) continue;
+
+            const p = addTextWatermark(asset.uri)
+              .then(wmUri => {
+                processed.push(wmUri);
+              })
+              .catch(err => {
+                console.log('Watermark failed:', err);
+              });
+
+            promises.push(p);
+          }
+
+          // When all watermark jobs finish
+          Promise.all(promises).then(() => {
+            setSelectedImages(prev => [...prev, ...processed]);
+          });
         }
       },
     );

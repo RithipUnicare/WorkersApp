@@ -48,6 +48,7 @@ import {
   ImagePickerResponse,
 } from 'react-native-image-picker';
 import { getLocation } from '../utils/GeoLocation';
+import { addTextWatermark } from '../utils/Watermarker';
 
 const { width, height } = Dimensions.get('window');
 
@@ -374,8 +375,27 @@ const QuotationDetail: React.FC = () => {
           Alert.alert('Error', response.errorMessage || 'Image pick failed');
           return;
         }
-        const uris = response.assets?.map(a => a.uri!).filter(Boolean) || [];
-        setSelectedImages(prev => [...prev, ...uris]);
+        const processed: string[] = [];
+        const promises: Promise<void>[] = [];
+
+        for (const asset of response.assets || []) {
+          if (!asset.uri) continue;
+
+          const p = addTextWatermark(asset.uri)
+            .then(wmUri => {
+              processed.push(wmUri);
+            })
+            .catch(err => {
+              console.log('Watermark failed:', err);
+            });
+
+          promises.push(p);
+        }
+
+        // When all watermark jobs finish
+        Promise.all(promises).then(() => {
+          setSelectedImages(prev => [...prev, ...processed]);
+        });
       },
     );
   };
@@ -390,7 +410,29 @@ const QuotationDetail: React.FC = () => {
           return;
         }
         const uri = response.assets?.[0]?.uri;
-        if (uri) setSelectedImages(prev => [...prev, uri]);
+        if (uri) {
+          const processed: string[] = [];
+          const promises: Promise<void>[] = [];
+
+          for (const asset of response.assets || []) {
+            if (!asset.uri) continue;
+
+            const p = addTextWatermark(asset.uri)
+              .then(wmUri => {
+                processed.push(wmUri);
+              })
+              .catch(err => {
+                console.log('Watermark failed:', err);
+              });
+
+            promises.push(p);
+          }
+
+          // When all watermark jobs finish
+          Promise.all(promises).then(() => {
+            setSelectedImages(prev => [...prev, ...processed]);
+          });
+        }
       },
     );
   };

@@ -36,6 +36,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslator } from 'react-native-translator';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { addTextWatermark } from '../utils/Watermarker';
 
 const { width, height } = Dimensions.get('window');
 const wp = (p: number) => (width * p) / 100;
@@ -695,15 +696,30 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
                       style={styles.uploadBtn}
                       onPress={() => {
                         if (images.length >= 15) return;
+
                         launchImageLibrary(
                           { mediaType: 'photo', quality: 0.6 },
                           r => {
-                            if (r.assets?.[0]?.uri) {
-                              setImages(p => [
-                                ...p,
-                                { uri: r.assets![0].uri!, isLocal: true },
-                              ]);
-                            }
+                            const uri = r.assets?.[0]?.uri;
+                            if (!uri) return;
+
+                            // Apply watermark
+                            addTextWatermark(uri)
+                              .then(wmUri => {
+                                setImages(prev => [
+                                  ...prev,
+                                  { uri: wmUri, isLocal: true },
+                                ]);
+                              })
+                              .catch(err => {
+                                console.log('Watermark error:', err);
+
+                                // fallback: add original image
+                                setImages(prev => [
+                                  ...prev,
+                                  { uri, isLocal: true },
+                                ]);
+                              });
                           },
                         );
                       }}
@@ -719,15 +735,30 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
                       style={styles.uploadBtn}
                       onPress={() => {
                         if (images.length >= 15) return;
+
                         launchCamera(
                           { mediaType: 'photo', quality: 0.6 },
                           r => {
-                            if (r.assets?.[0]?.uri) {
-                              setImages(p => [
-                                ...p,
-                                { uri: r.assets![0].uri!, isLocal: true },
-                              ]);
-                            }
+                            const uri = r.assets?.[0]?.uri;
+                            if (!uri) return;
+
+                            // Apply watermark
+                            addTextWatermark(uri)
+                              .then(wmUri => {
+                                setImages(prev => [
+                                  ...prev,
+                                  { uri: wmUri, isLocal: true },
+                                ]);
+                              })
+                              .catch(err => {
+                                console.log('Watermark error:', err);
+
+                                // fallback to original photo
+                                setImages(prev => [
+                                  ...prev,
+                                  { uri, isLocal: true },
+                                ]);
+                              });
                           },
                         );
                       }}

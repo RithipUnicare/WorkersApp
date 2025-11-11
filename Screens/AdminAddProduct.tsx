@@ -47,6 +47,7 @@ import customParseFormat from 'dayjs/plugin/customParseFormat';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslator } from 'react-native-translator';
 import { Project } from './AdminProductList';
+import { addTextWatermark } from '../utils/Watermarker';
 
 dayjs.extend(customParseFormat);
 
@@ -428,10 +429,21 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       setSnackbar({ visible: true, message: t('Max 15 images allowed') });
       return;
     }
+
     launchImageLibrary({ mediaType: 'photo', quality: 0.6 }, res => {
-      if (res.assets?.[0]?.uri) {
-        setImages(p => [...p, { uri: res.assets![0].uri!, isLocal: true }]);
-      }
+      const uri = res.assets?.[0]?.uri;
+      if (!uri) return;
+
+      addTextWatermark(uri)
+        .then(wmUri => {
+          setImages(prev => [...prev, { uri: wmUri, isLocal: true }]);
+        })
+        .catch(err => {
+          console.log('Watermark error:', err);
+
+          // fallback: original image
+          setImages(prev => [...prev, { uri, isLocal: true }]);
+        });
     });
   };
 
@@ -440,10 +452,21 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       setSnackbar({ visible: true, message: t('Max 15 images allowed') });
       return;
     }
+
     launchCamera({ mediaType: 'photo', quality: 0.6 }, res => {
-      if (res.assets?.[0]?.uri) {
-        setImages(p => [...p, { uri: res.assets![0].uri!, isLocal: true }]);
-      }
+      const uri = res.assets?.[0]?.uri;
+      if (!uri) return;
+
+      addTextWatermark(uri)
+        .then(wmUri => {
+          setImages(prev => [...prev, { uri: wmUri, isLocal: true }]);
+        })
+        .catch(err => {
+          console.log('Watermark error:', err);
+
+          // fallback: original captured image
+          setImages(prev => [...prev, { uri, isLocal: true }]);
+        });
     });
   };
 

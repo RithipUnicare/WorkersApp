@@ -6,11 +6,11 @@ export const addTextWatermark = async (uri: string) => {
   const parsedUser = currentUser ? JSON.parse(currentUser) : null;
   const actions = [
     {
-      text: parsedUser?.name || '',
-      position: { x: -40, y: 40 }, // x: negative means from right
-      color: '#ffffffcc',
-      thickness: 2,
-      textSize: 32,
+      text: parsedUser?.name || 'hello',
+      position: { x: 300, y: 100 },
+      color: '#04ffb0cc',
+      thickness: 5,
+      textSize: 52,
     },
   ];
 
