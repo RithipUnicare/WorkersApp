@@ -223,8 +223,8 @@ export default function generateInvoiceHTML(projectData) {
       }
       
       .total-value { 
-        background-color: #2196F3; 
-        color: white; 
+       
+        color: black; 
         padding: 5px 15px; 
         min-width: 150px; 
         text-align: right;
@@ -232,11 +232,13 @@ export default function generateInvoiceHTML(projectData) {
       }
       
       .total-value.positive {
-        background-color: #27ae60;
+       
+        color:black
       }
       
       .total-value.negative {
-        background-color: #e74c3c;
+       
+        color:black
       }
       
       .notes-section {

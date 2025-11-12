@@ -93,7 +93,7 @@ const AppNavigation = () => {
           component={LoginScreen}
           options={{
             title: 'Login',
-            headerStyle: { backgroundColor: '#075E54' },
+            headerStyle: { backgroundColor: '#00312bff' },
             headerTitleStyle: {
               color: '#fff',
             },

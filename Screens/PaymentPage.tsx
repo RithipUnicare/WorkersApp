@@ -197,6 +197,9 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
     [isTamil, translations],
   );
 
+  const IN_TYPES = ['Cash', 'UPI', 'Bank', 'Cheque'];
+  const OUT_TYPES = ['M-expense', 'Material', 'Labour', 'Transport'];
+
   useEffect(() => {
     navigation.setOptions({
       title: `${t('Payments In')} - ${project.customerName}`,
@@ -248,6 +251,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [notes, setNotes] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [customType, setCustomType] = useState('');
 
   const [previewModalVisible, setPreviewModalVisible] = useState(false);
   const [htmlContent, setHtmlContent] = useState('');
@@ -259,11 +263,20 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
       return;
     }
 
+    if (!isPaymentIn && paymentType === 'Custom' && !customType.trim()) {
+      Alert.alert(t('Invalid'), t('Payment Type'));
+      return;
+    }
+
+    const finalType = !isPaymentIn && paymentType === 'Custom'
+      ? customType.trim()
+      : paymentType;
+
     const payload = {
       projectId: project.id,
       amount: amt,
       paymentDate: dayjs(date).format('YYYY-MM-DD'),
-      type: paymentType,
+      type: finalType,
       notes,
     };
 
@@ -287,7 +300,18 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
     setIsPaymentIn(isIn);
     setAmount(payment.amount.toString());
     setDate(new Date(payment.paymentDate));
-    setPaymentType(payment.type);
+    if (isIn) {
+      setPaymentType(payment.type);
+      setCustomType('');
+    } else {
+      if (OUT_TYPES.includes(payment.type)) {
+        setPaymentType(payment.type);
+        setCustomType('');
+      } else {
+        setPaymentType('Custom');
+        setCustomType(payment.type);
+      }
+    }
     setNotes(payment.notes || '');
     setEditingId(payment.id);
     setModalVisible(true);
@@ -375,7 +399,8 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
     setEditingId(null);
     setAmount('');
     setNotes('');
-    setPaymentType(isPaymentIn ? 'Cash' : 'Vendor');
+    setPaymentType(isPaymentIn ? 'Cash' : 'M-expense');
+    setCustomType('');
   };
 
   const paymentsInTableHead = [
@@ -750,23 +775,32 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                     onValueChange={setPaymentType}
                     value={paymentType}
                   >
-                    {(isPaymentIn
-                      ? ['Cash', 'UPI', 'Bank', 'Cheque']
-                      : ['M-expense', 'Material', 'Labour', 'Transport']
-                    ).map(type => (
-                      <View key={type} style={styles.radioRow}>
-                        <RadioButton value={type} />
-                        <Text
-                          style={[
-                            styles.radioText,
-                            { fontSize: getFontSize(wp(3.8)) },
-                          ]}
-                        >
-                          {type === paymentType ? t(paymentType) : t(type)}
-                        </Text>
-                      </View>
-                    ))}
+                    {(isPaymentIn ? IN_TYPES : [...OUT_TYPES, 'Custom']).map(
+                      type => (
+                        <View key={type} style={styles.radioRow}>
+                          <RadioButton value={type} />
+                          <Text
+                            style={[
+                              styles.radioText,
+                              { fontSize: getFontSize(wp(3.8)) },
+                            ]}
+                          >
+                            {type === paymentType ? t(paymentType) : t(type)}
+                          </Text>
+                        </View>
+                      ),
+                    )}
                   </RadioButton.Group>
+                  {!isPaymentIn && paymentType === 'Custom' && (
+                    <TextInput
+                      label={t('Custom')}
+                      value={customType}
+                      onChangeText={setCustomType}
+                      mode="outlined"
+                      style={styles.input}
+                      theme={{ roundness: wp(2) }}
+                    />
+                  )}
                   <TextInput
                     label={t('Date')}
                     value={dayjs(date).format('DD-MM-YYYY')}
