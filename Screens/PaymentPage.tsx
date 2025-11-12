@@ -411,7 +411,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
         icon="pencil"
         size={wp(4.5)}
         onPress={() => handleEditPayment(item, true)}
-        iconColor="#0a411fff"
+        iconColor="#075E54"
         style={styles.iconBtn}
       />
       <IconButton
@@ -457,7 +457,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
         icon="pencil"
         size={wp(4.5)}
         onPress={() => handleEditPayment(item, false)}
-        iconColor="#0a411fff"
+        iconColor="#075E54"
         style={styles.iconBtn}
       />
       <IconButton
@@ -486,7 +486,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
         >
           {loading ? (
             <View style={styles.loader}>
-              <ActivityIndicator size="large" color="#0a411fff" />
+              <ActivityIndicator size="large" color="#075E54" />
             </View>
           ) : (
             <>
@@ -694,7 +694,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                   onPress={previewInvoice}
                   style={styles.actionBtn}
                   contentStyle={styles.actionBtnContent}
-                  textColor="#0a411fff"
+                  textColor="#075E54"
                 >
                   {t('Preview Invoice')}
                 </Button>
@@ -856,7 +856,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                 startInLoadingState={true}
                 renderLoading={() => (
                   <View style={styles.webViewLoader}>
-                    <ActivityIndicator size="large" color="#0a411fff" />
+                    <ActivityIndicator size="large" color="#075E54" />
                     <Text
                       style={[
                         styles.webViewLoaderText,
@@ -917,7 +917,7 @@ const styles = StyleSheet.create({
   },
   addBtn: { flex: 1, borderRadius: wp(2) },
   addBtnContent: { height: hp(6.5) },
-  actionBtn: { flex: 1, borderRadius: wp(2), borderColor: '#0a411fff' },
+  actionBtn: { flex: 1, borderRadius: wp(2), borderColor: '#075E54' },
   actionBtnContent: { height: hp(6.5) },
   empty: {
     textAlign: 'center',
@@ -984,7 +984,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: wp(4),
     paddingVertical: hp(1.5),
-    backgroundColor: '#0a411fff',
+    backgroundColor: '#075E54',
     elevation: 4,
   },
   previewTitle: { fontWeight: '600', color: '#fff' },

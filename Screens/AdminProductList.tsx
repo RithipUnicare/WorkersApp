@@ -170,7 +170,7 @@ const ProjectCard = React.memo(
             <MaterialCommunityIcons
               name="map-marker"
               size={wp(4.5)}
-              color="#0a411fff"
+              color="#075E54"
             />
             <Text style={styles.infoText} numberOfLines={1}>
               {item.location?.address || t('No location')}
@@ -181,7 +181,7 @@ const ProjectCard = React.memo(
             <MaterialCommunityIcons
               name="phone"
               size={wp(4.5)}
-              color="#0a411fff"
+              color="#075E54"
             />
             <Text style={styles.infoText}>{item.customerContactNo}</Text>
           </View>
@@ -190,7 +190,7 @@ const ProjectCard = React.memo(
             <MaterialCommunityIcons
               name="calendar"
               size={wp(4.5)}
-              color="#0a411fff"
+              color="#075E54"
             />
             <Text style={styles.infoText}>
               {t('Delivery:')} {dayjs(item.deliveryDate).format('DD MMM YYYY')}
@@ -211,7 +211,7 @@ const ProjectCard = React.memo(
             <MaterialCommunityIcons
               name="clock"
               size={wp(4.5)}
-              color="#0a411fff"
+              color="#075E54"
             />
             <Text style={styles.infoText}>
               {t('Time:')} {formatTime(item.customerTime)}
@@ -438,7 +438,7 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
               theme={{ roundness: wp(2.5) }}
               contentStyle={styles.searchContent}
               outlineColor="#ddd"
-              activeOutlineColor="#0a411fff"
+              activeOutlineColor="#075E54"
               left={<TextInput.Icon icon="magnify" size={wp(6)} />}
               right={
                 search ? (
@@ -455,7 +455,7 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
               <MaterialCommunityIcons
                 name={sortAsc ? 'sort-ascending' : 'sort-descending'}
                 size={wp(6)}
-                color="#0a411fff"
+                color="#075E54"
               />
             </TouchableOpacity>
             <TouchableOpacity
@@ -483,7 +483,7 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
               <Switch
                 value={isTamil}
                 onValueChange={toggleLanguage}
-                color="#0a411fff"
+                color="#075E54"
               />
               <Text style={[styles.langText, isTamil && styles.activeLang]}>
                 {t('Tamil')}
@@ -494,7 +494,7 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
 
         {loading ? (
           <View style={styles.loader}>
-            <ActivityIndicator size="large" color="#0a411fff" />
+            <ActivityIndicator size="large" color="#075E54" />
           </View>
         ) : (
           <FlatList
@@ -538,7 +538,7 @@ const styles = StyleSheet.create({
     width: wp(10),
     height: wp(10),
     borderRadius: wp(5),
-    backgroundColor: '#0a411fff',
+    backgroundColor: '#075E54',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -576,7 +576,7 @@ const styles = StyleSheet.create({
     marginHorizontal: wp(2),
   },
   activeLang: {
-    color: '#0a411fff',
+    color: '#075E54',
     fontWeight: '600',
   },
   listContent: {

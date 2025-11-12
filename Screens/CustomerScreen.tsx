@@ -262,7 +262,7 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
                 <IconButton
                   icon="pencil"
                   size={wp(6)}
-                  iconColor="#0a411fff"
+                  iconColor="#075E54"
                   onPress={handleEdit}
                 />
                 <IconButton
@@ -297,7 +297,7 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
                   <MaterialCommunityIcons
                     name="phone"
                     size={wp(5.5)}
-                    color="#0a411fff"
+                    color="#075E54"
                   />
                 </View>
                 <View style={styles.infoTextContainer}>
@@ -335,7 +335,7 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
                 <MaterialCommunityIcons
                   name="home"
                   size={wp(5.5)}
-                  color="#0a411fff"
+                  color="#075E54"
                 />
               </View>
               <View style={styles.infoTextContainer}>
@@ -354,7 +354,7 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
                 <MaterialCommunityIcons
                   name="text-box"
                   size={wp(5.5)}
-                  color="#0a411fff"
+                  color="#075E54"
                 />
               </View>
               <View style={styles.infoTextContainer}>
@@ -370,7 +370,7 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
                 <MaterialCommunityIcons
                   name="calendar-clock"
                   size={wp(5.5)}
-                  color="#0a411fff"
+                  color="#075E54"
                 />
               </View>
               <View style={styles.infoTextContainer}>
@@ -391,7 +391,7 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
                     <MaterialCommunityIcons
                       name="calendar"
                       size={wp(5.5)}
-                      color="#0a411fff"
+                      color="#075E54"
                     />
                   </View>
                   <View style={styles.infoTextContainer}>
@@ -409,7 +409,7 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
                 <MaterialCommunityIcons
                   name="clock-outline"
                   size={wp(5.5)}
-                  color="#0a411fff"
+                  color="#075E54"
                 />
               </View>
               <View style={styles.infoTextContainer}>
@@ -458,7 +458,7 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
                   setFabVisible(false);
                   handleEdit();
                 },
-                style: { backgroundColor: '#0a411fff' },
+                style: { backgroundColor: '#075E54' },
               },
               {
                 icon: 'delete',
@@ -585,7 +585,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   addProjectButton: {
-    backgroundColor: '#0a411fff',
+    backgroundColor: '#075E54',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -600,7 +600,7 @@ const styles = StyleSheet.create({
     marginLeft: wp(2),
   },
   fabStyle: {
-    backgroundColor: '#0a411fff',
+    backgroundColor: '#075E54',
   },
   fabGroup: {
     paddingBottom: hp(12),

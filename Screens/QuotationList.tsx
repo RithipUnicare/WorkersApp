@@ -131,7 +131,7 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
       case 'DRAFT':
         return '#9E9E9E';
       default:
-        return '#0a411fff';
+        return '#075E54';
     }
   };
 
@@ -169,7 +169,7 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
           <MaterialCommunityIcons
             name="phone"
             size={width * 0.045}
-            color="#0a411fff"
+            color="#075E54"
           />
           <Text style={styles.infoText}>{item.customerContactNo}</Text>
         </View>
@@ -178,7 +178,7 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
           <MaterialCommunityIcons
             name="map-marker"
             size={width * 0.045}
-            color="#0a411fff"
+            color="#075E54"
           />
           <Text style={styles.infoText} numberOfLines={1}>
             {item.address || t('No address')}
@@ -189,7 +189,7 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
           <MaterialCommunityIcons
             name="calendar"
             size={width * 0.045}
-            color="#0a411fff"
+            color="#075E54"
           />
           <Text style={styles.infoText}>
             {t('Delivery')}: {dayjs(item.deliveryDate).format('DD-MM-YYYY')}
@@ -200,7 +200,7 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
           <MaterialCommunityIcons
             name="text-box"
             size={width * 0.045}
-            color="#0a411fff"
+            color="#075E54"
           />
           <Text style={styles.infoText} numberOfLines={2}>
             {item.projectDescription}
@@ -241,7 +241,7 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
           <MaterialCommunityIcons
             name={sortAsc ? 'sort-ascending' : 'sort-descending'}
             size={width * 0.065}
-            color="#0a411fff"
+            color="#075E54"
           />
         </TouchableOpacity>
       </View>
@@ -276,7 +276,7 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
           style={styles.addButton}
           contentStyle={styles.addButtonContent}
           labelStyle={styles.addButtonLabel}
-          buttonColor="#0a411fff"
+          buttonColor="#075E54"
         >
           {t('Add Quotation')}
         </Button>
@@ -355,7 +355,7 @@ const styles = StyleSheet.create({
   amountValue: {
     fontSize: width * 0.042,
     fontWeight: 'bold',
-    color: '#0a411fff',
+    color: '#075E54',
     textAlign: 'left',
   },
   itemCount: {
@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   itemCountText: {
-    color: '#0a411fff',
+    color: '#075E54',
     fontSize: width * 0.032,
     fontWeight: '600',
   },

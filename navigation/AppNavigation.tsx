@@ -93,7 +93,7 @@ const AppNavigation = () => {
           component={LoginScreen}
           options={{
             title: 'Login',
-            headerStyle: { backgroundColor: '#0b6612ff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -119,7 +119,7 @@ const AppNavigation = () => {
           name="CustomerList"
           component={CustomerList}
           options={{
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -132,7 +132,7 @@ const AppNavigation = () => {
           options={{
             presentation: 'modal',
             gestureDirection: 'vertical',
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -143,7 +143,7 @@ const AppNavigation = () => {
           name="ProjectList"
           component={ProjectList}
           options={{
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -155,7 +155,7 @@ const AppNavigation = () => {
           component={ProjectDetails}
           options={{
             title: 'Project Details',
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -168,7 +168,7 @@ const AppNavigation = () => {
           options={{
             presentation: 'modal',
             gestureDirection: 'vertical',
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -179,7 +179,7 @@ const AppNavigation = () => {
           name="AdminPanel"
           component={AdminPanel}
           options={{
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -191,7 +191,7 @@ const AppNavigation = () => {
           component={PaymentPage}
           options={{
             title: 'Payments',
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -203,7 +203,7 @@ const AppNavigation = () => {
           component={CustomerDetail}
           options={{
             title: 'Customer Details',
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -215,7 +215,7 @@ const AppNavigation = () => {
           component={UnattendedCustomers}
           options={{
             title: 'Unattended Customers',
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -227,7 +227,7 @@ const AppNavigation = () => {
           component={RecoredAudio}
           options={{
             title: 'Recored Audio',
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -239,7 +239,7 @@ const AppNavigation = () => {
           component={AddQuotation}
           options={{
             title: 'Add Quotation',
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -251,7 +251,7 @@ const AppNavigation = () => {
           component={QuotationList}
           options={{
             title: 'Quotations',
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -263,7 +263,7 @@ const AppNavigation = () => {
           component={QuotationDetail}
           options={{
             title: 'Quotation Details',
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -275,7 +275,7 @@ const AppNavigation = () => {
           component={PendingPayments}
           options={{
             title: 'Pending Payments',
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },

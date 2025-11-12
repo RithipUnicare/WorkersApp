@@ -114,7 +114,7 @@ const WorkerHomePage: React.FC<Props> = ({ navigation }) => {
       title: t('Projects List'),
       description: t('Track ongoing projects'),
       icon: 'folder-open',
-      iconColor: '#0a411fff',
+      iconColor: '#075E54',
       iconBg: '#E3F2FD',
       onPress: () => navigation.navigate('ProjectList'),
     },
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
   header: {
-    backgroundColor: '#0a411fff',
+    backgroundColor: '#075E54',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

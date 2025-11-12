@@ -12,6 +12,7 @@ import {
   FlatList,
   Linking,
   RefreshControl,
+  ToastAndroid,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -378,6 +379,10 @@ const ProjectDetails: React.FC = () => {
     setItemModalOpen(true);
   };
   const confirmDeleteItem = (itemId: number) => {
+    if (project.projectItems.length === 1) {
+      ToastAndroid.show('Atleast one item needed', ToastAndroid.LONG);
+      return;
+    }
     Alert.alert(t('Delete'), t('Are you sure?'), [
       { text: t('Cancel') },
       {

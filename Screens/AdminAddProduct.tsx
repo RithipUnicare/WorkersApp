@@ -904,7 +904,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                   icon="map-marker"
                   size={wp(6)}
                   onPress={fetchLocation}
-                  color="#0a411fff"
+                  color="#075E54"
                 />
               }
             />
@@ -980,7 +980,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                       <MaterialCommunityIcons
                         name="image-plus"
                         size={wp(8)}
-                        color="#0a411fff"
+                        color="#075E54"
                       />
                       <Text style={styles.uploadText}>{t('Gallery')}</Text>
                     </TouchableOpacity>
@@ -991,7 +991,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                       <MaterialCommunityIcons
                         name="camera"
                         size={wp(8)}
-                        color="#0a411fff"
+                        color="#075E54"
                       />
                       <Text style={styles.uploadText}>{t('Camera')}</Text>
                     </TouchableOpacity>
@@ -1096,11 +1096,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                 theme={{ roundness: wp(2.5) }}
                 editable={false}
                 right={
-                  <TextInput.Icon
-                    icon="percent"
-                    size={wp(6)}
-                    color="#0a411fff"
-                  />
+                  <TextInput.Icon icon="percent" size={wp(6)} color="#075E54" />
                 }
               />
             </View>
@@ -1131,7 +1127,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
             onPress={handleSave}
             style={styles.saveButton}
             contentStyle={styles.saveButtonContent}
-            buttonColor="#0a411fff"
+            buttonColor="#075E54"
             loading={loading}
             disabled={
               loading ||
@@ -1223,10 +1219,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
 
         {/* Advance Dialog */}
         <Portal>
-          <Dialog
-            visible={advanceModalOpen}
-            onDismiss={() => setAdvanceModalOpen(false)}
-          >
+          <Dialog visible={false} onDismiss={() => setAdvanceModalOpen(false)}>
             <Dialog.Title>{t('Add Advance Payment')}</Dialog.Title>
             <Dialog.Content>
               <TextInput
@@ -1351,7 +1344,7 @@ const styles = StyleSheet.create({
     height: wp(25),
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: '#0a411fff',
+    borderColor: '#075E54',
     borderRadius: wp(2),
     justifyContent: 'center',
     alignItems: 'center',
@@ -1359,7 +1352,7 @@ const styles = StyleSheet.create({
     marginBottom: hp(1),
   },
   uploadText: {
-    color: '#0a411fff',
+    color: '#075E54',
     marginTop: hp(0.5),
     fontSize: wp(3.2),
     fontWeight: '500',
@@ -1374,7 +1367,7 @@ const styles = StyleSheet.create({
   itemName: { fontSize: wp(4.2), fontWeight: '600', color: '#1a1a1a' },
   itemCalc: {
     fontSize: wp(3.8),
-    color: '#0a411fff',
+    color: '#075E54',
     marginTop: hp(0.3),
     fontWeight: '500',
   },
@@ -1404,7 +1397,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: wp(5),
     bottom: hp(10),
-    backgroundColor: '#0a411fff',
+    backgroundColor: '#075E54',
   },
   dialogInput: { marginBottom: hp(2) },
   unitRow: { flexDirection: 'row', alignItems: 'center', marginBottom: hp(2) },

@@ -124,11 +124,22 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
     },
     [isTamil, translations],
   );
+  const normalizePhone = (phone = '') => phone.replace(/\s+/g, '').trim();
+
+  const isValidPhoneNumber = (phone = '') => {
+    const normalized = normalizePhone(phone);
+
+    if (!normalized) return false;
+
+    const phoneWithoutPrefix = normalized.startsWith('+91')
+      ? normalized.slice(3)
+      : normalized;
+
+    return /^\d{10}$/.test(phoneWithoutPrefix);
+  };
 
   // Form validation
-  const isValidPhone =
-    phone.split(' ')[1].length === 10 && /^\d+$/.test(phone.split(' ')[1]);
-  console.log(phone.split(' ')[1]);
+  const isValidPhone = isValidPhoneNumber(phone);
   const isFormValid =
     name.trim().length > 0 && isValidPhone && address.trim().length > 0;
 
@@ -218,7 +229,7 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
             theme={{ roundness: wp(2.5) }}
             contentStyle={styles.inputContent}
             outlineColor="#ddd"
-            activeOutlineColor="#0a411fff"
+            activeOutlineColor="#075E54"
             left={<TextInput.Icon icon="account" size={wp(6)} />}
             error={name.trim().length === 0}
           />
@@ -240,7 +251,7 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
             maxLength={14}
             contentStyle={styles.inputContent}
             outlineColor="#ddd"
-            activeOutlineColor={isValidPhone ? '#27ae60' : '#0a411fff'}
+            activeOutlineColor={isValidPhone ? '#27ae60' : '#075E54'}
             left={<TextInput.Icon icon="phone" size={wp(6)} />}
             right={
               phone.length > 0 && (
@@ -271,7 +282,7 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
             theme={{ roundness: wp(2.5) }}
             contentStyle={styles.inputContent}
             outlineColor="#ddd"
-            activeOutlineColor="#0a411fff"
+            activeOutlineColor="#075E54"
             left={<TextInput.Icon icon="map-marker" size={wp(6)} />}
             error={address.trim().length === 0}
           />
@@ -291,7 +302,7 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
             theme={{ roundness: wp(2.5) }}
             contentStyle={styles.inputContent}
             outlineColor="#ddd"
-            activeOutlineColor="#0a411fff"
+            activeOutlineColor="#075E54"
             left={<TextInput.Icon icon="text" size={wp(6)} />}
           />
 
@@ -308,7 +319,7 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
             keyboardType="numeric"
             contentStyle={styles.inputContent}
             outlineColor="#ddd"
-            activeOutlineColor="#0a411fff"
+            activeOutlineColor="#075E54"
             left={<TextInput.Icon icon="calendar-clock" size={wp(6)} />}
           />
 
@@ -333,7 +344,7 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
             onPress={handleSave}
             style={styles.saveButton}
             contentStyle={styles.saveButtonContent}
-            buttonColor="#0a411fff"
+            buttonColor="#075E54"
             loading={loading}
             disabled={loading || !isFormValid}
             icon="content-save"
@@ -419,7 +430,7 @@ const styles = StyleSheet.create({
     marginLeft: wp(1),
   },
   dateButton: {
-    borderColor: '#0a411fff',
+    borderColor: '#075E54',
     borderWidth: 1.5,
   },
   dateButtonContent: {

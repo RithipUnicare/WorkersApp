@@ -129,7 +129,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <LinearGradient colors={['#0a411fff', '#0a411fff']} style={styles.gradient}>
+    <LinearGradient colors={['#075E54', '#075E54']} style={styles.gradient}>
       <SafeAreaView
         style={styles.safeArea}
         edges={['top', 'left', 'right', 'bottom']}
@@ -201,8 +201,8 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
                     theme={{ roundness: wp(2.5) }}
                     contentStyle={styles.inputContent}
                     outlineColor="#ddd"
-                    activeOutlineColor="#0a411fff"
-                    left={<TextInput.Icon icon="phone" color="#0a411fff" />}
+                    activeOutlineColor="#075E54"
+                    left={<TextInput.Icon icon="phone" color="#075E54" />}
                   />
                 </View>
               )}
@@ -223,8 +223,8 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
                       theme={{ roundness: wp(2.5) }}
                       contentStyle={styles.inputContent}
                       outlineColor="#ddd"
-                      activeOutlineColor="#0a411fff"
-                      left={<TextInput.Icon icon="email" color="#0a411fff" />}
+                      activeOutlineColor="#075E54"
+                      left={<TextInput.Icon icon="email" color="#075E54" />}
                     />
                   </View>
 
@@ -239,14 +239,14 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
                       theme={{ roundness: wp(2.5) }}
                       contentStyle={styles.inputContent}
                       outlineColor="#ddd"
-                      activeOutlineColor="#0a411fff"
-                      left={<TextInput.Icon icon="lock" color="#0a411fff" />}
+                      activeOutlineColor="#075E54"
+                      left={<TextInput.Icon icon="lock" color="#075E54" />}
                       right={
                         <TextInput.Icon
                           icon={showPassword ? 'eye-off' : 'eye'}
                           size={wp(6)}
                           onPress={() => setShowPassword(!showPassword)}
-                          color="#0a411fff"
+                          color="#075E54"
                         />
                       }
                     />
@@ -261,7 +261,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 style={styles.button}
                 contentStyle={styles.buttonContent}
                 labelStyle={styles.buttonLabel}
-                buttonColor="#0a411fff"
+                buttonColor="#075E54"
                 rippleColor="#1e5a8e"
               >
                 {activeTab === 'worker' ? 'Login as Worker' : 'Login as Admin'}
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     width: wp(22),
     height: wp(22),
     borderRadius: wp(5),
-    backgroundColor: '#0a411fff',
+    backgroundColor: '#075E54',
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 6,

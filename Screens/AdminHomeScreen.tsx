@@ -298,7 +298,7 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
                         <MaterialCommunityIcons
                           name={item.icon}
                           size={wp(8)}
-                          color="#0a411fff"
+                          color="#075E54"
                         />
                       </View>
                       <View style={styles.menuTextContainer}>
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F5F5F5' },
   container: { flex: 1 },
   header: {
-    backgroundColor: '#0a411fff',
+    backgroundColor: '#075E54',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

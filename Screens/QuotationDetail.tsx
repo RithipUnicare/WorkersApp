@@ -563,6 +563,8 @@ const QuotationDetail: React.FC = () => {
         return '#e74c3c';
       case 'CREATED':
         return '#0a660dff';
+      case 'COMPLETED':
+        return '#008104ff';
       default:
         return '#9E9E9E';
     }
@@ -749,7 +751,7 @@ const QuotationDetail: React.FC = () => {
             <MaterialCommunityIcons
               name="phone"
               size={width * 0.05}
-              color="#0a411fff"
+              color="#075E54"
             />
             <Text style={styles.infoLabel}>{t('Contact')}</Text>
             <Text style={styles.infoValue}>
@@ -761,7 +763,7 @@ const QuotationDetail: React.FC = () => {
             <MaterialCommunityIcons
               name="map-marker"
               size={width * 0.05}
-              color="#0a411fff"
+              color="#075E54"
             />
             <Text style={styles.infoLabel}>{t('Address')}</Text>
             <Text style={styles.infoValue} numberOfLines={2}>
@@ -773,7 +775,7 @@ const QuotationDetail: React.FC = () => {
             <MaterialCommunityIcons
               name="map-marker"
               size={width * 0.05}
-              color="#0a411fff"
+              color="#075E54"
             />
             <Text style={styles.infoLabel}>{t('Location')}</Text>
             <TouchableOpacity
@@ -793,7 +795,7 @@ const QuotationDetail: React.FC = () => {
             <IconButton
               icon="map-marker-plus"
               onPress={() => setGpsModalVisible(true)}
-              iconColor="#0a411fff"
+              iconColor="#075E54"
             />
           </View>
 
@@ -801,7 +803,7 @@ const QuotationDetail: React.FC = () => {
             <MaterialCommunityIcons
               name="calendar"
               size={width * 0.05}
-              color="#0a411fff"
+              color="#075E54"
             />
             <Text style={styles.infoLabel}>{t('Delivery Date')}</Text>
             <Text style={styles.infoValue}>
@@ -813,7 +815,7 @@ const QuotationDetail: React.FC = () => {
             <MaterialCommunityIcons
               name="clock"
               size={width * 0.05}
-              color="#0a411fff"
+              color="#075E54"
             />
             <Text style={styles.infoLabel}>{t('Created')}</Text>
             <Text style={styles.infoValue}>
@@ -878,7 +880,7 @@ const QuotationDetail: React.FC = () => {
                 <IconButton
                   icon="plus"
                   onPress={() => setImageModalOpen(true)}
-                  iconColor="#0a411fff"
+                  iconColor="#075E54"
                 />
               </View>
             </View>
@@ -918,7 +920,7 @@ const QuotationDetail: React.FC = () => {
               <IconButton
                 icon="plus"
                 onPress={() => setImageModalOpen(true)}
-                iconColor="#0a411fff"
+                iconColor="#075E54"
               />
             </View>
             <Text style={styles.emptyText}>No site images available</Text>
@@ -938,7 +940,7 @@ const QuotationDetail: React.FC = () => {
               <MaterialCommunityIcons
                 name="microphone"
                 size={width * 0.06}
-                color="#0a411fff"
+                color="#075E54"
               />
               <Text style={[styles.sectionTitle, { marginLeft: 8 }]}>
                 Voice Recordings ({sortedVoiceRecordings.length})
@@ -946,7 +948,7 @@ const QuotationDetail: React.FC = () => {
               <IconButton
                 icon="plus"
                 onPress={handleRecordVoice}
-                iconColor="#0a411fff"
+                iconColor="#075E54"
               />
             </View>
             {sortedVoiceRecordings.map(recording => (
@@ -976,7 +978,7 @@ const QuotationDetail: React.FC = () => {
                   <MaterialCommunityIcons
                     name="download"
                     size={width * 0.05}
-                    color="#0a411fff"
+                    color="#075E54"
                   />
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -1017,7 +1019,7 @@ const QuotationDetail: React.FC = () => {
               <MaterialCommunityIcons
                 name="microphone"
                 size={width * 0.06}
-                color="#0a411fff"
+                color="#075E54"
               />
               <Text style={[styles.sectionTitle, { marginLeft: 8 }]}>
                 Voice Recordings (0)
@@ -1025,7 +1027,7 @@ const QuotationDetail: React.FC = () => {
               <IconButton
                 icon="plus"
                 onPress={handleRecordVoice}
-                iconColor="#0a411fff"
+                iconColor="#075E54"
               />
             </View>
             <Text style={styles.emptyText}>No Voice Recording</Text>
@@ -1042,11 +1044,7 @@ const QuotationDetail: React.FC = () => {
             }}
           >
             <Text style={styles.sectionTitle}>{t('Items')}</Text>
-            <IconButton
-              icon="plus"
-              onPress={openAddItem}
-              iconColor="#0a411fff"
-            />
+            <IconButton icon="plus" onPress={openAddItem} iconColor="#075E54" />
           </View>
           {quotationData.items.length === 0 ? (
             <Text style={styles.emptyText}>{t('No items')}</Text>
@@ -1136,7 +1134,7 @@ const QuotationDetail: React.FC = () => {
           onPress={handleEdit}
           style={styles.actionButton}
           contentStyle={styles.actionButtonContent}
-          iconColor="#0a411fff"
+          iconColor="#075E54"
         />
         <IconButton
           icon="delete"
@@ -1150,14 +1148,14 @@ const QuotationDetail: React.FC = () => {
           onPress={shareQuotationPDF}
           style={styles.actionButton}
           contentStyle={styles.actionButtonContent}
-          iconColor="#0a411fff"
+          iconColor="#075E54"
         />
         <IconButton
           icon="plus"
           onPress={handleConvertToProject}
           style={styles.actionButton}
           contentStyle={styles.actionButtonContent}
-          iconColor="#0a411fff"
+          iconColor="#075E54"
         />
       </View>
 
@@ -1210,7 +1208,7 @@ const QuotationDetail: React.FC = () => {
               mode="contained"
               onPress={generateAndSharePDF}
               style={styles.pdfButton}
-              buttonColor="#0a411fff"
+              buttonColor="#075E54"
             >
               {t('Generate & Share PDF')}
             </Button>
@@ -1667,7 +1665,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#0a411fff',
+    backgroundColor: '#075E54',
   },
   pdfModalTitle: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
   webView: { flex: 1 },
@@ -1683,7 +1681,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#0a411fff',
+    backgroundColor: '#075E54',
   },
   modalTitleLike: { fontSize: 18, fontWeight: '700', color: '#fff' },
   carouselItemLike: {

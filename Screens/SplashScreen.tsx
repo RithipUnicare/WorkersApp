@@ -195,7 +195,7 @@
 //     marginBottom: hp(2.5),
 //   },
 //   buttonPrimary: {
-//     backgroundColor: '#0a411fff',
+//     backgroundColor: '#075E54',
 //     paddingVertical: hp(1.8),
 //     paddingHorizontal: wp(8),
 //     borderRadius: wp(2.5),
@@ -214,7 +214,7 @@
 //     fontSize: wp(4.5),
 //   },
 //   buttonOutline: {
-//     borderColor: '#0a411fff',
+//     borderColor: '#075E54',
 //     borderWidth: 1.5,
 //     paddingVertical: hp(1.8),
 //     paddingHorizontal: wp(8),
@@ -226,7 +226,7 @@
 //     justifyContent: 'center',
 //   },
 //   buttonOutlineText: {
-//     color: '#0a411fff',
+//     color: '#075E54',
 //     fontWeight: '600',
 //     fontSize: wp(4.5),
 //   },
