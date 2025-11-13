@@ -1,5 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, ScrollView, Text, Alert, TouchableOpacity } from 'react-native';
+import {
+  View,
+  ScrollView,
+  Text,
+  Alert,
+  TouchableOpacity,
+  Platform,
+  KeyboardAvoidingView,
+} from 'react-native';
 import {
   Button,
   Dialog,
@@ -9,6 +17,7 @@ import {
 } from 'react-native-paper';
 import { Dropdown } from 'react-native-element-dropdown';
 import { ProjectAPI, QuotationAPI, UnitAPI } from '../../service/apiService';
+import VoiceFriendlyInput from '../../utils/VoiceFriendlyInput';
 
 export type ProjectItem = {
   id?: number;
@@ -268,148 +277,157 @@ const ItemDialog: React.FC<Props> = ({
 
   return (
     <Portal>
-      <Dialog visible={visible} onDismiss={onDismiss}>
-        <Dialog.Title>
-          {title || (isEdit ? tr('Edit Item') : tr('Add Item'))}
-        </Dialog.Title>
-        <Dialog.ScrollArea>
-          <ScrollView style={{ maxHeight: maxHeight }}>
-            <TextInput
-              label={tr('Item Name *')}
-              value={name}
-              onChangeText={setName}
-              mode="outlined"
-              style={{ margin: 8 }}
-            />
-            <TextInput
-              label={tr('Description')}
-              value={desc}
-              onChangeText={setDesc}
-              mode="outlined"
-              style={{ margin: 8 }}
-              multiline
-              numberOfLines={2}
-            />
-            <TextInput
-              label={tr('Quantity *')}
-              value={qty}
-              onChangeText={setQty}
-              mode="outlined"
-              keyboardType="numeric"
-              style={{ margin: 8 }}
-            />
-            <View
-              style={{
-                marginHorizontal: 8,
-                marginTop: 8,
-                flexDirection: 'row',
-                alignItems: 'center',
-              }}
-            >
-              <View style={{ flex: 1 }}>
-                <Dropdown
-                  style={{
-                    borderWidth: 1,
-                    borderColor: '#ccc',
-                    borderRadius: 6,
-                    paddingHorizontal: 12,
-                    height: 50,
-                  }}
-                  placeholderStyle={{ color: '#777' }}
-                  selectedTextStyle={{ color: '#000' }}
-                  data={unitDropdown}
-                  labelField="label"
-                  valueField="value"
-                  placeholder={tr('Unit *')}
-                  value={unitId}
-                  onChange={it => setUnitId(it.value)}
-                  renderItem={(item: any) => (
-                    <TouchableOpacity
-                      style={{ paddingVertical: 10, paddingHorizontal: 12 }}
-                      onLongPress={() =>
-                        confirmDeleteUnit(item.value, item.label)
-                      }
-                      onPress={() => setUnitId(item.value)}
-                    >
-                      <Text>{item.label}</Text>
-                    </TouchableOpacity>
-                  )}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 20}
+        style={{ flex: 1 }}
+      >
+        <Dialog visible={visible} onDismiss={onDismiss}>
+          <Dialog.Title>
+            {title || (isEdit ? tr('Edit Item') : tr('Add Item'))}
+          </Dialog.Title>
+          <Dialog.ScrollArea>
+            <ScrollView style={{ maxHeight: maxHeight }}>
+              <VoiceFriendlyInput
+                label={tr('Item Name *')}
+                value={name}
+                onChangeText={setName}
+                mode="outlined"
+                style={{ margin: 8 }}
+              />
+              <VoiceFriendlyInput
+                label={tr('Description')}
+                value={desc}
+                onChangeText={setDesc}
+                mode="outlined"
+                style={{ margin: 8 }}
+                multiline
+                numberOfLines={2}
+              />
+              <TextInput
+                label={tr('Quantity *')}
+                value={qty}
+                onChangeText={setQty}
+                mode="outlined"
+                keyboardType="numeric"
+                style={{ margin: 8 }}
+              />
+              <View
+                style={{
+                  marginHorizontal: 8,
+                  marginTop: 8,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Dropdown
+                    style={{
+                      borderWidth: 1,
+                      borderColor: '#ccc',
+                      borderRadius: 6,
+                      paddingHorizontal: 12,
+                      height: 50,
+                    }}
+                    placeholderStyle={{ color: '#777' }}
+                    selectedTextStyle={{ color: '#000' }}
+                    data={unitDropdown}
+                    labelField="label"
+                    valueField="value"
+                    placeholder={tr('Unit *')}
+                    value={unitId}
+                    onChange={it => setUnitId(it.value)}
+                    renderItem={(item: any) => (
+                      <TouchableOpacity
+                        style={{ paddingVertical: 10, paddingHorizontal: 12 }}
+                        onLongPress={() =>
+                          confirmDeleteUnit(item.value, item.label)
+                        }
+                        onPress={() => setUnitId(item.value)}
+                      >
+                        <Text>{item.label}</Text>
+                      </TouchableOpacity>
+                    )}
+                  />
+                </View>
+                <IconButton
+                  icon="plus"
+                  onPress={() => setUnitModalOpen(true)}
+                  accessibilityLabel="Add Unit"
                 />
               </View>
-              <IconButton
-                icon="plus"
-                onPress={() => setUnitModalOpen(true)}
-                accessibilityLabel="Add Unit"
+              <TextInput
+                label={mode === 'quotation' ? tr('MRP *') : tr('Rate (MRP) *')}
+                value={mrp}
+                onChangeText={setMrp}
+                mode="outlined"
+                keyboardType="numeric"
+                style={{ margin: 8 }}
+                left={<TextInput.Affix text="₹" />}
               />
-            </View>
-            <TextInput
-              label={mode === 'quotation' ? tr('MRP *') : tr('Rate (MRP) *')}
-              value={mrp}
-              onChangeText={setMrp}
-              mode="outlined"
-              keyboardType="numeric"
-              style={{ margin: 8 }}
-              left={<TextInput.Affix text="₹" />}
-            />
-            <TextInput
-              label={tr('HSN/SAC Code')}
-              value={hsn}
-              onChangeText={setHsn}
-              mode="outlined"
-              style={{ margin: 8 }}
-              keyboardType="numeric"
-            />
-            <TextInput
-              label={tr('Tax Percentage *')}
-              value={tax}
-              onChangeText={setTax}
-              mode="outlined"
-              keyboardType="numeric"
-              style={{ margin: 8 }}
-              right={<TextInput.Affix text="%" />}
-            />
-            <Text style={{ marginHorizontal: 12, marginBottom: 8 }}>
-              {tr('Total')}: ₹{calcTotal.toFixed(2)}
-            </Text>
-          </ScrollView>
-        </Dialog.ScrollArea>
-        <Dialog.Actions>
-          <Button onPress={onDismiss}>{tr('Cancel')}</Button>
-          <Button
-            onPress={doSave}
-            disabled={!canSave || saving}
-            loading={saving}
-          >
-            {tr('Save')}
-          </Button>
-        </Dialog.Actions>
-      </Dialog>
+              <TextInput
+                label={tr('HSN/SAC Code')}
+                value={hsn}
+                onChangeText={setHsn}
+                mode="outlined"
+                style={{ margin: 8 }}
+                keyboardType="numeric"
+              />
+              <TextInput
+                label={tr('Tax Percentage *')}
+                value={tax}
+                onChangeText={setTax}
+                mode="outlined"
+                keyboardType="numeric"
+                style={{ margin: 8 }}
+                right={<TextInput.Affix text="%" />}
+              />
+              <Text style={{ marginHorizontal: 12, marginBottom: 8 }}>
+                {tr('Total')}: ₹{calcTotal.toFixed(2)}
+              </Text>
+            </ScrollView>
+          </Dialog.ScrollArea>
+          <Dialog.Actions>
+            <Button onPress={onDismiss}>{tr('Cancel')}</Button>
+            <Button
+              onPress={doSave}
+              disabled={!canSave || saving}
+              loading={saving}
+            >
+              {tr('Save')}
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
 
-      {/* Add Unit Dialog */}
-      <Dialog visible={unitModalOpen} onDismiss={() => setUnitModalOpen(false)}>
-        <Dialog.Title>{tr('Add New Unit')}</Dialog.Title>
-        <Dialog.Content>
-          <TextInput
-            label={tr('Unit Name')}
-            value={newUnitName}
-            onChangeText={setNewUnitName}
-            mode="outlined"
-            style={{ marginBottom: 8 }}
-          />
-          <TextInput
-            label={tr('Short Name')}
-            value={newUnitShortName}
-            onChangeText={setNewUnitShortName}
-            mode="outlined"
-          />
-        </Dialog.Content>
-        <Dialog.Actions>
-          <Button onPress={() => setUnitModalOpen(false)}>
-            {tr('Cancel')}
-          </Button>
-          <Button onPress={addUnit}>{tr('Add')}</Button>
-        </Dialog.Actions>
-      </Dialog>
+        {/* Add Unit Dialog */}
+        <Dialog
+          visible={unitModalOpen}
+          onDismiss={() => setUnitModalOpen(false)}
+        >
+          <Dialog.Title>{tr('Add New Unit')}</Dialog.Title>
+          <Dialog.Content>
+            <TextInput
+              label={tr('Unit Name')}
+              value={newUnitName}
+              onChangeText={setNewUnitName}
+              mode="outlined"
+              style={{ marginBottom: 8 }}
+            />
+            <TextInput
+              label={tr('Short Name')}
+              value={newUnitShortName}
+              onChangeText={setNewUnitShortName}
+              mode="outlined"
+            />
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setUnitModalOpen(false)}>
+              {tr('Cancel')}
+            </Button>
+            <Button onPress={addUnit}>{tr('Add')}</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </KeyboardAvoidingView>
     </Portal>
   );
 };

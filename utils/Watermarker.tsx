@@ -8,10 +8,9 @@ import { Image } from 'react-native';
 export const addTextWatermark = async (uri: string) => {
   const currentUser = await AsyncStorage.getItem('user');
   const parsedUser = currentUser ? JSON.parse(currentUser) : null;
-
+  console.log(parsedUser);
   const label = parsedUser?.name || 'hello';
 
-  // 1. Get image size (needed for bottom-left placement)
   const { width, height } = await new Promise<{
     width: number;
     height: number;
@@ -19,32 +18,29 @@ export const addTextWatermark = async (uri: string) => {
     Image.getSize(uri, (w, h) => resolve({ width: w, height: h }), reject);
   });
 
-  // Bottom-left text coordinates
   console.log(width, height);
   const pos = { x: width - 300, y: height - 100 };
 
   const actions: TextOptions[] = [
-    // BACKGROUND layer (black “box” effect)
     {
       text: label,
       position: pos,
       textSize: 80,
-      color: '#000000', // black
-      thickness: 12, // very thick to create a block behind
-      shadowColor: '#000000', // reinforce background
+      color: '#000000',
+      thickness: 12,
+      shadowColor: '#000000',
       shadowRadius: 16,
       shadowOffset: { x: 0, y: 0 },
       align: TextAlign.START,
     },
 
-    // FOREGROUND white text
     {
       text: label,
       position: pos,
       textSize: 80,
-      color: '#ffffff', // white
-      thickness: 3, // slight bold
-      shadowColor: '#00000022', // soft glow to lift the text
+      color: '#ffffff',
+      thickness: 3,
+      shadowColor: '#00000022',
       shadowRadius: 2,
       shadowOffset: { x: 1, y: 1 },
       align: TextAlign.START,

@@ -338,7 +338,7 @@ const SplashScreen: React.FC<Props> = ({ navigation }) => {
             },
           ]}
         >
-          Indian Steels
+          Indian Steel Company
         </Animated.Text>
 
         {/* Animated Subtitle */}
@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
     borderRadius: wp(10),
   },
   appName: {
-    fontSize: wp(9),
+    fontSize: wp(7),
     fontWeight: '800',
     color: '#fff',
     letterSpacing: 1,

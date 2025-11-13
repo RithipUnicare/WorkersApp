@@ -837,6 +837,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 100}
       >
         <ScrollView
           contentContainerStyle={styles.content}
@@ -1090,11 +1091,23 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                     ? '0.00'
                     : discountPercentage.toFixed(2)
                 }
+                onChangeText={text => {
+                  const percentValue = text === '' ? 0 : Number(text);
+                  setDisCountPercentage(percentValue);
+                  if (percentValue === 0 || text === '') {
+                    setDiscount(0);
+                    setTotalAmount(String(actualAmount));
+                  } else {
+                    const discountValue = (actualAmount * percentValue) / 100;
+                    setDiscount(discountValue);
+                    setTotalAmount(String(actualAmount - discountValue));
+                  }
+                }}
                 mode="outlined"
                 keyboardType="numeric"
                 style={[styles.input, { width: wp(30) }]}
                 theme={{ roundness: wp(2.5) }}
-                editable={false}
+                editable={true}
                 right={
                   <TextInput.Icon icon="percent" size={wp(6)} color="#075E54" />
                 }

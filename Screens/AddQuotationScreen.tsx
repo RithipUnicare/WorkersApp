@@ -570,6 +570,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 100}
       >
         <ScrollView
           contentContainerStyle={styles.content}
@@ -849,7 +850,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
                     setDiscountPercent(0);
                   } else {
                     const percentage =
-                      (discountValue / Number(totalBudget)) * 100;
+                      (discountValue / Number(grandTotal)) * 100;
                     setDiscountPercent(percentage);
                     setTotalBudget(String(grandTotal - discountValue));
                   }
@@ -865,11 +866,24 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
                 value={
                   discountPercent === 0 ? '0.00' : discountPercent.toFixed(2)
                 }
+                onChangeText={text => {
+                  const percentValue = text === '' ? 0 : Number(text);
+                  setDiscountPercent(percentValue);
+                  if (percentValue === 0 || text === '') {
+                    setDiscount(0);
+                    setTotalBudget(grandTotal.toFixed(2));
+                  } else {
+                    const discountValue =
+                      (Number(grandTotal) * percentValue) / 100;
+                    setDiscount(discountValue);
+                    setTotalBudget(String(Number(grandTotal) - discountValue));
+                  }
+                }}
                 mode="outlined"
                 keyboardType="numeric"
                 style={[styles.input, { width: wp(30) }]}
                 theme={{ roundness: wp(2.5) }}
-                editable={false}
+                editable={true}
                 right={
                   <TextInput.Icon icon="percent" size={wp(6)} color="#2874b8" />
                 }
