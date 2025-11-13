@@ -26,6 +26,7 @@ import {
   Snackbar,
   Chip,
 } from 'react-native-paper';
+import ItemDialog from './components/ItemDialog';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
@@ -43,6 +44,11 @@ import {
 } from '../service/apiService';
 import { useNavigationState } from '@react-navigation/native';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslator } from 'react-native-translator';
+import { Project } from './AdminProductList';
+import { addTextWatermark } from '../utils/Watermarker';
+
 dayjs.extend(customParseFormat);
 
 const { width, height } = Dimensions.get('window');
@@ -65,6 +71,7 @@ export type ProjectItem = {
   unitId: number;
   taxPercentage: number;
   hsnSac: string;
+  images?: any[];
 };
 
 export type Unit = {
@@ -73,17 +80,92 @@ export type Unit = {
   shortName: string;
 };
 
+const enToTa: Record<string, string> = {
+  // Titles
+  'Create New Project': 'புதிய திட்டத்தை உருவாக்கு',
+  'Edit Project': 'திட்டத்தைத் திருத்து',
+
+  // Labels
+  Customer: 'வாடிக்கையாளர்',
+  'Select Customer *': 'வாடிக்கையாளரைத் தேர்ந்தெடு *',
+  'Delivery Date *': 'விநியோக தேதி *',
+  'Project Description *': 'திட்ட விளக்கம் *',
+  'Total Budjet *': 'மொத்த பட்ஜெட் *',
+  'Total Amount *': 'மொத்த தொகை *',
+  Discount: 'தள்ளுபடி',
+  Percentage: 'விழுக்காடு',
+  'Site Location': 'தள இடம்',
+  'Preferred Time': 'விருப்பமான நேரம்',
+  'Select Status': 'நிலையைத் தேர்ந்தெடு',
+  'Site Images': 'தள படங்கள்',
+  Gallery: 'கேலரி',
+  Camera: 'கேமரா',
+  'Project Items': 'திட்டப் பொருட்கள்',
+  Total: 'மொத்தம்',
+  'No items added yet': 'இதுவரை பொருட்கள் சேர்க்கப்படவில்லை',
+  'Update Project': 'திட்டத்தைப் புதுப்பி',
+  'Save Project': 'திட்டத்தைச் சேமி',
+
+  // Item Dialog
+  'Add Item': 'பொருளைச் சேர்',
+  'Edit Item': 'பொருளைத் திருத்து',
+  'Item Name *': 'பொருள் பெயர் *',
+  Description: 'விளக்கம்',
+  'Quantity *': 'அளவு *',
+  'Rate (MRP) *': 'விலை (MRP) *',
+  'Unit *': 'அலகு *',
+  'Tax Percentage *': 'வரி விழுக்காடு *',
+  'HSN/SAC Code': 'HSN/SAC குறியீடு',
+  Save: 'சேமி',
+  Cancel: 'ரத்து செய்',
+
+  // Unit Dialog
+  'Add New Unit': 'புதிய அலகு சேர்',
+  'Unit Name': 'அலகு பெயர்',
+  'Short Name': 'குறுகிய பெயர்',
+  Add: 'சேர்',
+
+  // Advance Dialog
+  'Add Advance Payment': 'முன்பணம் சேர்',
+  'Advance Amount': 'முன்பண தொகை',
+  Skip: 'தவிர்',
+
+  // Messages
+  'Fill all required fields': 'அனைத்து தேவையான புலங்களையும் நிரப்பு',
+  'Select a valid customer': 'சரியான வாடிக்கையாளரைத் தேர்ந்தெடு',
+  'Enter at least one item': 'குறைந்தது ஒரு பொருளை உள்ளிடு',
+  'Project updated!': 'திட்டம் புதுப்பிக்கப்பட்டது!',
+  'Project Created Successfully': 'திட்டம் வெற்றிகரமாக உருவாக்கப்பட்டது',
+  'Save failed': 'சேமிப்பு தோல்வியடைந்தது',
+  'Location captured!': 'இடம் பிடிக்கப்பட்டது!',
+  'Failed to get location': 'இடத்தைப் பெற முடியவில்லை',
+  'Max 15 images allowed': 'அதிகபட்சம் 15 படங்கள் மட்டுமே அனுமதி',
+  'Fill unit name and short name': 'அலகு பெயர் மற்றும் குறுகிய பெயரை நிரப்பு',
+  'Unit added!': 'அலகு சேர்க்கப்பட்டது!',
+  'Failed to add unit': 'அலகு சேர்க்க முடியவில்லை',
+  'Failed to add item': 'பொருள் சேர்க்க முடியவில்லை',
+  'Failed to delete image': 'படத்தை நீக்க முடியவில்லை',
+  'Failed to save advance': 'முன்பணத்தைச் சேமிக்க முடியவில்லை',
+
+  // Status
+  CREATED: 'உருவாக்கப்பட்டது',
+  IN_PROGRESS: 'செயல்பாட்டில்',
+  DISCONTINUED: 'நிறுத்தப்பட்டது',
+  COMPLETED: 'முடிக்கப்பட்டது',
+};
+
 const AddProject: React.FC<Props> = ({ navigation, route }) => {
   const rawCustomer: any = route.params?.customer || null;
   const rawProject: any =
     route.params?.projectToEdit || route.params?.productEdit;
-  const routeLength = useNavigationState(state => state.routes.length);
+  //const routeLength = useNavigationState(state => state.routes.length);
   let previousScreenName = '';
-  if (routeLength > 1) {
-    previousScreenName = useNavigationState(
-      state => state.routes[state.index - 1].name,
-    );
-  }
+  // if (routeLength > 1) {
+  //   previousScreenName = useNavigationState(state => state.routes[state.index - 1].name);
+  // }
+  previousScreenName = useNavigationState(
+    state => state.routes[state.index - 1].name,
+  );
 
   const isFromQuotationDetail = previousScreenName === 'QuotationDetail';
   const isEditMode = !!rawProject && !isFromQuotationDetail;
@@ -114,6 +196,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   const [items, setItems] = useState<ProjectItem[]>([]);
   const [itemModalOpen, setItemModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ProjectItem | null>(null);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [itemName, setItemName] = useState('');
   const [itemDesc, setItemDesc] = useState('');
   const [itemQty, setItemQty] = useState('');
@@ -133,13 +216,55 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   const [advanceModalOpen, setAdvanceModalOpen] = useState(false);
   const [advanceAmount, setAdvanceAmount] = useState('');
   const [createdProjectId, setCreatedProjectId] = useState<number | null>(null);
-  const [discount, setDiscount] = useState<Number>(0);
-  const [discountPercentage, setDisCountPercentage] = useState<Number>(0);
+  const [discount, setDiscount] = useState<number>(0);
+  const [discountPercentage, setDisCountPercentage] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
-  const [actualAmount, setActualAmount] = useState<Number>(0);
-  // Load customers and units
+  const [actualAmount, setActualAmount] = useState<number>(0);
+
+  const [isTamil, setIsTamil] = useState(false);
+  const [translations, setTranslations] = useState<Record<string, string>>({});
+  const { translate } = useTranslator();
+  // Initialize language
+  useEffect(() => {
+    const initLang = async () => {
+      const saved = await AsyncStorage.getItem('appLanguage');
+      const tamil = saved === 'ta';
+      setIsTamil(tamil);
+    };
+    initLang();
+  }, []);
+  // Translate all strings
+  useEffect(() => {
+    if (!isTamil) {
+      setTranslations({});
+      return;
+    }
+    const translateAll = async () => {
+      const result: Record<string, string> = {};
+      for (const en of Object.keys(enToTa)) {
+        try {
+          const ta = await translate('en', 'ta', en, { type: 'google' });
+          result[en] = ta;
+        } catch {
+          result[en] = enToTa[en] ?? en;
+        }
+      }
+      setTranslations(result);
+    };
+    translateAll();
+  }, [isTamil, translate]);
+
+  const t = useCallback(
+    (english: string): string => {
+      if (!isTamil) return english;
+      return translations[english] ?? enToTa[english] ?? english;
+    },
+    [isTamil, translations],
+  );
+
+  // Load data
   const loadData = useCallback(async () => {
     try {
       setRefreshing(true);
@@ -150,11 +275,11 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       if (Array.isArray(customerRes.data)) setCustomers(customerRes.data);
       if (Array.isArray(unitRes.data)) setUnits(unitRes.data);
     } catch (e) {
-      setSnackbar({ visible: true, message: 'Failed to load data' });
+      setSnackbar({ visible: true, message: t('Failed to load data') });
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadData();
@@ -169,7 +294,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       })),
     [customers],
   );
-
   const unitDropdown = useMemo(
     () =>
       units.map(u => ({
@@ -191,7 +315,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
         setSelectedCustomerIdx(idx);
         setCustomerId(customers[idx].id);
       }
-      console.log('rawProject', rawProject);
       setDeliveryDate(dayjs(rawProject.deliveryDate).format('DD-MM-YYYY'));
       setSelectedDateObj(new Date(rawProject.deliveryDate));
       setProjectDescription(rawProject.projectDescription || '');
@@ -218,21 +341,37 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
         longitude: rawProject.location?.longitude || 0,
       });
 
-      // Load site images
       if (rawProject.id) {
-        ProjectAPI.getSiteImages(rawProject.id)
-          .then(res => {
-            if (res.data?.length) {
-              setImages(
-                res.data.map((img: any) => ({
-                  uri: img.imageUrl,
-                  id: img.id,
-                  isLocal: false,
-                })),
-              );
-            }
-          })
-          .catch(() => {});
+        if (isEditMode) {
+          ProjectAPI.getSiteImages(rawProject.id)
+            .then(res => {
+              if (res.data?.length) {
+                setImages(
+                  res.data.map((img: any) => ({
+                    uri: img.imageUrl,
+                    id: img.id,
+                    isLocal: false,
+                  })),
+                );
+              }
+            })
+            .catch(() => {});
+        } else if (isFromQuotationDetail) {
+          // Coming from quotation: load quotation site images for preview
+          QuotationAPI.getSiteImages(rawProject.id)
+            .then(res => {
+              if (Array.isArray(res.data) && res.data.length) {
+                setImages(
+                  res.data.map((img: any) => ({
+                    uri: img.imageUrl,
+                    id: img.id,
+                    isLocal: false,
+                  })),
+                );
+              }
+            })
+            .catch(() => {});
+        }
       }
 
       const projectItems = rawProject.projectItems || rawProject.items || [];
@@ -277,35 +416,57 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           latitude: loc.pos.coords.latitude,
           longitude: loc.pos.coords.longitude,
         });
-        setSnackbar({ visible: true, message: 'Location captured!' });
+        setSnackbar({ visible: true, message: t('Location captured!') });
       }
     } catch (e) {
-      setSnackbar({ visible: true, message: 'Failed to get location' });
+      setSnackbar({ visible: true, message: t('Failed to get location') });
     }
   };
 
   // Image handlers
   const pickImage = () => {
     if (images.length >= 15) {
-      setSnackbar({ visible: true, message: 'Max 15 images allowed' });
+      setSnackbar({ visible: true, message: t('Max 15 images allowed') });
       return;
     }
+
     launchImageLibrary({ mediaType: 'photo', quality: 0.6 }, res => {
-      if (res.assets?.[0]?.uri) {
-        setImages(p => [...p, { uri: res.assets![0].uri!, isLocal: true }]);
-      }
+      const uri = res.assets?.[0]?.uri;
+      if (!uri) return;
+
+      addTextWatermark(uri)
+        .then(wmUri => {
+          setImages(prev => [...prev, { uri: wmUri, isLocal: true }]);
+        })
+        .catch(err => {
+          console.log('Watermark error:', err);
+
+          // fallback: original image
+          setImages(prev => [...prev, { uri, isLocal: true }]);
+        });
     });
   };
 
   const openCamera = () => {
     if (images.length >= 15) {
-      setSnackbar({ visible: true, message: 'Max 15 images allowed' });
+      setSnackbar({ visible: true, message: t('Max 15 images allowed') });
       return;
     }
+
     launchCamera({ mediaType: 'photo', quality: 0.6 }, res => {
-      if (res.assets?.[0]?.uri) {
-        setImages(p => [...p, { uri: res.assets![0].uri!, isLocal: true }]);
-      }
+      const uri = res.assets?.[0]?.uri;
+      if (!uri) return;
+
+      addTextWatermark(uri)
+        .then(wmUri => {
+          setImages(prev => [...prev, { uri: wmUri, isLocal: true }]);
+        })
+        .catch(err => {
+          console.log('Watermark error:', err);
+
+          // fallback: original captured image
+          setImages(prev => [...prev, { uri, isLocal: true }]);
+        });
     });
   };
 
@@ -313,9 +474,9 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
     const image = images[index];
     if (image.id && isEditMode && rawProject?.id) {
       try {
-        await ProjectAPI.deleteSiteImage(image.id); // Add delete endpoint if available
+        await ProjectAPI.deleteSiteImage(image.id);
       } catch (e) {
-        setSnackbar({ visible: true, message: 'Failed to delete image' });
+        setSnackbar({ visible: true, message: t('Failed to delete image') });
       }
     }
     setImages(p => p.filter((_, i) => i !== index));
@@ -324,7 +485,10 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   // Unit handlers
   const addNewUnit = async () => {
     if (!newUnitName || !newUnitShortName) {
-      setSnackbar({ visible: true, message: 'Fill unit name and short name' });
+      setSnackbar({
+        visible: true,
+        message: t('Fill unit name and short name'),
+      });
       return;
     }
     try {
@@ -334,20 +498,23 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       });
       if (res.data) {
         setUnits(prev => [...prev, res.data]);
-        setSnackbar({ visible: true, message: 'Unit added!' });
+        setSnackbar({ visible: true, message: t('Unit added!') });
         setUnitModalOpen(false);
         setNewUnitName('');
         setNewUnitShortName('');
       }
     } catch (e) {
-      setSnackbar({ visible: true, message: 'Failed to add unit' });
+      setSnackbar({ visible: true, message: t('Failed to add unit') });
     }
   };
 
   // Item modal
-  const openItemModal = (item?: ProjectItem) => {
+  const openItemModal = (item?: ProjectItem, index?: number) => {
     if (item) {
       setEditingItem(item);
+      setEditingIndex(
+        typeof index === 'number' ? index : items.findIndex(i => i === item),
+      );
       setItemName(item.itemName);
       setItemDesc(item.itemDescription || '');
       setItemQty(String(item.quantity));
@@ -357,6 +524,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       setItemHsnSac(item.hsnSac);
     } else {
       setEditingItem(null);
+      setEditingIndex(null);
       setItemName('');
       setItemDesc('');
       setItemQty('');
@@ -377,7 +545,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
     if (!itemName || qty <= 0 || rate <= 0 || unitId <= 0) {
       setSnackbar({
         visible: true,
-        message: 'Fill all required fields (including Unit)',
+        message: t('Fill all required fields (including Unit)'),
       });
       return;
     }
@@ -393,29 +561,35 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       taxPercentage,
       hsnSac: itemHsnSac,
     };
+
     try {
       if (editingItem?.id) await ProjectAPI.updateItem(editingItem.id, newItem);
       else await ProjectAPI.createItem(newItem);
     } catch (e) {
-      //setSnackbar({ visible: true, message: 'Failed to add item' });
+      setSnackbar({ visible: true, message: t('Failed to add item') });
     }
+
     setItems(prev =>
       editingItem?.id
-        ? prev.map(i => (i.id === editingItem.id ? newItem : i))
+        ? prev.map(i =>
+            i.id === editingItem.id || i.itemName === editingItem.itemName
+              ? newItem
+              : i,
+          )
         : [...prev, newItem],
     );
     setItemModalOpen(false);
   };
 
   const deleteItemLocal = async (idx: number) => {
-    Alert.alert('Delete Item', 'Are you sure?', [
-      { text: 'Cancel' },
+    Alert.alert(t('Delete Item'), t('Are you sure?'), [
+      { text: t('Cancel') },
       {
-        text: 'Delete',
+        text: t('Delete'),
         style: 'destructive',
         onPress: () => {
           setItems(p => p.filter((_, i) => i !== idx));
-          ProjectAPI.deleteItem(items[idx].id);
+          if (items[idx].id) ProjectAPI.deleteItem(items[idx].id);
         },
       },
     ]);
@@ -428,35 +602,35 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   );
 
   useEffect(() => {
-    if (!isEditMode && itemsTotal > 0 && !isFromQuotationDetail) {
+    if (itemsTotal > 0 && !isFromQuotationDetail) {
       setTotalAmount(String(itemsTotal));
-      setActualAmount(itemsTotal);
+      if (actualAmount === 0 || itemsTotal > actualAmount)
+        setActualAmount(itemsTotal);
     }
   }, [itemsTotal, isEditMode]);
 
-  // Upload images
   const uploadImages = async (projectId: number) => {
-    const localImages = images.filter(img => img.isLocal).map(img => img.uri);
+    const localImages = images
+      .filter(img => img.isLocal)
+      .map(img => img.uri)
+      .filter(Boolean);
+    const remoteImages = images
+      .filter(img => !img.isLocal)
+      .map(img => img.uri)
+      .filter(Boolean);
 
-    if (localImages.length === 0) return;
-
-    const formData = new FormData();
-    localImages.forEach((uri, index) => {
-      const filename = uri.split('/').pop() || `site_image_${index}.jpg`;
-      formData.append('files', {
-        uri,
-        name: filename,
-        type: 'image/jpeg',
-      } as any);
-    });
-
-    await ProjectAPI.addSiteImages(projectId, localImages);
+    if (localImages.length > 0) {
+      await ProjectAPI.addSiteImages(projectId, localImages, false);
+    }
+    if (remoteImages.length > 0) {
+      await ProjectAPI.addSiteImages(projectId, remoteImages, true);
+    }
   };
 
   // Save project
   const handleSave = async () => {
     if (!customerId || !deliveryDate || !projectDescription || !totalAmount) {
-      setSnackbar({ visible: true, message: 'Fill all required fields' });
+      setSnackbar({ visible: true, message: t('Fill all required fields') });
       return;
     }
 
@@ -464,18 +638,9 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       (c, idx) => idx === selectedCustomerIdx,
     );
     if (!selectedCustomer) {
-      setSnackbar({ visible: true, message: 'Select a valid customer' });
+      setSnackbar({ visible: true, message: t('Select a valid customer') });
       return;
     }
-
-    const timeObj = time
-      ? {
-          hour: dayjs(time).hour(),
-          minute: dayjs(time).minute(),
-          second: dayjs(time).second(),
-          nano: 0,
-        }
-      : { hour: 0, minute: 0, second: 0, nano: 0 };
 
     setLoading(true);
     let projectId: number;
@@ -489,12 +654,12 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           status,
           discount,
           totalBudget: actualAmount,
+          totalAmount,
         };
-        console.log(payload);
         await ProjectAPI.update(rawProject.id, payload);
         projectId = rawProject.id;
 
-        if (images.some(img => img.isLocal)) {
+        if (images.some(img => img.uri)) {
           await uploadImages(projectId);
         }
 
@@ -508,14 +673,12 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
 
         await ProjectAPI.updateStatus(projectId, status);
         try {
-          await QuotationAPI.updateQuotationStatus(projectId, {
-            status,
-          });
+          await QuotationAPI.updateQuotationStatus(projectId, { status });
         } catch (error) {
           console.log(error);
         }
-        setSnackbar({ visible: true, message: 'Project updated!' });
-        navigation.goBack();
+        setSnackbar({ visible: true, message: t('Project updated!') });
+        navigation.navigate('ProjectDetails', { project: rawProject });
       } else {
         const payload = {
           customerId,
@@ -537,28 +700,112 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
         };
 
         if (!items.length) {
-          setSnackbar({ visible: true, message: 'Enter at least one item' });
+          setSnackbar({ visible: true, message: t('Enter at least one item') });
           return;
         }
         const created: any = await ProjectAPI.create(payload);
-        console.log(created);
         projectId = created.data.id || created.data.projectId;
         setCreatedProjectId(projectId);
-
-        if (images.some(img => img.isLocal)) {
+        if (images.some(img => img.uri)) {
           await uploadImages(projectId);
         }
+        const currentProjectForItem = created.data;
+        const voiceExist =
+          rawProject?.voiceRecordings &&
+          rawProject?.voiceRecordings?.length > 0;
+        if (voiceExist) {
+          rawProject?.voiceRecordings?.map(async (voice: any) => {
+            const res = await ProjectAPI.updateVoice(
+              projectId,
+              voice.recordingUrl,
+              true,
+            );
+          });
+        }
+        console.log('projectItems', currentProjectForItem);
+
+        if (
+          Array.isArray(rawProject?.projectItems) &&
+          Array.isArray(currentProjectForItem?.projectItems)
+        ) {
+          await Promise.all(
+            rawProject?.projectItems?.map(
+              async (projectItem: any, index: number) => {
+                const newItem = currentProjectForItem?.projectItems?.[index];
+                let itemImages: any[] = [];
+
+                console.log(
+                  'Processing item:',
+                  projectItem.id,
+                  '->',
+                  newItem.id,
+                );
+
+                if (
+                  Array.isArray(projectItem?.images) &&
+                  projectItem?.images?.length > 0
+                ) {
+                  console.log('Images exist for item:', projectItem.images);
+                  itemImages.push(...projectItem.images);
+                }
+
+                if (itemImages.length > 0) {
+                  const imageUris = itemImages.flatMap((img: any) => {
+                    if (Array.isArray(img.imageUrl)) return img.imageUrl;
+                    if (typeof img.imageUrl === 'string') return [img.imageUrl];
+                    return [];
+                  });
+
+                  try {
+                    const res = await ProjectAPI.addItemImages(
+                      newItem.id,
+                      imageUris,
+                      true,
+                    );
+                    console.log('Uploaded images for item:', newItem.id, res);
+                  } catch (err) {
+                    console.log(
+                      'Failed to upload images for item:',
+                      newItem.id,
+                      err,
+                    );
+                  }
+                } else {
+                  console.log('No images found for item:', projectItem.id);
+                }
+              },
+            ),
+          );
+        } else {
+          console.log(
+            'Project items and current items are not aligned in size or format.',
+          );
+        }
+
+        // If created from a quotation and a location is available, update GPS for the new project
+        if (isFromQuotationDetail && fullLocation.address) {
+          await ProjectAPI.updateGps(projectId, {
+            address: fullLocation.address,
+            latitude: fullLocation.latitude,
+            longitude: fullLocation.longitude,
+          });
+        }
+
         if (isFromQuotationDetail) {
           await QuotationAPI.updateQuotationStatus(rawProject.id, {
             status: 'IN PROGRESS',
           });
         }
-        ToastAndroid.show('Project Created Successfully', ToastAndroid.SHORT);
-        navigation.goBack();
+        ToastAndroid.show(
+          t('Project Created Successfully'),
+          ToastAndroid.SHORT,
+        );
+        const currentProject: Project = created?.data;
+        navigation.navigate('ProjectDetails', { project: currentProject });
         setAdvanceModalOpen(true);
       }
     } catch (e: any) {
-      setSnackbar({ visible: true, message: e?.message || 'Save failed' });
+      setSnackbar({ visible: true, message: e?.message || t('Save failed') });
     } finally {
       setLoading(false);
     }
@@ -574,7 +821,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       });
       navigation.goBack();
     } catch (e) {
-      setSnackbar({ visible: true, message: 'Failed to save advance' });
+      setSnackbar({ visible: true, message: t('Failed to save advance') });
     } finally {
       setAdvanceModalOpen(false);
     }
@@ -583,10 +830,14 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   const statuses = ['CREATED', 'IN_PROGRESS', 'DISCONTINUED', 'COMPLETED'];
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={styles.safeArea}
+      edges={['top', 'left', 'right', 'bottom']}
+    >
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 100}
       >
         <ScrollView
           contentContainerStyle={styles.content}
@@ -596,12 +847,13 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           }
         >
           <Text style={styles.title}>
-            {isEditMode ? 'Edit Project' : 'Create New Project'}
+            {isEditMode ? t('Edit Project') : t('Create New Project')}
           </Text>
+
           {/* Customer */}
           {isFromInquiry ? (
             <TextInput
-              label="Customer"
+              label={t('Customer')}
               value={customers.find(c => c.id === customerId)?.name || ''}
               mode="outlined"
               disabled
@@ -618,7 +870,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               maxHeight={hp(40)}
               labelField="label"
               valueField="value"
-              placeholder="Select Customer *"
+              placeholder={t('Select Customer *')}
               value={selectedCustomerIdx}
               onChange={item => {
                 const cust = customers[item.value];
@@ -627,20 +879,9 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               }}
             />
           )}
-          {/* Delivery Date */}
-          <TouchableOpacity onPress={() => setDatePickerOpen(true)}>
-            <TextInput
-              label="Delivery Date *"
-              value={deliveryDate}
-              mode="outlined"
-              editable={false}
-              right={<TextInput.Icon icon="calendar" size={wp(6)} />}
-              style={styles.input}
-              theme={{ roundness: wp(2.5) }}
-            />
-          </TouchableOpacity>
+
           <TextInput
-            label="Project Description *"
+            label={t('Project Description *')}
             value={projectDescription}
             onChangeText={setProjectDescription}
             mode="outlined"
@@ -649,89 +890,11 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
             style={[styles.input, styles.textArea]}
             theme={{ roundness: wp(2.5) }}
           />
-          <TextInput
-            label="Total Budjet *"
-            value={actualAmount.toString()}
-            onChangeText={text => {
-              setActualAmount(Number(text));
-              if (Number(text) > Number(totalAmount)) {
-                setTotalAmount(text);
-              }
-            }}
-            mode="outlined"
-            keyboardType="numeric"
-            style={styles.input}
-            theme={{ roundness: wp(2.5) }}
-            right={<TextInput.Affix text="₹" />}
-            disabled={false}
-          />
-          <TextInput
-            label="Total Amount *"
-            value={totalAmount}
-            onChangeText={setTotalAmount}
-            mode="outlined"
-            keyboardType="numeric"
-            style={styles.input}
-            theme={{ roundness: wp(2.5) }}
-            right={<TextInput.Affix text="₹" />}
-            disabled={false}
-          />
-          {Number(totalAmount) > 0 && (
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: wp(2),
-              }}
-            >
-              <TextInput
-                label="Discount"
-                value={discount === 0 ? '' : String(discount)}
-                onChangeText={text => {
-                  const discountValue = text === '' ? 0 : Number(text);
-                  setDiscount(discountValue);
 
-                  if (discountValue === 0 || text === '') {
-                    setTotalAmount(String(actualAmount));
-                    setDisCountPercentage(0);
-                  } else {
-                    // Calculate percentage based on actualAmount (original total)
-                    const percentage = (discountValue / actualAmount) * 100;
-                    setDisCountPercentage(percentage);
-
-                    // Update totalAmount by subtracting from actualAmount
-                    setTotalAmount(String(actualAmount - discountValue));
-                  }
-                }}
-                mode="outlined"
-                keyboardType="numeric"
-                style={[styles.input, { width: wp(60) }]}
-                theme={{ roundness: wp(2.5) }}
-                disabled={false}
-              />
-              <TextInput
-                label="Percentage"
-                value={
-                  discountPercentage === 0
-                    ? '0.00'
-                    : discountPercentage.toFixed(2)
-                }
-                mode="outlined"
-                keyboardType="numeric"
-                style={[styles.input, { width: wp(30) }]}
-                theme={{ roundness: wp(2.5) }}
-                editable={false}
-                right={
-                  <TextInput.Icon icon="percent" size={wp(6)} color="#0a411fff" />
-                }
-              />
-            </View>
-          )}
           {/* Location */}
           {isEditMode && (
             <TextInput
-              label="Site Location"
+              label={t('Site Location')}
               value={fullLocation.address}
               mode="outlined"
               editable={true}
@@ -742,25 +905,28 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                   icon="map-marker"
                   size={wp(6)}
                   onPress={fetchLocation}
-                  color="#0a411fff"
+                  color="#075E54"
                 />
               }
             />
           )}
-          {/* Time */}
-          {/* {isEditMode && (
-            <TouchableOpacity onPress={() => setTimePickerOpen(true)}>
-              <TextInput
-                label="Preferred Time"
-                value={time ? dayjs(time).format('h:mm A') : ''}
-                mode="outlined"
-                editable={false}
-                style={styles.input}
-                theme={{ roundness: wp(2.5) }}
-                right={<TextInput.Icon icon="clock-outline" size={wp(6)} />}
-              />
-            </TouchableOpacity>
-          )} */}
+          <TextInput
+            label={t('Total Budjet *')}
+            value={actualAmount.toString()}
+            onChangeText={text => {
+              setActualAmount(Number(text));
+              // if (Number(text) > Number(totalAmount)) {
+              //   setTotalAmount(text);
+              // }
+            }}
+            mode="outlined"
+            keyboardType="numeric"
+            style={styles.input}
+            theme={{ roundness: wp(2.5) }}
+            right={<TextInput.Affix text="₹" />}
+            disabled={false}
+          />
+
           {/* Status */}
           {isEditMode && (
             <Dropdown
@@ -768,22 +934,23 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               placeholderStyle={styles.placeholderStyle}
               selectedTextStyle={styles.selectedTextStyle}
               data={statuses.map(s => ({
-                label: s.replace(/_/g, ' '),
+                label: t(s),
                 value: s,
               }))}
               maxHeight={hp(40)}
               labelField="label"
               valueField="value"
-              placeholder="Select Status"
+              placeholder={t('Select Status')}
               value={status}
               onChange={item => setStatus(item.value)}
             />
           )}
+
           {/* Images */}
-          {isEditMode && (
+          {(isEditMode || isFromQuotationDetail) && (
             <>
               <Text style={styles.sectionTitle}>
-                Site Images ({images.length}/15)
+                {t('Site Images')} ({images.length}/15)
               </Text>
               <View style={styles.imageContainer}>
                 {images.map((img, i) => (
@@ -814,9 +981,9 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                       <MaterialCommunityIcons
                         name="image-plus"
                         size={wp(8)}
-                        color="#0a411fff"
+                        color="#075E54"
                       />
-                      <Text style={styles.uploadText}>Gallery</Text>
+                      <Text style={styles.uploadText}>{t('Gallery')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.uploadBtn}
@@ -825,32 +992,35 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                       <MaterialCommunityIcons
                         name="camera"
                         size={wp(8)}
-                        color="#0a411fff"
+                        color="#075E54"
                       />
-                      <Text style={styles.uploadText}>Camera</Text>
+                      <Text style={styles.uploadText}>{t('Camera')}</Text>
                     </TouchableOpacity>
                   </>
                 )}
               </View>
             </>
           )}
+
           {/* Items */}
           <View style={styles.itemsHeader}>
-            <Text style={styles.sectionTitle}>Project Items</Text>
+            <Text style={styles.sectionTitle}>{t('Project Items')}</Text>
             <Chip icon="calculator" compact style={styles.totalChip}>
-              Total: ₹{itemsTotal.toLocaleString('en-IN')}
+              {t('Total')}: ₹{itemsTotal.toLocaleString('en-IN')}
             </Chip>
           </View>
           {items.length === 0 ? (
-            <Text style={styles.emptyText}>No items added yet</Text>
+            <Text style={styles.emptyText}>{t('No items added yet')}</Text>
           ) : (
             items.map((item, index) => (
               <Card key={index} style={styles.itemCard} elevation={2}>
                 <Card.Content>
                   <Text style={styles.itemName}>{item.itemName}</Text>
                   <Text style={styles.itemCalc}>
-                    {item.quantity} × ₹{item.rateMrp.toLocaleString('en-IN')} =
-                    ₹{(item.amount || 0).toLocaleString('en-IN')}
+                    {item.quantity}{' '}
+                    {units.find(u => u.id === item.unitId)?.shortName} × ₹
+                    {item.rateMrp.toLocaleString('en-IN')} = ₹
+                    {(item.amount || 0).toLocaleString('en-IN')}
                   </Text>
                   {item.itemDescription && (
                     <Text style={styles.itemDesc}>{item.itemDescription}</Text>
@@ -864,7 +1034,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                   <IconButton
                     icon="pencil"
                     size={wp(5)}
-                    onPress={() => openItemModal(item)}
+                    onPress={() => openItemModal(item, index)}
                   />
                   <IconButton
                     icon="delete"
@@ -875,13 +1045,102 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               </Card>
             ))
           )}
+
+          {/* Budget (kept editable) */}
+
+          {/* Total Amount (display only) */}
+          <Text style={styles.totalText}>
+            {t('Total Amount *')}: ₹
+            {Number(totalAmount || 0).toLocaleString('en-IN')}
+          </Text>
+
+          {Number(totalAmount) > 0 && (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: wp(2),
+              }}
+            >
+              <TextInput
+                label={t('Discount')}
+                value={discount === 0 ? '' : String(discount)}
+                onChangeText={text => {
+                  const discountValue = text === '' ? 0 : Number(text);
+                  setDiscount(discountValue);
+                  if (discountValue === 0 || text === '') {
+                    setTotalAmount(String(actualAmount));
+                    setDisCountPercentage(0);
+                  } else {
+                    const percentage = (discountValue / actualAmount) * 100;
+                    setDisCountPercentage(percentage);
+                    setTotalAmount(String(actualAmount - discountValue));
+                  }
+                }}
+                mode="outlined"
+                keyboardType="numeric"
+                style={[styles.input, { width: wp(60) }]}
+                theme={{ roundness: wp(2.5) }}
+                disabled={false}
+              />
+              <TextInput
+                label={t('Percentage')}
+                value={
+                  discountPercentage === 0
+                    ? '0.00'
+                    : discountPercentage.toFixed(2)
+                }
+                onChangeText={text => {
+                  const percentValue = text === '' ? 0 : Number(text);
+                  setDisCountPercentage(percentValue);
+                  if (percentValue === 0 || text === '') {
+                    setDiscount(0);
+                    setTotalAmount(String(actualAmount));
+                  } else {
+                    const discountValue = (actualAmount * percentValue) / 100;
+                    setDiscount(discountValue);
+                    setTotalAmount(String(actualAmount - discountValue));
+                  }
+                }}
+                mode="outlined"
+                keyboardType="numeric"
+                style={[styles.input, { width: wp(30) }]}
+                theme={{ roundness: wp(2.5) }}
+                editable={true}
+                right={
+                  <TextInput.Icon icon="percent" size={wp(6)} color="#075E54" />
+                }
+              />
+            </View>
+          )}
+
+          {/* Delivery Date (last field) */}
+          <TouchableOpacity onPress={() => setDatePickerOpen(true)}>
+            <TextInput
+              label={t('Delivery Date *')}
+              value={deliveryDate}
+              mode="outlined"
+              editable={false}
+              right={
+                <TextInput.Icon
+                  icon="calendar"
+                  size={wp(6)}
+                  onPress={() => setDatePickerOpen(true)}
+                />
+              }
+              style={styles.input}
+              theme={{ roundness: wp(2.5) }}
+            />
+          </TouchableOpacity>
+
           {/* Save Button */}
           <Button
             mode="contained"
             onPress={handleSave}
             style={styles.saveButton}
             contentStyle={styles.saveButtonContent}
-            buttonColor="#0a411fff"
+            buttonColor="#075E54"
             loading={loading}
             disabled={
               loading ||
@@ -892,7 +1151,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
             }
             icon="content-save"
           >
-            {isEditMode ? 'Update Project' : 'Save Project'}
+            {isEditMode ? t('Update Project') : t('Save Project')}
           </Button>
         </ScrollView>
 
@@ -907,99 +1166,37 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
         </Portal>
 
         {/* Item Dialog */}
-        <Portal>
-          <Dialog
-            visible={itemModalOpen}
-            onDismiss={() => setItemModalOpen(false)}
-          >
-            <Dialog.Title>{editingItem ? 'Edit' : 'Add'} Item</Dialog.Title>
-            <Dialog.ScrollArea>
-              <ScrollView style={{ maxHeight: hp(50) }}>
-                <TextInput
-                  label="Item Name *"
-                  value={itemName}
-                  onChangeText={setItemName}
-                  mode="outlined"
-                  style={styles.dialogInput}
-                />
-                <TextInput
-                  label="Description"
-                  value={itemDesc}
-                  onChangeText={setItemDesc}
-                  mode="outlined"
-                  style={styles.dialogInput}
-                  multiline
-                  numberOfLines={2}
-                />
-                <TextInput
-                  label="Quantity *"
-                  value={itemQty}
-                  onChangeText={setItemQty}
-                  mode="outlined"
-                  keyboardType="numeric"
-                  style={styles.dialogInput}
-                />
-                <TextInput
-                  label="Rate (MRP) *"
-                  value={itemRate}
-                  onChangeText={setItemRate}
-                  mode="outlined"
-                  keyboardType="numeric"
-                  style={styles.dialogInput}
-                  right={<TextInput.Affix text="₹" />}
-                />
-                <View style={styles.unitRow}>
-                  <View style={{ flex: 1 }}>
-                    <Dropdown
-                      style={styles.unitDropdown}
-                      placeholderStyle={styles.placeholderStyle}
-                      selectedTextStyle={styles.selectedTextStyle}
-                      data={unitDropdown}
-                      labelField="label"
-                      valueField="value"
-                      placeholder="Unit *"
-                      value={selectedItemUnitId}
-                      onChange={item => setSelectedItemUnitId(item.value)}
-                    />
-                  </View>
-                  <IconButton
-                    icon="plus"
-                    size={wp(6)}
-                    onPress={() => setUnitModalOpen(true)}
-                    style={styles.addUnitBtn}
-                  />
-                </View>
-                <TextInput
-                  label="Tax Percentage *"
-                  value={itemTaxPercentage}
-                  onChangeText={setItemTaxPercentage}
-                  mode="outlined"
-                  keyboardType="numeric"
-                  style={styles.dialogInput}
-                  right={<TextInput.Affix text="%" />}
-                />
-                <TextInput
-                  label="HSN/SAC Code"
-                  value={itemHsnSac}
-                  onChangeText={setItemHsnSac}
-                  mode="outlined"
-                  style={styles.dialogInput}
-                />
-              </ScrollView>
-            </Dialog.ScrollArea>
-            <Dialog.Actions>
-              <Button onPress={() => setItemModalOpen(false)}>Cancel</Button>
-              <Button
-                onPress={saveItemLocally}
-                disabled={
-                  !itemName || !itemQty || !itemRate || !selectedItemUnitId
-                }
-              >
-                Save
-              </Button>
-            </Dialog.Actions>
-          </Dialog>
-        </Portal>
+        <ItemDialog
+          visible={itemModalOpen}
+          onDismiss={() => setItemModalOpen(false)}
+          mode="project"
+          projectId={rawProject?.id || createdProjectId || 0}
+          item={editingItem}
+          onSaved={(saved: any) => {
+            setItems(prev => {
+              if (editingItem?.id) {
+                return prev.map(i =>
+                  i.id === editingItem.id ? { ...saved } : i,
+                );
+              }
+              if (
+                editingIndex !== null &&
+                editingIndex >= 0 &&
+                editingIndex < prev.length
+              ) {
+                const next = [...prev];
+                next[editingIndex] = { ...saved };
+                return next;
+              }
+              return [...prev, { ...saved }];
+            });
+            setEditingItem(null);
+            setEditingIndex(null);
+          }}
+          title={editingItem ? t('Edit Item') : t('Add Item')}
+          maxHeight={hp(50)}
+          t={t}
+        />
 
         {/* Unit Dialog */}
         <Portal>
@@ -1007,17 +1204,17 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
             visible={unitModalOpen}
             onDismiss={() => setUnitModalOpen(false)}
           >
-            <Dialog.Title>Add New Unit</Dialog.Title>
+            <Dialog.Title>{t('Add New Unit')}</Dialog.Title>
             <Dialog.Content>
               <TextInput
-                label="Unit Name"
+                label={t('Unit Name')}
                 value={newUnitName}
                 onChangeText={setNewUnitName}
                 mode="outlined"
                 style={styles.dialogInput}
               />
               <TextInput
-                label="Short Name"
+                label={t('Short Name')}
                 value={newUnitShortName}
                 onChangeText={setNewUnitShortName}
                 mode="outlined"
@@ -1025,8 +1222,10 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               />
             </Dialog.Content>
             <Dialog.Actions>
-              <Button onPress={() => setUnitModalOpen(false)}>Cancel</Button>
-              <Button onPress={addNewUnit}>Add</Button>
+              <Button onPress={() => setUnitModalOpen(false)}>
+                {t('Cancel')}
+              </Button>
+              <Button onPress={addNewUnit}>{t('Add')}</Button>
             </Dialog.Actions>
           </Dialog>
         </Portal>
@@ -1034,10 +1233,10 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
         {/* Advance Dialog */}
         <Portal>
           <Dialog visible={false} onDismiss={() => setAdvanceModalOpen(false)}>
-            <Dialog.Title>Add Advance Payment</Dialog.Title>
+            <Dialog.Title>{t('Add Advance Payment')}</Dialog.Title>
             <Dialog.Content>
               <TextInput
-                label="Advance Amount"
+                label={t('Advance Amount')}
                 value={advanceAmount}
                 onChangeText={setAdvanceAmount}
                 mode="outlined"
@@ -1053,16 +1252,16 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                   navigation.goBack();
                 }}
               >
-                Skip
+                {t('Skip')}
               </Button>
               <Button onPress={saveAdvance} disabled={!advanceAmount}>
-                Save
+                {t('Save')}
               </Button>
             </Dialog.Actions>
           </Dialog>
         </Portal>
 
-        {/* Date Picker */}
+        {/* Date & Time Pickers */}
         <DatePicker
           modal
           open={datePickerOpen}
@@ -1075,8 +1274,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           }}
           onCancel={() => setDatePickerOpen(false)}
         />
-
-        {/* Time Picker */}
         <DatePicker
           modal
           open={timePickerOpen}
@@ -1160,7 +1357,7 @@ const styles = StyleSheet.create({
     height: wp(25),
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: '#0a411fff',
+    borderColor: '#075E54',
     borderRadius: wp(2),
     justifyContent: 'center',
     alignItems: 'center',
@@ -1168,7 +1365,7 @@ const styles = StyleSheet.create({
     marginBottom: hp(1),
   },
   uploadText: {
-    color: '#0a411fff',
+    color: '#075E54',
     marginTop: hp(0.5),
     fontSize: wp(3.2),
     fontWeight: '500',
@@ -1183,7 +1380,7 @@ const styles = StyleSheet.create({
   itemName: { fontSize: wp(4.2), fontWeight: '600', color: '#1a1a1a' },
   itemCalc: {
     fontSize: wp(3.8),
-    color: '#0a411fff',
+    color: '#075E54',
     marginTop: hp(0.3),
     fontWeight: '500',
   },
@@ -1193,6 +1390,13 @@ const styles = StyleSheet.create({
     color: '#888',
     marginTop: hp(0.3),
     fontStyle: 'italic',
+  },
+  totalText: {
+    fontSize: wp(4.2),
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginTop: hp(1),
+    marginBottom: hp(1),
   },
   emptyText: {
     textAlign: 'center',
@@ -1206,7 +1410,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: wp(5),
     bottom: hp(10),
-    backgroundColor: '#0a411fff',
+    backgroundColor: '#075E54',
   },
   dialogInput: { marginBottom: hp(2) },
   unitRow: { flexDirection: 'row', alignItems: 'center', marginBottom: hp(2) },

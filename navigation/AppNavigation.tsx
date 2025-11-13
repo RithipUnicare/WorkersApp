@@ -1,5 +1,11 @@
-import { NavigationContainer } from '@react-navigation/native';
+import {
+  NavigationContainer,
+  useNavigationContainerRef,
+} from '@react-navigation/native';
+import { createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useEffect } from 'react';
+import { setupSessionTimeout } from '../utils/sessionManager';
 import LoginScreen from '../Screens/LoginScreen';
 import AdminHomePage from '../Screens/AdminHomeScreen';
 import WorkerHomePage from '../Screens/WorkerScreen';
@@ -22,11 +28,12 @@ import { Quotation } from '../Screens/QuotationDetail';
 import AddQuotation from '../Screens/AddQuotationScreen';
 import QuotationList from '../Screens/QuotationList';
 import QuotationDetail from '../Screens/QuotationDetail';
+import PendingPayments from '../Screens/PendingPayments';
 
 export type rootStackParamList = {
   login: undefined;
-  AdminHome: undefined;
-  WorkersHome: undefined;
+  AdminHome: any;
+  WorkersHome: any;
   CustomerList: undefined;
   AddCustomer: { customer: Customer } | any;
   ProjectList: undefined;
@@ -37,23 +44,31 @@ export type rootStackParamList = {
   CustomerDetail: { customer: Customer };
   ProjectDetails: { project: Project };
   unattendedCustomers: undefined;
-  RecoredAudio: { project: Project } | any;
+  RecoredAudio: { project: Project } | { quotation: Quotation } | any;
   splash: undefined;
-  AddQuotation:
-    | { customer: Customer }
-    | { quotationToEdit: Quotation }
-    | undefined;
+  AddQuotation: { customer: Customer } | { quotationToEdit: Quotation } | any;
   QuotationList: undefined;
   QuotationDetail: { quotation: Quotation };
+  pendingPayments: undefined;
 };
 
 const Stack = createNativeStackNavigator<rootStackParamList>();
-
+export const navigationRef = createNavigationContainerRef<rootStackParamList>();
 const AppNavigation = () => {
   const theme = useColorScheme() === 'dark';
 
+  useEffect(() => {
+    const cleanupSessionTimeout = setupSessionTimeout(navigationRef);
+
+    return () => {
+      if (cleanupSessionTimeout) {
+        cleanupSessionTimeout();
+      }
+    };
+  }, []);
+
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator
         initialRouteName="splash"
         screenOptions={{
@@ -78,7 +93,7 @@ const AppNavigation = () => {
           component={LoginScreen}
           options={{
             title: 'Login',
-            headerStyle: { backgroundColor: '#0b6612ff' },
+            headerStyle: { backgroundColor: '#00312bff' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -104,7 +119,7 @@ const AppNavigation = () => {
           name="CustomerList"
           component={CustomerList}
           options={{
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -117,7 +132,7 @@ const AppNavigation = () => {
           options={{
             presentation: 'modal',
             gestureDirection: 'vertical',
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -128,7 +143,7 @@ const AppNavigation = () => {
           name="ProjectList"
           component={ProjectList}
           options={{
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -140,7 +155,7 @@ const AppNavigation = () => {
           component={ProjectDetails}
           options={{
             title: 'Project Details',
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -153,7 +168,7 @@ const AppNavigation = () => {
           options={{
             presentation: 'modal',
             gestureDirection: 'vertical',
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -164,7 +179,7 @@ const AppNavigation = () => {
           name="AdminPanel"
           component={AdminPanel}
           options={{
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -176,7 +191,7 @@ const AppNavigation = () => {
           component={PaymentPage}
           options={{
             title: 'Payments',
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -188,7 +203,7 @@ const AppNavigation = () => {
           component={CustomerDetail}
           options={{
             title: 'Customer Details',
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -200,7 +215,7 @@ const AppNavigation = () => {
           component={UnattendedCustomers}
           options={{
             title: 'Unattended Customers',
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -212,7 +227,7 @@ const AppNavigation = () => {
           component={RecoredAudio}
           options={{
             title: 'Recored Audio',
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -224,7 +239,7 @@ const AppNavigation = () => {
           component={AddQuotation}
           options={{
             title: 'Add Quotation',
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -236,7 +251,7 @@ const AppNavigation = () => {
           component={QuotationList}
           options={{
             title: 'Quotations',
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },
@@ -248,7 +263,19 @@ const AppNavigation = () => {
           component={QuotationDetail}
           options={{
             title: 'Quotation Details',
-            headerStyle: { backgroundColor: '#0a411fff' },
+            headerStyle: { backgroundColor: '#075E54' },
+            headerTitleStyle: {
+              color: '#fff',
+            },
+            headerTintColor: '#fff',
+          }}
+        />
+        <Stack.Screen
+          name="pendingPayments"
+          component={PendingPayments}
+          options={{
+            title: 'Pending Payments',
+            headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',
             },

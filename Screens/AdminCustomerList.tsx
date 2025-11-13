@@ -16,10 +16,9 @@ import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CustomerAPI } from '../service/apiService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslator } from 'react-native-translator';
 
 const { width, height } = Dimensions.get('window');
-
-// Responsive helpers
 const wp = (percentage: number) => (width * percentage) / 100;
 const hp = (percentage: number) => (height * percentage) / 100;
 
@@ -47,6 +46,28 @@ type Props = {
   navigation: NativeStackNavigationProp<rootStackParamList, 'CustomerList'>;
 };
 
+const enToTa: Record<string, string> = {
+  // Search & Empty
+  'Search by name, phone or address...':
+    'பெயர், தொலைபேசி அல்லது முகவரியால் தேடு...',
+  'No customers found': 'வாடிக்கையாளர்கள் ஏதும் இல்லை',
+  'Try a different search term': 'வேறு தேடல் சொல்லை முயற்சி',
+  'Add your first customer': 'உங்கள் முதல் வாடிக்கையாளரைச் சேர்',
+
+  // Status Labels
+  Paid: 'பணம் செலுத்தப்பட்டது',
+  Inquired: 'விசாரிக்கப்பட்டது',
+  Pending: 'நிலுவையில்',
+  Cancelled: 'ரத்து செய்யப்பட்டது',
+  Rejected: 'நிராகரிக்கப்பட்டது',
+  'Project Created': 'திட்டம் உருவாக்கப்பட்டது',
+
+  // Follow-up
+  'Follow-up in': 'பின்தொடர்வு',
+  day: 'நாள்',
+  days: 'நாட்கள்',
+};
+
 const CustomerList: React.FC<Props> = ({ navigation }) => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
@@ -55,7 +76,51 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
+  const [sortAsc, setSortAsc] = useState(true);
   const [fabVisible, setFabVisible] = useState(false);
+
+  const [isTamil, setIsTamil] = useState(false);
+  const [translations, setTranslations] = useState<Record<string, string>>({});
+  const { translate } = useTranslator();
+
+  // Initialize language
+  useEffect(() => {
+    const initLang = async () => {
+      const saved = await AsyncStorage.getItem('appLanguage');
+      const tamil = saved === 'ta';
+      setIsTamil(tamil);
+    };
+    initLang();
+  }, []);
+
+  // Translate all strings
+  useEffect(() => {
+    if (!isTamil) {
+      setTranslations({});
+      return;
+    }
+    const translateAll = async () => {
+      const result: Record<string, string> = {};
+      for (const en of Object.keys(enToTa)) {
+        try {
+          const ta = await translate('en', 'ta', en, { type: 'google' });
+          result[en] = ta;
+        } catch {
+          result[en] = enToTa[en] ?? en;
+        }
+      }
+      setTranslations(result);
+    };
+    translateAll();
+  }, [isTamil, translate]);
+
+  const t = useCallback(
+    (english: string): string => {
+      if (!isTamil) return english;
+      return translations[english] ?? enToTa[english] ?? english;
+    },
+    [isTamil, translations],
+  );
 
   // Load on focus
   useEffect(() => {
@@ -64,7 +129,7 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
       setFabVisible(true);
     });
     return unsubscribe;
-  }, []);
+  }, [navigation]);
 
   const loadCustomers = async () => {
     try {
@@ -104,28 +169,33 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
           (c.contactNo || '').toLowerCase().includes(query) ||
           (c.address || '').toLowerCase().includes(query),
       );
-      setFilteredCustomers(filtered);
+      const sorted = [...filtered].sort((a, b) => {
+        const ta = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const tb = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return sortAsc ? ta - tb : tb - ta;
+      });
+      setFilteredCustomers(sorted);
     }, 300);
 
     return () => clearTimeout(timeout);
-  }, [search, customers]);
+  }, [search, customers, sortAsc]);
 
   // Status color & label
   const getStatusInfo = (status: string) => {
     const s = status.toUpperCase();
     switch (s) {
       case 'PAID':
-        return { color: '#27ae60', label: 'Paid' };
+        return { color: '#27ae60', label: t('Paid') };
       case 'INQUIRED':
-        return { color: '#3498db', label: 'Inquired' };
+        return { color: '#e6b518ff', label: t('Enquired') };
       case 'PENDING':
-        return { color: '#f39c12', label: 'Pending' };
+        return { color: '#f39c12', label: t('Pending') };
       case 'CANCELLED':
-        return { color: '#e74c3c', label: 'Cancelled' };
+        return { color: '#e74c3c', label: t('Cancelled') };
       case 'REJECTED':
-        return { color: '#95a5a6', label: 'Rejected' };
+        return { color: '#95a5a6', label: t('Rejected') };
       case 'PROJECT_CREATED':
-        return { color: '#01612cff', label: 'Project Created' };
+        return { color: '#01612cff', label: t('Project Created') };
       default:
         return {
           color: '#95a5a6',
@@ -167,7 +237,7 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
                 <MaterialCommunityIcons
                   name="phone"
                   size={wp(4.5)}
-                  color="#0a411fff"
+                  color="#075E54"
                 />
                 <Text style={styles.infoText}>{item.contactNo}</Text>
               </View>
@@ -178,7 +248,7 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
                 <MaterialCommunityIcons
                   name="map-marker"
                   size={wp(4.5)}
-                  color="#0a411fff"
+                  color="#075E54"
                 />
                 <Text style={styles.infoText} numberOfLines={1}>
                   {item.address}
@@ -194,8 +264,8 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
 
             {item.noOfDaysToVisit !== undefined && item.noOfDaysToVisit > 0 && (
               <Text style={styles.visitInfo}>
-                Follow-up in {item.noOfDaysToVisit} day
-                {item.noOfDaysToVisit > 1 ? 's' : ''}
+                {t('Follow-up in')} {item.noOfDaysToVisit}{' '}
+                {item.noOfDaysToVisit > 1 ? t('days') : t('day')}
               </Text>
             )}
 
@@ -213,25 +283,25 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
       <MaterialCommunityIcons name="account-off" size={wp(20)} color="#ccc" />
-      <Text style={styles.emptyText}>No customers found</Text>
+      <Text style={styles.emptyText}>{t('No customers found')}</Text>
       <Text style={styles.emptySubtext}>
-        {search ? 'Try a different search term' : 'Add your first customer'}
+        {search
+          ? t('Try a different search term')
+          : t('Add your first customer')}
       </Text>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={styles.safeArea}
+      edges={['top', 'left', 'right', 'bottom']}
+    >
       <View style={styles.container}>
         {/* Search Bar */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-          }}
-        >
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TextInput
-            placeholder="Search by name, phone or address..."
+            placeholder={t('Search by name, phone or address...')}
             value={search}
             onChangeText={setSearch}
             mode="outlined"
@@ -239,7 +309,7 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
             theme={{ roundness: wp(2.5) }}
             contentStyle={styles.searchContent}
             outlineColor="#ddd"
-            activeOutlineColor="#0a411fff"
+            activeOutlineColor="#075E54"
             left={<TextInput.Icon icon="magnify" size={wp(6)} />}
             right={
               search ? (
@@ -253,9 +323,19 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
             }
           />
           <TouchableOpacity
+            onPress={() => setSortAsc(prev => !prev)}
+            style={styles.sortButton}
+          >
+            <MaterialCommunityIcons
+              name={sortAsc ? 'sort-ascending' : 'sort-descending'}
+              size={wp(6)}
+              color="#075E54"
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
             onPress={() => navigation.navigate('AddCustomer')}
             style={{
-              backgroundColor: '#0a411fff',
+              backgroundColor: '#075E54',
               padding: wp(2),
               borderRadius: wp(3.5),
             }}
@@ -267,7 +347,7 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
         {/* Customer List */}
         {loading ? (
           <View style={styles.loader}>
-            <ActivityIndicator size="large" color="#0a411fff" />
+            <ActivityIndicator size="large" color="#075E54" />
           </View>
         ) : (
           <FlatList
@@ -283,7 +363,16 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
           />
         )}
 
-        {/* FAB */}
+        {/* FAB (Add Customer) */}
+        <Portal>
+          <FAB
+            icon="plus"
+            style={[styles.fab, { backgroundColor: '#075E54' }]}
+            onPress={() => navigation.navigate('AddCustomer')}
+            visible={fabVisible}
+            color="#fff"
+          />
+        </Portal>
       </View>
     </SafeAreaView>
   );
@@ -300,6 +389,17 @@ const styles = StyleSheet.create({
     width: width * 0.8,
   },
   searchContent: { fontSize: wp(4) },
+  sortButton: {
+    width: wp(10),
+    height: wp(10),
+    borderRadius: wp(5),
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e1e1e1',
+    marginRight: wp(2),
+  },
   listContent: {
     paddingHorizontal: wp(4),
     paddingBottom: hp(15),
@@ -354,7 +454,7 @@ const styles = StyleSheet.create({
   },
   visitInfo: {
     fontSize: wp(3.4),
-    color: '#0a411fff',
+    color: '#075E54',
     marginTop: hp(0.8),
     fontWeight: '500',
   },
@@ -388,7 +488,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: wp(10),
   },
   fab: {
-    backgroundColor: '#0a411fff',
+    position: 'absolute',
+    right: wp(5),
+    bottom: hp(10),
   },
 });
 

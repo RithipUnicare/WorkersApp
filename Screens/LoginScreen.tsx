@@ -10,18 +10,15 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Card, TextInput, Button } from 'react-native-paper';
+import { Card, TextInput, Button, SegmentedButtons } from 'react-native-paper';
 import LinearGradient from 'react-native-linear-gradient';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { UserAPI } from '../service/apiService';
+import { AuthAPI, UserAPI } from '../service/apiService';
 import { User } from './Adminpanel';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
-
-// Responsive helpers
 const wp = (percentage: number) => (width * percentage) / 100;
 const hp = (percentage: number) => (height * percentage) / 100;
 
@@ -30,49 +27,113 @@ type Props = {
 };
 
 const LoginScreen: React.FC<Props> = ({ navigation }) => {
+  const [activeTab, setActiveTab] = useState<'worker' | 'admin'>('worker');
+
+  // Worker Login State
+  const [mobile, setMobile] = useState('');
+
+  // Admin Login State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [users, setUsers] = useState<User[]>([]);
+
+  // const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await UserAPI.getAll();
-        setUsers(response.data);
-      } catch (error) {
-        console.error('Error fetching users:', error);
+    const alreadyLogin = async () => {
+      const user = await AsyncStorage.getItem('user');
+      const UserRole = user ? JSON.parse(user).role : null;
+      if (user) {
+        if (UserRole === 'worker') {
+          navigation.navigate('WorkersHome');
+        } else {
+          navigation.navigate('AdminHome');
+        }
       }
     };
-    fetchUsers();
+    alreadyLogin();
   }, []);
 
-  const handleSignIn = () => {
-    const user = users.find(
-      user => user.email === email && user.password === password,
-    );
-    if (email === '' || password === '') {
-      Alert.alert('Invalid Credentials', 'Email or password is incorrect.');
+  const handleWorkerLogin = async () => {
+    if (!mobile.trim()) {
+      Alert.alert('Invalid Input', 'Please enter your mobile number.');
       return;
     }
-    if (email === 'admin@indiansteel.com' && password === 'admin123') {
-      AsyncStorage.setItem('user', JSON.stringify({ role: 'superadmin' }));
-      navigation.replace('AdminHome');
-    }
-    if (user?.role === 'admin' || user?.role === 'superadmin') {
-      AsyncStorage.setItem('user', JSON.stringify(user));
-      navigation.replace('AdminHome');
-    } else if (user?.role === 'worker') {
-      AsyncStorage.setItem('user', JSON.stringify(user));
+    try {
+      await AuthAPI.workerLogin({ mobile: mobile.trim() });
+      // Now fetch users with Authorization header and find this worker
+      try {
+        const response: any = await UserAPI.getAll();
+        const allUsers = response?.data || response || [];
+        const matched = allUsers.find(
+          (u: any) => `${u.mobile || u.contactNo || ''}` === mobile.trim(),
+        );
+        if (matched) {
+          await AsyncStorage.setItem('user', JSON.stringify(matched));
+        } else {
+          // Fallback minimal user
+          await AsyncStorage.setItem(
+            'user',
+            JSON.stringify({ role: 'worker', mobile: mobile.trim() }),
+          );
+        }
+      } catch {}
       navigation.replace('WorkersHome');
+    } catch (e: any) {
+      Alert.alert('Login Failed', 'Unable to login as worker');
+    }
+  };
+
+  const handleAdminLogin = async () => {
+    if (!email.trim() || !password.trim()) {
+      Alert.alert('Invalid Input', 'Username and password are required.');
+      return;
+    }
+    try {
+      await AuthAPI.login({ username: email.trim(), password });
+      // Fetch all users with auth and find by username/email
+      try {
+        const response: any = await UserAPI.getAll();
+        const allUsers = response?.data || response || [];
+        const matched = allUsers.find(
+          (u: any) =>
+            (u.username &&
+              u.username.toLowerCase() === email.trim().toLowerCase()) ||
+            (u.email && u.email.toLowerCase() === email.trim().toLowerCase()),
+        );
+        if (matched) {
+          const role = `${matched.role || ''}`.toLowerCase();
+          if (role === 'admin' || role === 'superadmin') {
+            await AsyncStorage.setItem('user', JSON.stringify(matched));
+            navigation.replace('AdminHome');
+          } else {
+            Alert.alert('Access Denied', 'You do not have admin access.');
+          }
+        } else {
+          Alert.alert('Login Failed', 'User not found after login.');
+        }
+      } catch (err) {
+        Alert.alert('Login Failed', 'Unable to fetch user profile.');
+      }
+    } catch (e: any) {
+      Alert.alert('Login Failed ', 'Invalid username or password');
+    }
+  };
+
+  const handleSubmit = () => {
+    if (activeTab === 'worker') {
+      handleWorkerLogin();
     } else {
-      Alert.alert('Invalid Credentials', 'Email or password is incorrect.');
+      handleAdminLogin();
     }
   };
 
   return (
-    <LinearGradient colors={['#0a411fff', '#0a411fff']} style={styles.gradient}>
-      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <LinearGradient colors={['#075E54', '#075E54']} style={styles.gradient}>
+      <SafeAreaView
+        style={styles.safeArea}
+        edges={['top', 'left', 'right', 'bottom']}
+      >
         <KeyboardAvoidingView
           style={styles.container}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -98,71 +159,127 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={styles.title}>Indian Steel Company</Text>
               <Text style={styles.subtitle}>Worker App</Text>
 
-              {/* Email Field */}
-              <View style={styles.inputContainer}>
-                <TextInput
-                  label="Email"
-                  value={email}
-                  onChangeText={setEmail}
-                  mode="outlined"
-                  style={styles.input}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  theme={{ roundness: wp(2.5) }}
-                  contentStyle={styles.inputContent}
-                  outlineColor="#ddd"
-                  activeOutlineColor="#0a411fff"
-                />
-              </View>
+              {/* Tab Switch */}
+              <SegmentedButtons
+                value={activeTab}
+                onValueChange={value =>
+                  setActiveTab(value as 'worker' | 'admin')
+                }
+                buttons={[
+                  {
+                    value: 'worker',
+                    label: 'Worker Login',
+                    icon: 'account-hard-hat',
+                    style:
+                      activeTab === 'worker'
+                        ? styles.activeTab
+                        : styles.inactiveTab,
+                  },
+                  {
+                    value: 'admin',
+                    label: 'Admin Login',
+                    icon: 'shield-account',
+                    style:
+                      activeTab === 'admin'
+                        ? styles.activeTab
+                        : styles.inactiveTab,
+                  },
+                ]}
+                style={[styles.segmentedButtons]}
+              />
 
-              {/* Password Field */}
-              <View style={styles.inputContainer}>
-                <TextInput
-                  label="Password"
-                  value={password}
-                  onChangeText={setPassword}
-                  mode="outlined"
-                  style={styles.input}
-                  secureTextEntry={!showPassword}
-                  theme={{ roundness: wp(2.5) }}
-                  contentStyle={styles.inputContent}
-                  outlineColor="#ddd"
-                  activeOutlineColor="#0a411fff"
-                  right={
-                    <TextInput.Icon
-                      icon={showPassword ? 'eye-off' : 'eye'}
-                      size={wp(6)}
-                      onPress={() => setShowPassword(!showPassword)}
-                      color="#0a411fff"
+              {/* Worker Login Form */}
+              {activeTab === 'worker' && (
+                <View style={styles.inputContainer}>
+                  <TextInput
+                    label="Mobile Number"
+                    value={mobile}
+                    onChangeText={setMobile}
+                    mode="outlined"
+                    keyboardType="phone-pad"
+                    style={styles.input}
+                    theme={{ roundness: wp(2.5) }}
+                    contentStyle={styles.inputContent}
+                    outlineColor="#ddd"
+                    activeOutlineColor="#075E54"
+                    left={<TextInput.Icon icon="phone" color="#075E54" />}
+                  />
+                </View>
+              )}
+
+              {/* Admin Login Form */}
+              {activeTab === 'admin' && (
+                <>
+                  <View style={styles.inputContainer}>
+                    <TextInput
+                      label="Username"
+                      value={email}
+                      onChangeText={setEmail}
+                      mode="outlined"
+                      style={styles.input}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      theme={{ roundness: wp(2.5) }}
+                      contentStyle={styles.inputContent}
+                      outlineColor="#ddd"
+                      activeOutlineColor="#075E54"
+                      left={<TextInput.Icon icon="email" color="#075E54" />}
                     />
-                  }
-                />
-              </View>
+                  </View>
+
+                  <View style={styles.inputContainer}>
+                    <TextInput
+                      label="Password"
+                      value={password}
+                      onChangeText={setPassword}
+                      mode="outlined"
+                      style={styles.input}
+                      secureTextEntry={!showPassword}
+                      theme={{ roundness: wp(2.5) }}
+                      contentStyle={styles.inputContent}
+                      outlineColor="#ddd"
+                      activeOutlineColor="#075E54"
+                      left={<TextInput.Icon icon="lock" color="#075E54" />}
+                      right={
+                        <TextInput.Icon
+                          icon={showPassword ? 'eye-off' : 'eye'}
+                          size={wp(6)}
+                          onPress={() => setShowPassword(!showPassword)}
+                          color="#075E54"
+                        />
+                      }
+                    />
+                  </View>
+                </>
+              )}
 
               {/* Sign In Button */}
               <Button
                 mode="contained"
-                onPress={handleSignIn}
+                onPress={handleSubmit}
                 style={styles.button}
                 contentStyle={styles.buttonContent}
                 labelStyle={styles.buttonLabel}
-                buttonColor="#0a411fff"
+                buttonColor="#075E54"
                 rippleColor="#1e5a8e"
               >
-                Sign In
+                {activeTab === 'worker' ? 'Login as Worker' : 'Login as Admin'}
               </Button>
 
-              {/* Uncomment for demo mode */}
-              {/* <View style={styles.demoContainer}>
-                <Text style={styles.demoTitle}>Demo Credentials:</Text>
-                <Text style={styles.demoText}>
-                  Admin: admin@indiansteel.com / admin123
-                </Text>
-                <Text style={styles.demoText}>
-                  Worker: worker@indiansteel.com / worker123
-                </Text>
-              </View> */}
+              {/* Demo Info (Uncomment for testing) */}
+              {/* {activeTab === 'admin' && (
+                <View style={styles.demoContainer}>
+                  <Text style={styles.demoTitle}>Demo Admin:</Text>
+                  <Text style={styles.demoText}>admin@indiansteel.com / admin123</Text>
+                </View>
+              )}
+              {activeTab === 'worker' && (
+                <View style={styles.demoContainer}>
+                  <Text style={styles.demoTitle}>Demo Worker Mobile:</Text>
+                  <Text style={styles.demoText}>9876543210</Text>
+                </View>
+              )} */}
             </Card.Content>
           </Card>
         </KeyboardAvoidingView>
@@ -172,17 +289,14 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  gradient: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
+  gradient: { flex: 1 },
+  safeArea: { flex: 1 },
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: wp(5),
+    //marginTop:hp(6)
   },
   card: {
     width: '100%',
@@ -195,18 +309,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
   },
-  cardContent: {
-    padding: wp(7),
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: hp(2),
-  },
+  cardContent: { padding: wp(7) },
+  logoContainer: { alignItems: 'center', marginBottom: hp(2) },
   iconBox: {
     width: wp(22),
     height: wp(22),
     borderRadius: wp(5),
-    backgroundColor: '#0a411fff',
+    backgroundColor: '#075E54',
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 6,
@@ -228,25 +337,26 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#666666',
     fontWeight: '500',
-    marginBottom: hp(4),
+    marginBottom: hp(3),
   },
-  inputContainer: {
-    marginBottom: hp(2.5),
+  segmentedButtons: {
+    marginBottom: hp(3),
   },
-  input: {
-    backgroundColor: '#fff',
+  activeTab: {
+    backgroundColor: '#518b67ff',
+    color: '#fff',
   },
-  inputContent: {
-    fontSize: wp(4),
+  inactiveTab: {
+    backgroundColor: '#e0e0e0',
   },
+  inputContainer: { marginBottom: hp(2.5) },
+  input: { backgroundColor: '#fff' },
+  inputContent: { fontSize: wp(4) },
   button: {
     marginTop: hp(2),
     borderRadius: wp(2.5),
   },
-  buttonContent: {
-    height: hp(7),
-    justifyContent: 'center',
-  },
+  buttonContent: { height: hp(7), justifyContent: 'center' },
   buttonLabel: {
     color: '#FFFFFF',
     fontSize: wp(4.5),

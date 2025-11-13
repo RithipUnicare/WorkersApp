@@ -52,6 +52,7 @@ const enToTa: Record<string, string> = {
   'Unattended Customers': 'கவனிக்கப்படாத வாடிக்கையாளர்கள்',
   'View customers needing follow-up':
     'பின்தொடர்தல் தேவைப்படும் வாடிக்கையாளர்களைப் பார்க்கவும்',
+  'Pending Payments': 'நிலுவையில் பொருட்கள்',
 
   // Footer
   'Version 1.0 • © 2025 Indian Steel Company':
@@ -67,7 +68,7 @@ const enToTa: Record<string, string> = {
 const AdminHomePage: React.FC<Props> = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
-  const [username, setUsername] = useState('Admin User');
+  const [username, setUsername] = useState('');
   const [isTamil, setIsTamil] = useState(false);
   const [translations, setTranslations] = useState<Record<string, string>>({});
 
@@ -85,8 +86,13 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
       if (stored) setUsername(stored);
 
       // role
-      await AsyncStorage.setItem('role', 'Admin');
+      //await AsyncStorage.setItem('role', 'Admin');
+      const currentUser = await AsyncStorage.getItem('user');
+      const parsedUser = currentUser ? JSON.parse(currentUser) : null;
 
+      console.log('user', parsedUser);
+
+      setUsername(parsedUser?.name || 'Admin User');
       // animation
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -175,6 +181,13 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
       icon: 'account-clock',
       onPress: () => navigation.navigate('unattendedCustomers'),
     },
+    {
+      id: 6,
+      title: t('Pending Payments'),
+      description: t('View pending payments'),
+      icon: 'cash',
+      onPress: () => navigation.navigate('pendingPayments'),
+    },
   ];
 
   const handleLogout = () => {
@@ -187,7 +200,12 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
           text: t('Logout'),
           style: 'destructive',
           onPress: async () => {
-            await AsyncStorage.multiRemove(['role', 'username', 'appLanguage']);
+            await AsyncStorage.multiRemove([
+              'role',
+              'username',
+              'appLanguage',
+              'user',
+            ]);
             navigation.dispatch(
               CommonActions.reset({
                 index: 0,
@@ -204,7 +222,6 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={styles.logoContainer}>
@@ -235,7 +252,6 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
           </View>
         </View>
 
-        
         <ScrollView
           style={styles.content}
           showsVerticalScrollIndicator={false}
@@ -282,7 +298,7 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
                         <MaterialCommunityIcons
                           name={item.icon}
                           size={wp(8)}
-                          color="#0a411fff"
+                          color="#075E54"
                         />
                       </View>
                       <View style={styles.menuTextContainer}>
@@ -323,7 +339,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F5F5F5' },
   container: { flex: 1 },
   header: {
-    backgroundColor: '#0a411fff',
+    backgroundColor: '#075E54',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

@@ -1,5 +1,8 @@
 import { BASE_URL, endpoints, buildUrl } from './configuration';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { Alert } from 'react-native';
+import { logoutUser } from '../utils/sessionManager';
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -9,9 +12,36 @@ const api = axios.create({
   },
 });
 
+let logoutCallback = null;
+export const setLogoutCallback = cb => {
+  logoutCallback = cb;
+};
+
+const clearAuthStorage = async () => {
+  try {
+    await AsyncStorage.multiRemove(['token', 'user']);
+  } catch (e) {
+    console.error('Error clearing auth storage:', e);
+  }
+};
+
+api.interceptors.request.use(
+  async config => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (token) {
+        config.headers = config.headers || {};
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (e) {}
+    return config;
+  },
+  error => Promise.reject(error),
+);
+
 api.interceptors.response.use(
   response => response,
-  error => {
+  async error => {
     const customError = new Error(
       error.response?.data?.message ||
         error.message ||
@@ -19,12 +49,26 @@ api.interceptors.response.use(
     );
     customError.status = error.response?.status;
     customError.data = error.response?.data || {};
+
+    if (customError.status === 401) {
+      await clearAuthStorage();
+
+      Alert.alert('Session Expired', 'Please log in again.', [
+        { text: 'OK', onPress: () => logoutUser() },
+      ]);
+
+      if (logoutCallback && typeof logoutCallback === 'function') {
+        logoutCallback();
+      }
+    }
+
     return Promise.reject(customError);
   },
 );
 
 async function handleResponse(response, parse = 'json') {
   const { status, data } = response;
+
   if (status >= 400) {
     const error = new Error(response.data?.message || `HTTP ${status}`);
     error.status = status;
@@ -42,7 +86,7 @@ async function handleResponse(response, parse = 'json') {
 async function jsonRequest(method, path, body, headers = {}) {
   const url = buildUrl(path);
   const config = { headers };
-  console.log(url);
+
   const response = await api.request({
     method,
     url,
@@ -109,35 +153,59 @@ export const ProjectAPI = {
   delete: id => deleteRequest(endpoints.projectById(id)),
   updateGps: (id, payload) =>
     jsonRequest('PUT', endpoints.projectGps(id), payload),
-  updateVoice: (id, file) => {
+  updateVoice: (id, file, exist = false) => {
     const formData = new FormData();
-    if (file.startsWith('file://') || file.includes('cache')) {
-      const filename = file.split('/').pop() || `voice_note_${id}.mp3`;
-      const type = 'audio/mpeg';
+    if (!exist) {
+      if (file.startsWith('file://') || file.includes('cache')) {
+        const filename = file.split('/').pop() || `voice_note_${id}.mp3`;
+        const type = 'audio/mpeg';
+        formData.append('name', filename);
+        formData.append('file', {
+          uri: file,
+          name: filename,
+          type,
+        });
+      }
+    } else {
+      const filename = `voice_note_${id}.mp3`;
       formData.append('name', filename);
       formData.append('file', {
         uri: file,
         name: filename,
-        type,
+        type: 'audio/mpeg',
       });
     }
+
     return multipartRequest('POST', endpoints.projectVoice(id), formData);
   },
-  addSiteImages: async (projectId, imageUris = []) => {
+  addSiteImages: async (projectId, imageUris = [], fromQuotation = false) => {
     const formData = new FormData();
 
-    imageUris.forEach((uri, index) => {
-      if (!uri.startsWith('file://') && !uri.includes('cache')) return;
+    if (!fromQuotation) {
+      imageUris.forEach((uri, index) => {
+        if (!uri.startsWith('file://') && !uri.includes('cache')) return;
 
-      const filename = uri.split('/').pop() || `site_image_${index}.jpg`;
-      const type = 'image/jpeg';
+        const filename = uri.split('/').pop() || `site_image_${index}.jpg`;
+        const type = 'image/jpeg';
 
-      formData.append('files', {
-        uri,
-        name: filename,
-        type,
+        formData.append('files', {
+          uri,
+          name: filename,
+          type,
+        });
       });
-    });
+    } else {
+      imageUris.forEach((uri, index) => {
+        if (!uri) return;
+        const filename = `site_image_${index}.jpg`;
+        const type = 'image/jpeg';
+        formData.append('files', {
+          uri,
+          name: filename,
+          type,
+        });
+      });
+    }
 
     if ([...formData._parts].length === 0) return;
 
@@ -163,6 +231,52 @@ export const ProjectAPI = {
   updateItem: (id, payload) =>
     jsonRequest('PUT', endpoints.itemById(id), payload),
   deleteItem: id => deleteRequest(endpoints.itemById(id)),
+  addItemImages: async (itemId, imageUris = [], exist = false) => {
+    const formData = new FormData();
+
+    if (!exist) {
+      imageUris.forEach((uri, index) => {
+        if (!uri || (!uri.startsWith('file://') && !uri.includes('cache')))
+          return;
+        const filename = uri.split('/').pop() || `item_image_${index}.jpg`;
+        const type = 'image/jpeg';
+        formData.append('files', {
+          uri,
+          name: filename,
+          type,
+        });
+      });
+    } else {
+      imageUris.forEach((uri, index) => {
+        console.log('uri', uri);
+        if (!uri) return;
+
+        const fileUri = typeof uri === 'string' ? uri : uri.imageUrl;
+
+        if (!fileUri) return;
+
+        const filename = `item_image_${index}.jpg`;
+        const type = 'image/jpeg';
+
+        formData.append('files', {
+          uri: fileUri,
+          name: filename,
+          type,
+        });
+      });
+    }
+
+    if ([...formData._parts].length === 0) return;
+
+    return multipartRequest(
+      'POST',
+      endpoints.projectItemImages(itemId),
+      formData,
+    );
+  },
+
+  deleteItemImage: (itemId, imageId) =>
+    deleteRequest(endpoints.projectItemImageById(itemId, imageId)),
   createPaymentIn: payload =>
     jsonRequest('POST', endpoints.paymentsIn, payload),
   getPaymentsIn: projectId =>
@@ -182,6 +296,7 @@ export const ProjectAPI = {
   deleteSiteImage: id => deleteRequest(endpoints.projectImages(id)),
   deleteVoiceRecording: (id, voiceId) =>
     deleteRequest(`${endpoints.projectVoice(id)}/${voiceId}`),
+  getPendingPayments: () => queryRequest(endpoints.pendingPayments),
 };
 
 export const QuotationAPI = {
@@ -207,6 +322,93 @@ export const QuotationAPI = {
     queryRequest(endpoints.quotationsByCustomerId(customerId)),
   updateQuotationStatus: (id, payload) =>
     jsonRequest('PATCH', `${endpoints.quotationById(id)}/status`, payload),
+
+  getVoiceRecordings: id => queryRequest(endpoints.quotationVoice(id)),
+  addVoiceRecording: (id, file) => {
+    const formData = new FormData();
+    if (file && (file.startsWith('file://') || file.includes('cache'))) {
+      const filename = file.split('/').pop() || `voice_note_${id}.mp3`;
+      const type = 'audio/mpeg';
+      formData.append('name', filename);
+      formData.append('file', {
+        uri: file,
+        name: filename,
+        type,
+      });
+    }
+    return multipartRequest('POST', endpoints.quotationVoice(id), formData);
+  },
+  updateVoiceRecording: (id, voiceId, { name, file } = {}) => {
+    const formData = new FormData();
+    if (name) formData.append('name', name);
+    if (file && (file.startsWith('file://') || file.includes('cache'))) {
+      const filename = file.split('/').pop() || `voice_note_${id}.mp3`;
+      const type = 'audio/mpeg';
+      formData.append('file', { uri: file, name: filename, type });
+    }
+    return multipartRequest(
+      'PUT',
+      endpoints.quotationVoiceById(id, voiceId),
+      formData,
+    );
+  },
+  deleteVoiceRecording: (id, voiceId) =>
+    deleteRequest(endpoints.quotationVoiceById(id, voiceId)),
+
+  updateLocation: (id, payload) =>
+    jsonRequest('POST', endpoints.quotationLocation(id), payload),
+
+  getSiteImages: id => queryRequest(endpoints.quotationImages(id)),
+  addSiteImages: async (quotationId, imageUris = []) => {
+    const formData = new FormData();
+
+    imageUris.forEach((uri, index) => {
+      if (!uri || (!uri.startsWith('file://') && !uri.includes('cache')))
+        return;
+      const filename = uri.split('/').pop() || `site_image_${index}.jpg`;
+      const type = 'image/jpeg';
+      formData.append('files', {
+        uri,
+        name: filename,
+        type,
+      });
+    });
+
+    if ([...formData._parts].length === 0) return;
+
+    return multipartRequest(
+      'POST',
+      endpoints.quotationImages(quotationId),
+      formData,
+    );
+  },
+
+  addItemImages: async (itemId, imageUris = []) => {
+    const formData = new FormData();
+
+    imageUris.forEach((uri, index) => {
+      if (!uri || (!uri.startsWith('file://') && !uri.includes('cache')))
+        return;
+      const filename = uri.split('/').pop() || `item_image_${index}.jpg`;
+      const type = 'image/jpeg';
+      formData.append('files', {
+        uri,
+        name: filename,
+        type,
+      });
+    });
+
+    if ([...formData._parts].length === 0) return;
+
+    return multipartRequest(
+      'POST',
+      endpoints.quotationItemImages(itemId),
+      formData,
+    );
+  },
+
+  deleteItemImage: (itemId, imageId) =>
+    deleteRequest(endpoints.quotationItemImageById(itemId, imageId)),
 };
 
 export const UnitAPI = {
@@ -236,4 +438,25 @@ export const UserAPI = {
     jsonRequest('PUT', endpoints.userPassword(id), payload),
   getPasswordByUsername: username =>
     queryRequest(endpoints.userPasswordByUsername(username)),
+};
+
+export const AuthAPI = {
+  login: async payload => {
+    const res = await jsonRequest('POST', endpoints.authLogin, payload);
+    try {
+      const token =
+        res?.data || res?.token || res?.data?.accessToken || res?.accessToken;
+      if (token) await AsyncStorage.setItem('token', token);
+    } catch (e) {}
+    return res;
+  },
+  workerLogin: async payload => {
+    const res = await jsonRequest('POST', endpoints.authWorkerLogin, payload);
+    try {
+      const token =
+        res?.data || res?.token || res?.data?.accessToken || res?.accessToken;
+      if (token) await AsyncStorage.setItem('token', token);
+    } catch (e) {}
+    return res;
+  },
 };

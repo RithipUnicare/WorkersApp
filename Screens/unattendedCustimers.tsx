@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,10 +14,9 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CustomerAPI } from '../service/apiService';
+import { useTranslator } from 'react-native-translator';
 
 const { width, height } = Dimensions.get('window');
-
-// Responsive helpers
 const wp = (percentage: number) => (width * percentage) / 100;
 const hp = (percentage: number) => (height * percentage) / 100;
 
@@ -58,10 +57,67 @@ type Props = {
   navigation: NativeStackNavigationProp<rootStackParamList, 'CustomerList'>;
 };
 
+const enToTa: Record<string, string> = {
+  'Search customers...': 'வாடிக்கையாளர்களைத் தேடு...',
+  'No contact number': 'தொடர்பு எண் இல்லை',
+  'No address provided': 'முகவரி வழங்கப்படவில்லை',
+  'Visit in': 'பார்வையிட',
+  day: 'நாள்',
+  days: 'நாட்கள்',
+  Date: 'தேதி',
+  Paid: 'பணம் செலுத்தப்பட்டது',
+  Inquired: 'விசாரிக்கப்பட்டது',
+  Pending: 'நிலுவையில்',
+  Cancelled: 'ரத்து செய்யப்பட்டது',
+  Rejected: 'நிராகரிக்கப்பட்டது',
+};
+
 const UnattendedCustomers: React.FC<Props> = ({ navigation }) => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState('');
   const [role, setRole] = useState('');
+  const [isTamil, setIsTamil] = useState(false);
+  const [translations, setTranslations] = useState<Record<string, string>>({});
+  const { translate } = useTranslator();
+
+  // Initialize language
+  useEffect(() => {
+    const initLang = async () => {
+      const saved = await AsyncStorage.getItem('appLanguage');
+      const tamil = saved === 'ta';
+      setIsTamil(tamil);
+    };
+    initLang();
+  }, []);
+
+  // Translate all strings
+  useEffect(() => {
+    if (!isTamil) {
+      setTranslations({});
+      return;
+    }
+    const translateAll = async () => {
+      const result: Record<string, string> = {};
+      for (const en of Object.keys(enToTa)) {
+        try {
+          const ta = await translate('en', 'ta', en, { type: 'google' });
+          result[en] = ta;
+        } catch {
+          result[en] = enToTa[en] ?? en;
+        }
+      }
+      setTranslations(result);
+    };
+    translateAll();
+  }, [isTamil, translate]);
+
+  const t = useCallback(
+    (english: string): string => {
+      if (!isTamil) return english;
+      return translations[english] ?? enToTa[english] ?? english;
+    },
+    [isTamil, translations],
+  );
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -95,10 +151,28 @@ const UnattendedCustomers: React.FC<Props> = ({ navigation }) => {
     );
   };
 
+  const getStatusLabel = (status: string) => {
+    const s = status.toUpperCase();
+    switch (s) {
+      case 'PAID':
+        return t('Paid');
+      case 'INQUIRED':
+        return t('Enquired');
+      case 'PENDING':
+        return t('Pending');
+      case 'CANCELLED':
+        return t('Cancelled');
+      case 'REJECTED':
+        return t('Rejected');
+      default:
+        return status.charAt(0) + status.slice(1).toLowerCase();
+    }
+  };
+
   const renderItem = ({ item }: { item: Customer }) => {
     const totalPaid = calculateTotalPaid(item);
     const remaining = item.budget - totalPaid;
-    const status = remaining <= 0 ? 'Paid' : 'Pending';
+    const statusLabel = getStatusLabel(item.status);
 
     return (
       <Card style={styles.card}>
@@ -123,25 +197,23 @@ const UnattendedCustomers: React.FC<Props> = ({ navigation }) => {
                         : item.status === 'INQUIRED'
                         ? '#3498db'
                         : item.status === 'PENDING'
-                        ? '#f39c12'
+                        ? '#e6b518ff'
                         : item.status === 'CANCELLED'
                         ? '#e74c3c'
                         : '#95a5a6',
                   },
                 ]}
               >
-                <Text style={styles.statusText}>
-                  {item.status.charAt(0) + item.status.slice(1).toLowerCase()}
-                </Text>
+                <Text style={styles.statusText}>{statusLabel}</Text>
               </View>
             </View>
 
             <Text style={styles.phone}>
-              {item.contactNo || 'No contact number'}
+              {item.contactNo || t('No contact number')}
             </Text>
 
             <Text style={styles.location} numberOfLines={2}>
-              {item.address || 'No address provided'}
+              {item.address || t('No address provided')}
             </Text>
 
             {item.workDescription ? (
@@ -152,14 +224,14 @@ const UnattendedCustomers: React.FC<Props> = ({ navigation }) => {
 
             {item.noOfDaysToVisit && item.noOfDaysToVisit > 0 ? (
               <Text style={styles.visitInfo}>
-                Visit in: {item.noOfDaysToVisit} day
-                {item.noOfDaysToVisit > 1 ? 's' : ''}
+                {t('Visit in')}: {item.noOfDaysToVisit}{' '}
+                {item.noOfDaysToVisit > 1 ? t('days') : t('day')}
               </Text>
             ) : null}
 
             {item.date ? (
               <Text style={styles.date}>
-                Date: {new Date(item.date).toLocaleDateString()}
+                {t('Date')}: {new Date(item.date).toLocaleDateString('en-IN')}
               </Text>
             ) : null}
           </Card.Content>
@@ -169,15 +241,19 @@ const UnattendedCustomers: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={styles.safeArea}
+      edges={['top', 'left', 'right', 'bottom']}
+    >
       <View style={styles.container}>
         <TextInput
-          placeholder="Search customers..."
+          placeholder={t('Search customers...')}
           value={search}
           onChangeText={setSearch}
           mode="outlined"
           style={styles.search}
           theme={{ roundness: wp(2) }}
+          left={<TextInput.Icon icon="magnify" size={wp(6)} />}
         />
 
         <FlatList
@@ -186,16 +262,27 @@ const UnattendedCustomers: React.FC<Props> = ({ navigation }) => {
           keyExtractor={(_, index) => index.toString()}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <MaterialCommunityIcons
+                name="account-alert"
+                size={wp(20)}
+                color="#ccc"
+              />
+              <Text style={styles.emptyText}>No unattended customers</Text>
+            </View>
+          }
         />
 
-        {/* Uncomment if needed */}
-        {/* <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => navigation.navigate('AddCustomer')}
-          disabled={role !== 'Admin'}
-        >
-          <MaterialCommunityIcons name="plus" size={wp(7)} color="#fff" />
-        </TouchableOpacity> */}
+        {/* Add Button (FAB) - Uncomment if needed */}
+        {/* {role === 'Admin' && (
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => navigation.navigate('AddCustomer')}
+          >
+            <MaterialCommunityIcons name="plus" size={wp(7)} color="#fff" />
+          </TouchableOpacity>
+        )} */}
       </View>
     </SafeAreaView>
   );
@@ -280,7 +367,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: hp(3),
     right: wp(6),
-    backgroundColor: '#0a411fff',
+    backgroundColor: '#075E54',
     borderRadius: wp(14),
     width: wp(14),
     height: wp(14),
@@ -291,6 +378,18 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: hp(10),
+  },
+  emptyText: {
+    fontSize: wp(5),
+    color: '#999',
+    marginTop: hp(2),
+    fontWeight: '600',
   },
 });
 

@@ -1,5 +1,5 @@
 // screens/QuotationList.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,40 +14,79 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import dayjs from 'dayjs';
-import { QuotationAPI } from '../service/apiService'; // Replace with your actual API
-import { Quotation } from './QuotationList';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-const { width, height } = Dimensions.get('window');
+import { QuotationAPI } from '../service/apiService';
+import { Quotation } from './QuotationDetail';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslator } from 'react-native-translator';
 
-// export type Quotation = {
-//   id: number;
-//   customerName: string;
-//   customerContactNo: string;
-//   address: string;
-//   projectDescription: string;
-//   deliveryDate: string;
-//   totalBudget: number;
-//   status: string;
-//   items: {
-//     id: number;
-//     name: string;
-//     qty: number;
-//     unit: string;
-//     mrp: number;
-//     tax: number;
-//     amount: number;
-//   }[];
-// };
+const { width, height } = Dimensions.get('window');
 
 type Props = {
   navigation: NativeStackNavigationProp<rootStackParamList, 'QuotationList'>;
+};
+
+const enToTa: Record<string, string> = {
+  'Search by name, mobile, or description...':
+    'பெயர், மொபைல், அல்லது விளக்கத்தால் தேடு...',
+  'No quotations found': 'மேற்கோள்கள் எதுவும் கிடைக்கவில்லை',
+  'Add Quotation': 'மேற்கோள் சேர்க்க',
+  Delivery: 'விநியோகம்',
+  Budget: 'பட்ஜெட்',
+  items: 'பொருட்கள்',
+  'No address': 'முகவரி இல்லை',
 };
 
 const QuotationList: React.FC<Props> = ({ navigation }) => {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [sortAsc, setSortAsc] = useState(true);
+  const [isTamil, setIsTamil] = useState(false);
+  const [translations, setTranslations] = useState<Record<string, string>>({});
 
+  const { translate } = useTranslator();
+
+  // Initialize language
+  useEffect(() => {
+    const initLang = async () => {
+      const saved = await AsyncStorage.getItem('appLanguage');
+      const tamil = saved === 'ta';
+      setIsTamil(tamil);
+    };
+    initLang();
+  }, []);
+
+  // Translate when language changes
+  useEffect(() => {
+    if (!isTamil) {
+      setTranslations({});
+      return;
+    }
+    const translateAll = async () => {
+      const result: Record<string, string> = {};
+      for (const en of Object.keys(enToTa)) {
+        try {
+          const ta = await translate('en', 'ta', en, { type: 'google' });
+          result[en] = ta;
+        } catch {
+          result[en] = enToTa[en] ?? en;
+        }
+      }
+      setTranslations(result);
+    };
+    translateAll();
+  }, [isTamil, translate]);
+
+  const t = useCallback(
+    (english: string): string => {
+      if (!isTamil) return english;
+      return translations[english] ?? enToTa[english] ?? english;
+    },
+    [isTamil, translations],
+  );
+
+  // Load quotations
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', loadQuotations);
     loadQuotations();
@@ -58,7 +97,6 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
     try {
       setRefreshing(true);
       const res = await QuotationAPI.getAll();
-      console.log(res);
       if (res.success && Array.isArray(res.data)) {
         setQuotations(res.data);
       }
@@ -69,12 +107,18 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  const filteredQuotations = quotations.filter(
-    q =>
-      q.customerName.toLowerCase().includes(search.toLowerCase()) ||
-      q.customerContactNo.includes(search) ||
-      q.projectDescription.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filteredQuotations = quotations
+    .filter(
+      q =>
+        q.customerName.toLowerCase().includes(search.toLowerCase()) ||
+        q.customerContactNo.includes(search) ||
+        q.projectDescription.toLowerCase().includes(search.toLowerCase()),
+    )
+    .sort((a, b) => {
+      const ta = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const tb = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return sortAsc ? ta - tb : tb - ta;
+    });
 
   const getStatusColor = (status: string) => {
     switch (status?.toUpperCase()) {
@@ -87,8 +131,18 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
       case 'DRAFT':
         return '#9E9E9E';
       default:
-        return '#0a411fff';
+        return '#075E54';
     }
+  };
+
+  const getStatusText = (status: string) => {
+    const map: Record<string, string> = {
+      PENDING: 'நிலுவையில்',
+      APPROVED: 'அனுமதிக்கப்பட்டது',
+      REJECTED: 'நிராகரிக்கப்பட்டது',
+      DRAFT: 'வரைவு',
+    };
+    return isTamil ? map[status?.toUpperCase()] || status : status || 'DRAFT';
   };
 
   const renderItem = ({ item }: { item: Quotation }) => (
@@ -103,11 +157,11 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
           <Chip
             style={[
               styles.statusChip,
-              { backgroundColor: getStatusColor(item.status) },
+              { backgroundColor: getStatusColor(item.status || 'PENDING') },
             ]}
             textStyle={styles.statusText}
           >
-            {item.status || 'DRAFT'}
+            {getStatusText(item.status || 'DRAFT')}
           </Chip>
         </View>
 
@@ -115,7 +169,7 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
           <MaterialCommunityIcons
             name="phone"
             size={width * 0.045}
-            color="#0a411fff"
+            color="#075E54"
           />
           <Text style={styles.infoText}>{item.customerContactNo}</Text>
         </View>
@@ -124,10 +178,10 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
           <MaterialCommunityIcons
             name="map-marker"
             size={width * 0.045}
-            color="#0a411fff"
+            color="#075E54"
           />
           <Text style={styles.infoText} numberOfLines={1}>
-            {item.address || 'No address'}
+            {item.address || t('No address')}
           </Text>
         </View>
 
@@ -135,10 +189,10 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
           <MaterialCommunityIcons
             name="calendar"
             size={width * 0.045}
-            color="#0a411fff"
+            color="#075E54"
           />
           <Text style={styles.infoText}>
-            Delivery: {dayjs(item.deliveryDate).format('DD-MM-YYYY')}
+            {t('Delivery')}: {dayjs(item.deliveryDate).format('DD-MM-YYYY')}
           </Text>
         </View>
 
@@ -146,7 +200,7 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
           <MaterialCommunityIcons
             name="text-box"
             size={width * 0.045}
-            color="#0a411fff"
+            color="#075E54"
           />
           <Text style={styles.infoText} numberOfLines={2}>
             {item.projectDescription}
@@ -155,14 +209,14 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
 
         <View style={styles.amountRow}>
           <View>
-            <Text style={styles.amountLabel}>Budget</Text>
+            <Text style={styles.amountLabel}>{t('Budget')}</Text>
             <Text style={styles.amountValue}>
               ₹{item.totalBudget?.toLocaleString('en-IN') || 0}
             </Text>
           </View>
           <View style={styles.itemCount}>
             <Text style={styles.itemCountText}>
-              {item.items?.length || 0} items
+              {item.items?.length || 0} {t('items')}
             </Text>
           </View>
         </View>
@@ -170,16 +224,27 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
     </Card>
   );
 
+  const toggleSort = useCallback(() => setSortAsc(prev => !prev), []);
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <TextInput
-        placeholder="Search by name, mobile, or description..."
-        value={search}
-        onChangeText={setSearch}
-        mode="outlined"
-        style={styles.search}
-        left={<TextInput.Icon icon="magnify" />}
-      />
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <TextInput
+          placeholder={t('Search by name, mobile, or description...')}
+          value={search}
+          onChangeText={setSearch}
+          mode="outlined"
+          style={[styles.search, { flex: 1, marginRight: width * 0.02 }]}
+          left={<TextInput.Icon icon="magnify" />}
+        />
+        <TouchableOpacity onPress={toggleSort} style={styles.sortButton}>
+          <MaterialCommunityIcons
+            name={sortAsc ? 'sort-ascending' : 'sort-descending'}
+            size={width * 0.065}
+            color="#075E54"
+          />
+        </TouchableOpacity>
+      </View>
 
       <FlatList
         data={filteredQuotations}
@@ -197,12 +262,12 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
               size={64}
               color="#ccc"
             />
-            <Text style={styles.emptyText}>No quotations found</Text>
+            <Text style={styles.emptyText}>{t('No quotations found')}</Text>
           </View>
         }
       />
 
-      {/* Add Quotation Button - Fixed at Bottom */}
+      {/* Add Quotation Button */}
       <View style={styles.addButtonContainer}>
         <Button
           mode="contained"
@@ -211,9 +276,9 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
           style={styles.addButton}
           contentStyle={styles.addButtonContent}
           labelStyle={styles.addButtonLabel}
-          buttonColor="#0a411fff"
+          buttonColor="#075E54"
         >
-          Add Quotation
+          {t('Add Quotation')}
         </Button>
       </View>
     </SafeAreaView>
@@ -290,7 +355,7 @@ const styles = StyleSheet.create({
   amountValue: {
     fontSize: width * 0.042,
     fontWeight: 'bold',
-    color: '#0a411fff',
+    color: '#075E54',
     textAlign: 'left',
   },
   itemCount: {
@@ -300,7 +365,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   itemCountText: {
-    color: '#0a411fff',
+    color: '#075E54',
     fontSize: width * 0.032,
     fontWeight: '600',
   },
@@ -317,10 +382,6 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   addButtonContainer: {
-    // position: 'absolute',
-    // bottom: 20,
-    // left: width * 0.04,
-    // right: width * 0.04,
     elevation: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -337,6 +398,16 @@ const styles = StyleSheet.create({
   addButtonLabel: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  sortButton: {
+    width: width * 0.12,
+    height: width * 0.12,
+    borderRadius: (width * 0.12) / 2,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e1e1e1',
   },
 });
 

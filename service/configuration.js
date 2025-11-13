@@ -3,6 +3,10 @@ export const BASE_URL =
   'http://indian-steel-env.eba-emsdmyth.ap-south-1.elasticbeanstalk.com';
 
 export const endpoints = {
+  // Auth endpoints
+  authLogin: '/auth/login',
+  authWorkerLogin: '/auth/worker-login',
+
   // Customer endpoints
   customers: '/api/v1/customers',
   customersByStatus: status =>
@@ -33,6 +37,9 @@ export const endpoints = {
   items: '/api/v1/projects/items',
   itemsByProject: projectId => `/api/v1/projects/${projectId}/items`,
   itemById: id => `/api/v1/projects/items/${id}`,
+  projectItemImages: itemId => `/api/v1/projects/items/${itemId}/images`,
+  projectItemImageById: (itemId, imageId) =>
+    `/api/v1/projects/items/${itemId}/images/${imageId}`,
 
   paymentsIn: '/api/v1/projects/payments-in',
   paymentsInById: id => `/api/v1/projects/payments-in/${id}`,
@@ -42,6 +49,7 @@ export const endpoints = {
   paymentsOutById: id => `/api/v1/projects/payments-out/${id}`,
   paymentsOutByProject: projectId =>
     `/api/v1/projects/${projectId}/payments-out`,
+  pendingPayments: '/api/v1/projects/pending-payments',
 
   // Quotation endpoints
   quotations: '/api/v1/quotations',
@@ -52,6 +60,14 @@ export const endpoints = {
     `/api/v1/quotations/customer/${customerId}`,
   quotationItems: '/api/v1/quotations/items',
   quotationItemById: itemId => `/api/v1/quotations/items/${itemId}`,
+  quotationVoice: id => `/api/v1/quotations/${id}/voice-recordings`,
+  quotationVoiceById: (id, voiceId) =>
+    `/api/v1/quotations/${id}/voice-recordings/${voiceId}`,
+  quotationLocation: id => `/api/v1/quotations/${id}/location`,
+  quotationImages: id => `/api/v1/quotations/${id}/images`,
+  quotationItemImages: itemId => `/api/v1/quotations/items/${itemId}/images`,
+  quotationItemImageById: (itemId, imageId) =>
+    `/api/v1/quotations/items/${itemId}/images/${imageId}`,
 
   // Unit endpoints
   units: '/api/v1/units',

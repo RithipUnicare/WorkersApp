@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -24,16 +24,47 @@ import { CustomerAPI } from '../service/apiService';
 import DatePicker from 'react-native-date-picker';
 import dayjs from 'dayjs';
 import { RouteProp } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslator } from 'react-native-translator';
 
 const { width, height } = Dimensions.get('window');
-
-// Responsive helpers
 const wp = (percentage: number) => (width * percentage) / 100;
 const hp = (percentage: number) => (height * percentage) / 100;
 
 type Props = {
   navigation: NativeStackNavigationProp<rootStackParamList, 'AddCustomer'>;
   route: RouteProp<rootStackParamList, 'AddCustomer'>;
+};
+
+const enToTa: Record<string, string> = {
+  // Titles
+  'Add New Customer': 'புதிய வாடிக்கையாளரைச் சேர்',
+  'Edit Customer': 'வாடிக்கையாளரைத் திருத்து',
+
+  // Labels
+  'Customer Name *': 'வாடிக்கையாளர் பெயர் *',
+  'Phone Number *': 'தொலைபேசி எண் *',
+  'Address *': 'முகவரி *',
+  'Work Description': 'பணி விளக்கம்',
+  'No. of Days to Visit': 'பார்க்க வேண்டிய நாட்கள்',
+  'Visit Date': 'பார்வையிடும் தேதி',
+
+  // Errors
+  'Name is required': 'பெயர் தேவை',
+  'Enter a valid 10-digit number': 'சரியான 10 இலக்க எண்ணை உள்ளிடு',
+  'Address is required': 'முகவரி தேவை',
+  'Please fill all required fields correctly':
+    'அனைத்து தேவையான புலங்களையும் சரியாக நிரப்பு',
+
+  // Buttons
+  'Save Customer': 'வாடிக்கையாளரைச் சேமி',
+  'Update Customer': 'வாடிக்கையாளரைப் புதுப்பி',
+
+  // Messages
+  'Customer added successfully!': 'வாடிக்கையாளர் வெற்றிகரமாக சேர்க்கப்பட்டார்!',
+  'Customer updated successfully!':
+    'வாடிக்கையாளர் வெற்றிகரமாக புதுப்பிக்கப்பட்டார்!',
+  'Operation failed': 'செயல்பாடு தோல்வியடைந்தது',
 };
 
 const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
@@ -51,8 +82,64 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
 
+  const [isTamil, setIsTamil] = useState(false);
+  const [translations, setTranslations] = useState<Record<string, string>>({});
+  const { translate } = useTranslator();
+
+  // Initialize language
+  useEffect(() => {
+    const initLang = async () => {
+      const saved = await AsyncStorage.getItem('appLanguage');
+      const tamil = saved === 'ta';
+      setIsTamil(tamil);
+    };
+    initLang();
+  }, []);
+
+  // Translate all strings
+  useEffect(() => {
+    if (!isTamil) {
+      setTranslations({});
+      return;
+    }
+    const translateAll = async () => {
+      const result: Record<string, string> = {};
+      for (const en of Object.keys(enToTa)) {
+        try {
+          const ta = await translate('en', 'ta', en, { type: 'google' });
+          result[en] = ta;
+        } catch {
+          result[en] = enToTa[en] ?? en;
+        }
+      }
+      setTranslations(result);
+    };
+    translateAll();
+  }, [isTamil, translate]);
+
+  const t = useCallback(
+    (english: string): string => {
+      if (!isTamil) return english;
+      return translations[english] ?? enToTa[english] ?? english;
+    },
+    [isTamil, translations],
+  );
+  const normalizePhone = (phone = '') => phone.replace(/\s+/g, '').trim();
+
+  const isValidPhoneNumber = (phone = '') => {
+    const normalized = normalizePhone(phone);
+
+    if (!normalized) return false;
+
+    const phoneWithoutPrefix = normalized.startsWith('+91')
+      ? normalized.slice(3)
+      : normalized;
+
+    return /^\d{10}$/.test(phoneWithoutPrefix);
+  };
+
   // Form validation
-  const isValidPhone = phone.length === 10 && /^\d+$/.test(phone);
+  const isValidPhone = isValidPhoneNumber(phone);
   const isFormValid =
     name.trim().length > 0 && isValidPhone && address.trim().length > 0;
 
@@ -73,7 +160,7 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
     if (!isFormValid) {
       setSnackbar({
         visible: true,
-        message: 'Please fill all required fields correctly',
+        message: t('Please fill all required fields correctly'),
       });
       return;
     }
@@ -94,22 +181,31 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
         await CustomerAPI.update(existingCustomer.id, customerData);
         setSnackbar({
           visible: true,
-          message: 'Customer updated successfully!',
+          message: t('Customer updated successfully!'),
         });
       } else {
         await CustomerAPI.create(customerData);
-        setSnackbar({ visible: true, message: 'Customer added successfully!' });
+        setSnackbar({
+          visible: true,
+          message: t('Customer added successfully!'),
+        });
       }
       setTimeout(() => navigation.goBack(), 800);
     } catch (e: any) {
-      setSnackbar({ visible: true, message: e?.message || 'Operation failed' });
+      setSnackbar({
+        visible: true,
+        message: e?.message || t('Operation failed'),
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={styles.safeArea}
+      edges={['top', 'left', 'right', 'bottom']}
+    >
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -120,12 +216,12 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.title}>
-            {isEditMode ? 'Edit Customer' : 'Add New Customer'}
+            {isEditMode ? t('Edit Customer') : t('Add New Customer')}
           </Text>
 
           {/* Name */}
           <TextInput
-            label="Customer Name *"
+            label={t('Customer Name *')}
             value={name}
             onChangeText={setName}
             mode="outlined"
@@ -133,29 +229,29 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
             theme={{ roundness: wp(2.5) }}
             contentStyle={styles.inputContent}
             outlineColor="#ddd"
-            activeOutlineColor="#0a411fff"
+            activeOutlineColor="#075E54"
             left={<TextInput.Icon icon="account" size={wp(6)} />}
             error={name.trim().length === 0}
           />
           {name.trim().length === 0 && (
-            <HelperText type="error">Name is required</HelperText>
+            <HelperText type="error">{t('Name is required')}</HelperText>
           )}
 
           {/* Phone */}
           <TextInput
-            label="Phone Number *"
+            label={t('Phone Number *')}
             value={phone}
             onChangeText={text =>
-              setPhone(text.replace(/[^0-9]/g, '').slice(0, 10))
+              setPhone(text.replace(/[^0-9+ ]/g, '').slice(0, 14))
             }
             mode="outlined"
             style={styles.input}
             theme={{ roundness: wp(2.5) }}
-            keyboardType="numeric"
-            maxLength={10}
+            keyboardType="phone-pad"
+            maxLength={14}
             contentStyle={styles.inputContent}
             outlineColor="#ddd"
-            activeOutlineColor={isValidPhone ? '#27ae60' : '#0a411fff'}
+            activeOutlineColor={isValidPhone ? '#27ae60' : '#075E54'}
             left={<TextInput.Icon icon="phone" size={wp(6)} />}
             right={
               phone.length > 0 && (
@@ -169,12 +265,14 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
             error={phone.length > 0 && !isValidPhone}
           />
           {phone.length > 0 && !isValidPhone && (
-            <HelperText type="error">Enter a valid 10-digit number</HelperText>
+            <HelperText type="error">
+              {t('Enter a valid 10-digit number')}
+            </HelperText>
           )}
 
           {/* Address */}
           <TextInput
-            label="Address *"
+            label={t('Address *')}
             value={address}
             onChangeText={setAddress}
             mode="outlined"
@@ -184,17 +282,17 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
             theme={{ roundness: wp(2.5) }}
             contentStyle={styles.inputContent}
             outlineColor="#ddd"
-            activeOutlineColor="#0a411fff"
+            activeOutlineColor="#075E54"
             left={<TextInput.Icon icon="map-marker" size={wp(6)} />}
             error={address.trim().length === 0}
           />
           {address.trim().length === 0 && (
-            <HelperText type="error">Address is required</HelperText>
+            <HelperText type="error">{t('Address is required')}</HelperText>
           )}
 
           {/* Description */}
           <TextInput
-            label="Work Description"
+            label={t('Work Description')}
             value={description}
             onChangeText={setDescription}
             mode="outlined"
@@ -204,14 +302,13 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
             theme={{ roundness: wp(2.5) }}
             contentStyle={styles.inputContent}
             outlineColor="#ddd"
-            activeOutlineColor="#0a411fff"
+            activeOutlineColor="#075E54"
             left={<TextInput.Icon icon="text" size={wp(6)} />}
-            error={description.trim().length === 0}
           />
 
           {/* Days Visited */}
           <TextInput
-            label="No. of Days to Visit"
+            label={t('No. of Days to Visit')}
             value={noOfDaysVisited}
             onChangeText={text =>
               setNoOfDaysVisited(text.replace(/[^0-9]/g, ''))
@@ -222,13 +319,13 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
             keyboardType="numeric"
             contentStyle={styles.inputContent}
             outlineColor="#ddd"
-            activeOutlineColor="#0a411fff"
+            activeOutlineColor="#075E54"
             left={<TextInput.Icon icon="calendar-clock" size={wp(6)} />}
           />
 
           {/* Date Picker */}
           <View style={styles.dateSection}>
-            <Text style={styles.dateLabel}>Visit Date</Text>
+            <Text style={styles.dateLabel}>{t('Visit Date')}</Text>
             <Button
               mode="outlined"
               onPress={() => setDatePickerOpen(true)}
@@ -247,12 +344,12 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
             onPress={handleSave}
             style={styles.saveButton}
             contentStyle={styles.saveButtonContent}
-            buttonColor="#0a411fff"
+            buttonColor="#075E54"
             loading={loading}
             disabled={loading || !isFormValid}
             icon="content-save"
           >
-            {isEditMode ? 'Update Customer' : 'Save Customer'}
+            {isEditMode ? t('Update Customer') : t('Save Customer')}
           </Button>
         </ScrollView>
 
@@ -287,7 +384,8 @@ const AddCustomer: React.FC<Props> = ({ navigation, route }) => {
           duration={3000}
           style={[
             styles.snackbar,
-            snackbar.message.includes('success')
+            snackbar.message.includes('success') ||
+            snackbar.message.includes('வெற்றி')
               ? styles.snackbarSuccess
               : styles.snackbarError,
           ]}
@@ -332,7 +430,7 @@ const styles = StyleSheet.create({
     marginLeft: wp(1),
   },
   dateButton: {
-    borderColor: '#0a411fff',
+    borderColor: '#075E54',
     borderWidth: 1.5,
   },
   dateButtonContent: {

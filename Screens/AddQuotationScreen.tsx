@@ -1,4 +1,3 @@
-// screens/AddQuotation.tsx
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
@@ -12,6 +11,7 @@ import {
   RefreshControl,
   TouchableOpacity,
   ToastAndroid,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -24,6 +24,7 @@ import {
   Card,
   Chip,
 } from 'react-native-paper';
+import ItemDialog from './components/ItemDialog';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import dayjs from 'dayjs';
@@ -31,7 +32,11 @@ import DatePicker from 'react-native-date-picker';
 import { RouteProp } from '@react-navigation/native';
 import { Dropdown } from 'react-native-element-dropdown';
 import { CustomerAPI, QuotationAPI, UnitAPI } from '../service/apiService';
-import { yellowA700 } from 'react-native-paper/lib/typescript/styles/themes/v2/colors';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslator } from 'react-native-translator';
+import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { addTextWatermark } from '../utils/Watermarker';
 
 const { width, height } = Dimensions.get('window');
 const wp = (p: number) => (width * p) / 100;
@@ -60,6 +65,67 @@ export type Unit = {
   shortName: string;
 };
 
+const enToTa: Record<string, string> = {
+  // Titles
+  'Create Quotation': 'மேற்கோள் உருவாக்கு',
+  'Edit Quotation': 'மேற்கோளைத் திருத்து',
+
+  // Labels
+  Customer: 'வாடிக்கையாளர்',
+  'Select Customer *': 'வாடிக்கையாளரைத் தேர்ந்தெடு *',
+  'Mobile No': 'கைப்பேசி எண்',
+  Address: 'முகவரி',
+  'Project Description *': 'திட்ட விளக்கம் *',
+  'Delivery Date *': 'விநியோக தேதி *',
+  'Total Budget *': 'மொத்த பட்ஜெட் *',
+  'Total Amount *': 'மொத்த தொகை *',
+  Discount: 'தள்ளுபடி',
+  Percentage: 'விழுக்காடு',
+  Items: 'பொருட்கள்',
+  'No items added yet': 'இதுவரை பொருட்கள் சேர்க்கப்படவில்லை',
+
+  // Item Dialog
+  'Add Item': 'பொருளைச் சேர்',
+  'Edit Item': 'பொருளைத் திருத்து',
+  'Name *': 'பெயர் *',
+  Description: 'விளக்கம்',
+  'Quantity *': 'அளவு *',
+  'Unit *': 'அலகு *',
+  'MRP *': 'MRP *',
+  'HSN/SAC': 'HSN/SAC',
+  'Tax (%)': 'வரி (%)',
+  Total: 'மொத்தம்',
+  Cancel: 'ரத்து செய்',
+  Save: 'சேமி',
+
+  // Unit Dialog
+  'Add New Unit': 'புதிய அலகு சேர்',
+  'Unit Name': 'அலகு பெயர்',
+  'Short Name': 'குறுகிய பெயர்',
+  Add: 'சேர்',
+
+  // Messages
+  'Customer is required': 'வாடிக்கையாளர் தேவை',
+  'Delivery Date is required': 'விநியோக தேதி தேவை',
+  'Description is required': 'விளக்கம் தேவை',
+  'Total Budget is required': 'மொத்த பட்ஜெட் தேவை',
+  'At least one item is required': 'குறைந்தது ஒரு பொருள் தேவை',
+  'Name, Qty, Unit, MRP required': 'பெயர், அளவு, அலகு, MRP தேவை',
+  'Both fields required': 'இரு புலங்களும் தேவை',
+  'Failed to load data': 'தரவை ஏற்ற முடியவில்லை',
+  'Failed to load quotation': 'மேற்கோளை ஏற்ற முடியவில்லை',
+  'Unit added': 'அலகு சேர்க்கப்பட்டது',
+  'Failed to add unit': 'அலகு சேர்க்க முடியவில்லை',
+  'Delete failed': 'நீக்க முடியவில்லை',
+  'Quotation updated!': 'மேற்கோள் புதுப்பிக்கப்பட்டது!',
+  'Quotation created!': 'மேற்கோள் உருவாக்கப்பட்டது!',
+  'Save failed': 'சேமிப்பு தோல்வியடைந்தது',
+
+  // Buttons
+  'Update Quotation': 'மேற்கோளைப் புதுப்பி',
+  'Save Quotation': 'மேற்கோளைச் சேமி',
+};
+
 const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
   const rawCustomer: any = route.params?.customer;
   const rawQuotation: any = route.params?.quotationToEdit;
@@ -76,6 +142,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
   const [totalBudget, setTotalBudget] = useState('');
   const [selectedDateObj, setSelectedDateObj] = useState<Date>(new Date());
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const [customers, setCustomers] = useState<any[]>([]);
   const [selectedCustomerIdx, setSelectedCustomerIdx] = useState<number | null>(
@@ -102,6 +169,52 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
   const [actualAmount, setActualAmount] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [images, setImages] = useState<
+    { uri: string; id?: number; isLocal: boolean }[]
+  >([]);
+
+  const [isTamil, setIsTamil] = useState(false);
+  const [translations, setTranslations] = useState<Record<string, string>>({});
+  const { translate } = useTranslator();
+
+  // Initialize language
+  useEffect(() => {
+    const initLang = async () => {
+      const saved = await AsyncStorage.getItem('appLanguage');
+      const tamil = saved === 'ta';
+      setIsTamil(tamil);
+    };
+    initLang();
+  }, []);
+
+  // Translate all strings
+  useEffect(() => {
+    if (!isTamil) {
+      setTranslations({});
+      return;
+    }
+    const translateAll = async () => {
+      const result: Record<string, string> = {};
+      for (const en of Object.keys(enToTa)) {
+        try {
+          const ta = await translate('en', 'ta', en, { type: 'google' });
+          result[en] = ta;
+        } catch {
+          result[en] = enToTa[en] ?? en;
+        }
+      }
+      setTranslations(result);
+    };
+    translateAll();
+  }, [isTamil, translate]);
+
+  const t = useCallback(
+    (english: string): string => {
+      if (!isTamil) return english;
+      return translations[english] ?? enToTa[english] ?? english;
+    },
+    [isTamil, translations],
+  );
 
   // Load Customers & Units
   const loadData = useCallback(async () => {
@@ -115,11 +228,11 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
       if (Array.isArray(custRes.data)) setCustomers(custRes.data);
       if (Array.isArray(unitRes.data)) setUnits(unitRes.data);
     } catch (e) {
-      ToastAndroid.show('Failed to load data', ToastAndroid.SHORT);
+      ToastAndroid.show(t('Failed to load data'), ToastAndroid.SHORT);
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadData();
@@ -171,8 +284,22 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
               totalCost: it.totalCost,
             })),
           );
+
+          // Load quotation site images
+          try {
+            const imgRes = await QuotationAPI.getSiteImages(rawQuotation.id);
+            if (Array.isArray(imgRes.data) && imgRes.data.length) {
+              setImages(
+                imgRes.data.map((img: any) => ({
+                  uri: img.imageUrl,
+                  id: img.id,
+                  isLocal: false,
+                })),
+              );
+            }
+          } catch {}
         } catch (e) {
-          ToastAndroid.show('Failed to load quotation', ToastAndroid.SHORT);
+          ToastAndroid.show(t('Failed to load quotation'), ToastAndroid.SHORT);
         } finally {
           setLoading(false);
         }
@@ -189,7 +316,10 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
         setAddress(cust.address || '');
       }
     }
-  }, [rawQuotation, rawCustomer, customers, isEditMode, isFromInquiry]);
+    if (isFromInquiry) {
+      setDescription(rawCustomer.workDescription);
+    }
+  }, [rawQuotation, rawCustomer, customers, isEditMode, isFromInquiry, t]);
 
   const customerDropdown = useMemo(
     () =>
@@ -223,13 +353,14 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
   );
 
   useEffect(() => {
-    if (!isEditMode && grandTotal > 0) {
+    if (grandTotal > 0) {
       setTotalBudget(grandTotal.toFixed(2));
-      setActualAmount(grandTotal);
+      if (actualAmount === 0 || grandTotal > actualAmount)
+        setActualAmount(grandTotal);
     }
-  }, [grandTotal, isEditMode]);
+  }, [grandTotal]);
 
-  const openItemModal = (item?: QuotationItem) => {
+  const openItemModal = (item?: QuotationItem, index?: number) => {
     if (item) {
       setEditingItem(item);
       setItemName(item.itemName);
@@ -239,11 +370,15 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
       setItemMrp(String(item.rateMrp));
       setItemTax(String(item.taxPercentage));
       setHsnSac(item.hsnSac || '');
+      setEditingIndex(
+        typeof index === 'number' ? index : items.findIndex(i => i === item),
+      );
     } else {
       setEditingItem(null);
       setItemName('');
       setItemDesc('');
       setItemQty('');
+      setEditingIndex(null);
       setSelectedUnitId(null);
       setItemMrp('');
       setItemTax('');
@@ -252,9 +387,9 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
     setItemModalOpen(true);
   };
 
-  const saveItemLocally = () => {
+  const saveItemLocally = async () => {
     if (!itemName || !itemQty || selectedUnitId === null || !itemMrp) {
-      ToastAndroid.show('Name, Qty, Unit, MRP required', ToastAndroid.SHORT);
+      ToastAndroid.show(t('Name, Qty, Unit, MRP required'), ToastAndroid.SHORT);
       return;
     }
 
@@ -271,20 +406,30 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
       hsnSac,
       totalCost,
     };
-
+    try {
+      if (editingItem?.id)
+        await QuotationAPI.updateItem(editingItem.id, newItem);
+      else await QuotationAPI.createItem(newItem);
+    } catch (e) {
+      ToastAndroid.show(t('Failed to add item'), ToastAndroid.SHORT);
+    }
     setItems(prev =>
       editingItem?.id
-        ? prev.map(i => (i.id === editingItem.id ? newItem : i))
+        ? prev.map(i =>
+            i.id === editingItem.id || i.itemName === editingItem.itemName
+              ? newItem
+              : i,
+          )
         : [...prev, newItem],
     );
     setItemModalOpen(false);
   };
 
   const deleteItemLocal = (idx: number) => {
-    Alert.alert('Delete Item', 'Sure?', [
-      { text: 'Cancel' },
+    Alert.alert(t('Delete Item'), t('Sure?'), [
+      { text: t('Cancel') },
       {
-        text: 'Delete',
+        text: t('Delete'),
         style: 'destructive',
         onPress: async () => {
           const item = items[idx];
@@ -292,7 +437,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             try {
               await QuotationAPI.deleteItem(item.id);
             } catch (e) {
-              ToastAndroid.show('Delete failed', ToastAndroid.SHORT);
+              ToastAndroid.show(t('Delete failed'), ToastAndroid.SHORT);
             }
           }
           setItems(p => p.filter((_, i) => i !== idx));
@@ -303,7 +448,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
 
   const addNewUnit = async () => {
     if (!newUnitName || !newUnitShortName) {
-      ToastAndroid.show('Both fields required', ToastAndroid.SHORT);
+      ToastAndroid.show(t('Both fields required'), ToastAndroid.SHORT);
       return;
     }
     try {
@@ -315,9 +460,9 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
       setNewUnitName('');
       setNewUnitShortName('');
       setUnitModalOpen(false);
-      ToastAndroid.show('Unit added', ToastAndroid.SHORT);
+      ToastAndroid.show(t('Unit added'), ToastAndroid.SHORT);
     } catch (e) {
-      ToastAndroid.show('Failed to add unit', ToastAndroid.SHORT);
+      ToastAndroid.show(t('Failed to add unit'), ToastAndroid.SHORT);
     }
   };
 
@@ -329,55 +474,89 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
       !totalBudget ||
       !items.length
     ) {
-      if (!customerId) {
-        ToastAndroid.show('Customer is required', ToastAndroid.SHORT);
-      }
-      if (!deliveryDate) {
-        ToastAndroid.show('Delivery Date is required', ToastAndroid.SHORT);
-      }
-      if (!description) {
-        ToastAndroid.show('Description is required', ToastAndroid.SHORT);
-      }
-      if (!totalBudget) {
-        ToastAndroid.show('Total Budget is required', ToastAndroid.SHORT);
-      }
-      if (!items.length) {
-        ToastAndroid.show('At least one item is required', ToastAndroid.SHORT);
-      }
+      if (!customerId)
+        ToastAndroid.show(t('Customer is required'), ToastAndroid.SHORT);
+      if (!deliveryDate)
+        ToastAndroid.show(t('Delivery Date is required'), ToastAndroid.SHORT);
+      if (!description)
+        ToastAndroid.show(t('Description is required'), ToastAndroid.SHORT);
+      if (!totalBudget)
+        ToastAndroid.show(t('Total Budget is required'), ToastAndroid.SHORT);
+      if (!items.length)
+        ToastAndroid.show(
+          t('At least one item is required'),
+          ToastAndroid.SHORT,
+        );
       return;
     }
 
     setLoading(true);
     try {
-      const payload: any = {
-        customerId,
-        projectDescription: description,
-        deliveryDate: dayjs(deliveryDate, 'DD-MM-YYYY').format('YYYY-MM-DD'),
-        totalBudget: Number(actualAmount),
-        discount: Number(discount),
-        items: items.map(i => ({
-          quotationId: rawQuotation?.id || 0,
-          itemName: i.itemName,
-          itemDescription: i.itemDescription,
-          rateMrp: i.rateMrp,
-          quantity: i.quantity,
-          unitId: i.unitId,
-          taxPercentage: i.taxPercentage,
-          hsnSac: i.hsnSac,
-        })),
-      };
-
+      let currentQuotation = null;
       if (isEditMode && rawQuotation?.id) {
+        const payload: any = {
+          customerId,
+          projectDescription: description,
+          deliveryDate: dayjs(deliveryDate, 'DD-MM-YYYY').format('YYYY-MM-DD'),
+          totalBudget: Number(actualAmount),
+          discount: Number(discount),
+        };
         await QuotationAPI.update(rawQuotation.id, payload);
-        ToastAndroid.show('Quotation updated!', ToastAndroid.SHORT);
+        // Upload any newly added local images
+        const localUris = images.filter(img => img.isLocal).map(img => img.uri);
+        if (localUris.length) {
+          await QuotationAPI.addSiteImages(rawQuotation.id, localUris);
+        }
+        if (items.length) {
+          items.forEach(async item => {
+            if (item.id) {
+              const payload = {
+                quotationId: rawQuotation.id,
+                itemName: item.itemName,
+                itemDescription: item.itemDescription,
+                rateMrp: item.rateMrp,
+                quantity: item.quantity,
+                unitId: item.unitId,
+                taxPercentage: item.taxPercentage,
+                hsnSac: item.hsnSac,
+              };
+              const res = await QuotationAPI.updateItem(item.id, payload);
+            }
+          });
+        }
+        currentQuotation = rawQuotation;
+        ToastAndroid.show(t('Quotation updated!'), ToastAndroid.SHORT);
       } else {
+        const payload: any = {
+          customerId,
+          projectDescription: description,
+          deliveryDate: dayjs(deliveryDate, 'DD-MM-YYYY').format('YYYY-MM-DD'),
+          totalBudget: Number(actualAmount),
+          discount: Number(discount),
+          items: items.map(item => ({
+            itemName: item.itemName,
+            itemDescription: item.itemDescription,
+            rateMrp: item.rateMrp,
+            quantity: item.quantity,
+            unitId: item.unitId,
+            taxPercentage: item.taxPercentage,
+            hsnSac: item.hsnSac,
+          })),
+        };
         const res = await QuotationAPI.create(payload);
-        ToastAndroid.show('Quotation created!', ToastAndroid.SHORT);
+        currentQuotation = res.data;
+        ToastAndroid.show(t('Quotation created!'), ToastAndroid.SHORT);
       }
 
-      setTimeout(() => navigation.goBack(), 800);
+      setTimeout(
+        () =>
+          navigation.navigate('QuotationDetail', {
+            quotation: currentQuotation,
+          }),
+        800,
+      );
     } catch (e: any) {
-      ToastAndroid.show(e?.message || 'Save failed', ToastAndroid.SHORT);
+      ToastAndroid.show(e?.message || t('Save failed'), ToastAndroid.SHORT);
     } finally {
       setLoading(false);
     }
@@ -391,6 +570,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 100}
       >
         <ScrollView
           contentContainerStyle={styles.content}
@@ -400,12 +580,12 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
           }
         >
           <Text style={styles.title}>
-            {isEditMode ? 'Edit Quotation' : 'Create Quotation'}
+            {isEditMode ? t('Edit Quotation') : t('Create Quotation')}
           </Text>
 
           {isFromInquiry ? (
             <TextInput
-              label="Customer"
+              label={t('Customer')}
               value={customerName}
               mode="outlined"
               style={styles.input}
@@ -420,7 +600,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
               maxHeight={hp(40)}
               labelField="label"
               valueField="value"
-              placeholder="Select Customer *"
+              placeholder={t('Select Customer *')}
               value={selectedCustomerIdx}
               onChange={item => {
                 const cust = customers[item.value];
@@ -433,20 +613,14 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             />
           )}
 
-          {/* <TextInput
-            label="Customer Name"
-            value={customerName}
-            mode="outlined"
-            style={styles.input}
-          /> */}
           <TextInput
-            label="Mobile No"
+            label={t('Mobile No')}
             value={mobileNo}
             mode="outlined"
             style={styles.input}
           />
           <TextInput
-            label="Address"
+            label={t('Address')}
             value={address}
             mode="outlined"
             multiline
@@ -454,7 +628,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
           />
 
           <TextInput
-            label="Project Description *"
+            label={t('Project Description *')}
             value={description}
             onChangeText={setDescription}
             mode="outlined"
@@ -463,22 +637,12 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             style={[styles.input, styles.textArea]}
           />
 
-          <TouchableOpacity onPress={() => setDatePickerOpen(true)}>
-            <TextInput
-              label="Delivery Date *"
-              value={deliveryDate}
-              mode="outlined"
-              editable={false}
-              style={styles.input}
-              right={<TextInput.Icon icon="calendar" size={wp(6)} />}
-            />
-          </TouchableOpacity>
           <TextInput
-            label="Total Budget *"
+            label={t('Total Budget *')}
             value={actualAmount.toString()}
             onChangeText={text => {
               setActualAmount(Number(text));
-              setTotalBudget(text);
+              //setTotalBudget(text);
             }}
             mode="outlined"
             keyboardType="numeric"
@@ -486,8 +650,8 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             editable={!isEditMode}
             left={<TextInput.Affix text="₹" />}
           />
-          <TextInput
-            label="Total Amount *"
+          {/* <TextInput
+            label={t('Total Amount *')}
             value={totalBudget}
             onChangeText={setTotalBudget}
             mode="outlined"
@@ -495,67 +659,133 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             style={styles.input}
             editable={!isEditMode}
             left={<TextInput.Affix text="₹" />}
-          />
-          {Number(totalBudget) > 0 && (
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: wp(2),
-              }}
-            >
-              <TextInput
-                label="Discount"
-                value={discount === 0 ? '' : String(discount)}
-                onChangeText={text => {
-                  const discountValue = text === '' ? 0 : Number(text);
-                  setDiscount(discountValue);
+          /> */}
 
-                  if (discountValue === 0 || text === '') {
-                    setTotalBudget(String(actualAmount));
-                    setDiscountPercent(0);
-                  } else {
-                    // Calculate percentage based on actualAmount (original total)
-                    const percentage = (discountValue / actualAmount) * 100;
-                    setDiscountPercent(percentage);
+          {/* Site Images (Edit mode) */}
+          {isEditMode && (
+            <>
+              <Text style={styles.sectionTitle}>
+                Site Images ({images.length}/15)
+              </Text>
+              <View style={styles.imageContainer}>
+                {images.map((img, i) => (
+                  <View key={i} style={styles.imageWrapper}>
+                    <Image
+                      source={{ uri: img.uri }}
+                      style={styles.thumbnail}
+                      resizeMode="cover"
+                    />
+                    {img.isLocal && (
+                      <TouchableOpacity
+                        style={styles.removeBtn}
+                        onPress={() =>
+                          setImages(prev => prev.filter((_, idx) => idx !== i))
+                        }
+                      >
+                        <MaterialCommunityIcons
+                          name="close"
+                          size={wp(4)}
+                          color="#fff"
+                        />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ))}
+                {images.length < 15 && (
+                  <>
+                    <TouchableOpacity
+                      style={styles.uploadBtn}
+                      onPress={() => {
+                        if (images.length >= 15) return;
 
-                    // Update totalAmount by subtracting from actualAmount
-                    setTotalBudget(String(actualAmount - discountValue));
-                  }
-                }}
-                mode="outlined"
-                keyboardType="numeric"
-                style={[styles.input, { width: wp(60) }]}
-                theme={{ roundness: wp(2.5) }}
-                disabled={false}
-              />
-              <TextInput
-                label="Percentage"
-                value={
-                  discountPercent === 0 ? '0.00' : discountPercent.toFixed(2)
-                }
-                mode="outlined"
-                keyboardType="numeric"
-                style={[styles.input, { width: wp(30) }]}
-                theme={{ roundness: wp(2.5) }}
-                editable={false}
-                right={
-                  <TextInput.Icon icon="percent" size={wp(6)} color="#2874b8" />
-                }
-              />
-            </View>
+                        launchImageLibrary(
+                          { mediaType: 'photo', quality: 0.6 },
+                          r => {
+                            const uri = r.assets?.[0]?.uri;
+                            if (!uri) return;
+
+                            // Apply watermark
+                            addTextWatermark(uri)
+                              .then(wmUri => {
+                                setImages(prev => [
+                                  ...prev,
+                                  { uri: wmUri, isLocal: true },
+                                ]);
+                              })
+                              .catch(err => {
+                                console.log('Watermark error:', err);
+
+                                // fallback: add original image
+                                setImages(prev => [
+                                  ...prev,
+                                  { uri, isLocal: true },
+                                ]);
+                              });
+                          },
+                        );
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name="image"
+                        size={wp(8)}
+                        color="#2874b8"
+                      />
+                      <Text style={styles.uploadText}>Gallery</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.uploadBtn}
+                      onPress={() => {
+                        if (images.length >= 15) return;
+
+                        launchCamera(
+                          { mediaType: 'photo', quality: 0.6 },
+                          r => {
+                            const uri = r.assets?.[0]?.uri;
+                            if (!uri) return;
+
+                            // Apply watermark
+                            addTextWatermark(uri)
+                              .then(wmUri => {
+                                setImages(prev => [
+                                  ...prev,
+                                  { uri: wmUri, isLocal: true },
+                                ]);
+                              })
+                              .catch(err => {
+                                console.log('Watermark error:', err);
+
+                                // fallback to original photo
+                                setImages(prev => [
+                                  ...prev,
+                                  { uri, isLocal: true },
+                                ]);
+                              });
+                          },
+                        );
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name="camera"
+                        size={wp(8)}
+                        color="#2874b8"
+                      />
+                      <Text style={styles.uploadText}>Camera</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            </>
           )}
 
           <View style={styles.itemsHeader}>
-            <Text style={styles.sectionTitle}>Items</Text>
+            <Text style={styles.sectionTitle}>{t('Items')}</Text>
             <Chip icon="calculator" style={styles.totalChip}>
               ₹{grandTotal.toFixed(2)}
             </Chip>
           </View>
 
           {items.length === 0 ? (
-            <Text style={styles.emptyText}>No items added yet</Text>
+            <Text style={styles.emptyText}>{t('No items added yet')}</Text>
           ) : (
             items.map((item, index) => {
               const unit = units.find(u => u.id === item.unitId);
@@ -581,7 +811,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
                     <IconButton
                       icon="pencil"
                       size={wp(5)}
-                      onPress={() => openItemModal(item)}
+                      onPress={() => openItemModal(item, index)}
                     />
                     <IconButton
                       icon="delete"
@@ -593,6 +823,90 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
               );
             })
           )}
+
+          <View style={{ marginTop: 16, marginBottom: 8 }}>
+            <Text
+              style={{ fontSize: wp(5), fontWeight: 'bold', color: '#2874b8' }}
+            >{`Total Amount* : ${totalBudget}`}</Text>
+          </View>
+
+          {Number(totalBudget) > 0 && (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: wp(2),
+              }}
+            >
+              <TextInput
+                label={t('Discount')}
+                value={discount === 0 ? '' : String(discount)}
+                onChangeText={text => {
+                  const discountValue = text === '' ? 0 : Number(text);
+                  setDiscount(discountValue);
+                  if (discountValue === 0 || text === '') {
+                    setTotalBudget(grandTotal.toFixed(2));
+                    setDiscountPercent(0);
+                  } else {
+                    const percentage =
+                      (discountValue / Number(grandTotal)) * 100;
+                    setDiscountPercent(percentage);
+                    setTotalBudget(String(grandTotal - discountValue));
+                  }
+                }}
+                mode="outlined"
+                keyboardType="numeric"
+                style={[styles.input, { width: wp(60) }]}
+                theme={{ roundness: wp(2.5) }}
+                disabled={false}
+              />
+              <TextInput
+                label={t('Percentage')}
+                value={
+                  discountPercent === 0 ? '0.00' : discountPercent.toFixed(2)
+                }
+                onChangeText={text => {
+                  const percentValue = text === '' ? 0 : Number(text);
+                  setDiscountPercent(percentValue);
+                  if (percentValue === 0 || text === '') {
+                    setDiscount(0);
+                    setTotalBudget(grandTotal.toFixed(2));
+                  } else {
+                    const discountValue =
+                      (Number(grandTotal) * percentValue) / 100;
+                    setDiscount(discountValue);
+                    setTotalBudget(String(Number(grandTotal) - discountValue));
+                  }
+                }}
+                mode="outlined"
+                keyboardType="numeric"
+                style={[styles.input, { width: wp(30) }]}
+                theme={{ roundness: wp(2.5) }}
+                editable={true}
+                right={
+                  <TextInput.Icon icon="percent" size={wp(6)} color="#2874b8" />
+                }
+              />
+            </View>
+          )}
+
+          <TouchableOpacity onPress={() => setDatePickerOpen(true)}>
+            <TextInput
+              label={t('Delivery Date *')}
+              value={deliveryDate}
+              mode="outlined"
+              editable={false}
+              style={styles.input}
+              right={
+                <TextInput.Icon
+                  icon="calendar"
+                  size={wp(6)}
+                  onPress={() => setDatePickerOpen(true)}
+                />
+              }
+            />
+          </TouchableOpacity>
 
           <Button
             mode="contained"
@@ -610,7 +924,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             }
             icon="content-save"
           >
-            {isEditMode ? 'Update Quotation' : 'Save Quotation'}
+            {isEditMode ? t('Update Quotation') : t('Save Quotation')}
           </Button>
         </ScrollView>
 
@@ -624,95 +938,37 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
         </Portal>
 
         {/* Item Dialog */}
-        <Portal>
-          <Dialog
-            visible={itemModalOpen}
-            onDismiss={() => setItemModalOpen(false)}
-          >
-            <Dialog.Title>{editingItem ? 'Edit' : 'Add'} Item</Dialog.Title>
-            <Dialog.ScrollArea>
-              <ScrollView style={{ maxHeight: hp(55) }}>
-                <TextInput
-                  label="Name *"
-                  value={itemName}
-                  onChangeText={setItemName}
-                  mode="outlined"
-                  style={styles.dialogInput}
-                />
-                <TextInput
-                  label="Description"
-                  value={itemDesc}
-                  onChangeText={setItemDesc}
-                  mode="outlined"
-                  style={styles.dialogInput}
-                />
-                <TextInput
-                  label="Quantity *"
-                  value={itemQty}
-                  onChangeText={setItemQty}
-                  mode="outlined"
-                  keyboardType="numeric"
-                  style={styles.dialogInput}
-                />
-
-                <View style={styles.unitRow}>
-                  <View style={{ flex: 1 }}>
-                    <Dropdown
-                      style={styles.unitDropdown}
-                      placeholderStyle={styles.placeholderStyle}
-                      selectedTextStyle={styles.selectedTextStyle}
-                      data={unitDropdown}
-                      labelField="label"
-                      valueField="value"
-                      placeholder="Unit *"
-                      value={selectedUnitId}
-                      onChange={item => setSelectedUnitId(item.value)}
-                    />
-                  </View>
-                  <IconButton
-                    icon="plus"
-                    size={wp(6)}
-                    onPress={() => setUnitModalOpen(true)}
-                    style={styles.addUnitBtn}
-                  />
-                </View>
-
-                <TextInput
-                  label="MRP *"
-                  value={itemMrp}
-                  onChangeText={setItemMrp}
-                  mode="outlined"
-                  keyboardType="numeric"
-                  style={styles.dialogInput}
-                  left={<TextInput.Affix text="₹" />}
-                />
-                <TextInput
-                  label="HSN/SAC"
-                  value={hsnSac}
-                  onChangeText={setHsnSac}
-                  mode="outlined"
-                  style={styles.dialogInput}
-                />
-                <TextInput
-                  label="Tax (%)"
-                  value={itemTax}
-                  onChangeText={setItemTax}
-                  mode="outlined"
-                  keyboardType="numeric"
-                  style={styles.dialogInput}
-                  right={<TextInput.Affix text="%" />}
-                />
-                <Text style={styles.amountPreview}>
-                  Total: ₹{calculateItemTotal().toFixed(2)}
-                </Text>
-              </ScrollView>
-            </Dialog.ScrollArea>
-            <Dialog.Actions>
-              <Button onPress={() => setItemModalOpen(false)}>Cancel</Button>
-              <Button onPress={saveItemLocally}>Save</Button>
-            </Dialog.Actions>
-          </Dialog>
-        </Portal>
+        <ItemDialog
+          visible={itemModalOpen}
+          onDismiss={() => setItemModalOpen(false)}
+          mode="quotation"
+          quotationId={rawQuotation?.id || 0}
+          item={editingItem}
+          onSaved={(saved: any) => {
+            setItems(prev => {
+              if (editingItem?.id) {
+                return prev.map(i =>
+                  i.id === editingItem.id ? { ...saved } : i,
+                );
+              }
+              if (
+                editingIndex !== null &&
+                editingIndex >= 0 &&
+                editingIndex < prev.length
+              ) {
+                const next = [...prev];
+                next[editingIndex] = { ...saved };
+                return next;
+              }
+              return [...prev, { ...saved }];
+            });
+            setEditingItem(null);
+            setEditingIndex(null);
+          }}
+          title={editingItem ? t('Edit Item') : t('Add Item')}
+          maxHeight={hp(55)}
+          t={t}
+        />
 
         {/* Unit Dialog */}
         <Portal>
@@ -720,17 +976,17 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             visible={unitModalOpen}
             onDismiss={() => setUnitModalOpen(false)}
           >
-            <Dialog.Title>Add New Unit</Dialog.Title>
+            <Dialog.Title>{t('Add New Unit')}</Dialog.Title>
             <Dialog.Content>
               <TextInput
-                label="Unit Name"
+                label={t('Unit Name')}
                 value={newUnitName}
                 onChangeText={setNewUnitName}
                 mode="outlined"
                 style={styles.dialogInput}
               />
               <TextInput
-                label="Short Name"
+                label={t('Short Name')}
                 value={newUnitShortName}
                 onChangeText={setNewUnitShortName}
                 mode="outlined"
@@ -738,8 +994,10 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
               />
             </Dialog.Content>
             <Dialog.Actions>
-              <Button onPress={() => setUnitModalOpen(false)}>Cancel</Button>
-              <Button onPress={addNewUnit}>Add</Button>
+              <Button onPress={() => setUnitModalOpen(false)}>
+                {t('Cancel')}
+              </Button>
+              <Button onPress={addNewUnit}>{t('Add')}</Button>
             </Dialog.Actions>
           </Dialog>
         </Portal>
@@ -839,6 +1097,40 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   dialogInput: { marginBottom: hp(2) },
+  imageContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: wp(3),
+    alignItems: 'center',
+  },
+  imageWrapper: {
+    position: 'relative',
+  },
+  thumbnail: {
+    width: wp(26),
+    height: wp(26),
+    borderRadius: wp(2),
+    backgroundColor: '#f2f2f2',
+  },
+  removeBtn: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 12,
+    padding: 2,
+  },
+  uploadBtn: {
+    width: wp(26),
+    height: wp(26),
+    borderWidth: 1,
+    borderColor: '#2874b8',
+    borderStyle: 'dashed',
+    borderRadius: wp(2),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  uploadText: { marginTop: 4, color: '#2874b8', fontSize: wp(3) },
 });
 
 export default AddQuotation;
