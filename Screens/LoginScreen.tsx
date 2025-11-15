@@ -64,6 +64,10 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
       }
     };
     checkPendingScreen();
+    const unsubscribe = navigation.addListener('focus', () => {
+      checkPendingScreen();
+    });
+    return unsubscribe;
   }, []);
 
   const handleWorkerLogin = async () => {

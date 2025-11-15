@@ -108,6 +108,7 @@ const UnattendedCustomers: React.FC<Props> = ({ navigation }) => {
       for (const en of Object.keys(enToTa)) {
         try {
           const ta = await translate('en', 'ta', en, { type: 'google' });
+          AsyncStorage.setItem('notificationNavigate', '');
           result[en] = ta;
         } catch {
           result[en] = enToTa[en] ?? en;
