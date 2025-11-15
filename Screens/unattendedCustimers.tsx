@@ -87,6 +87,13 @@ const UnattendedCustomers: React.FC<Props> = ({ navigation }) => {
       const tamil = saved === 'ta';
       setIsTamil(tamil);
     };
+    const getNotification = async () => {
+      const notification = await AsyncStorage.getItem('notification');
+      if (notification === 'true') {
+        console.log(navigation.getState());
+      }
+    };
+    getNotification();
     initLang();
   }, []);
 

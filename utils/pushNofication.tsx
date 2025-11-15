@@ -50,6 +50,9 @@
 import { PermissionsAndroid, Platform, Alert } from 'react-native';
 import { OneSignal } from 'react-native-onesignal';
 import { navigationRef } from '../navigation/AppNavigation';
+import { navigate } from '../utils/navigationService';
+import { resetLogoutTimer, setupSessionTimeout } from '../utils/sessionManager';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ONE_SIGNAL_APP_ID = '81985d30-6da5-4f7a-8b63-e629cddfefb3';
 
@@ -75,11 +78,10 @@ export const initNotification = async () => {
   OneSignal.Notifications.addEventListener('click', event => {
     const { notification } = event;
     console.log('notification clicked', notification);
-    if (navigationRef.isReady()) {
-      navigationRef.current?.navigate('unattendedCustomers');
-    } else {
-      console.log('navigationRef is not ready');
-    }
+    AsyncStorage.setItem('notificationNavigate', 'unattendedCustomers');
+    const cleanupSessionTimeout = setupSessionTimeout(navigationRef);
+    navigate('splash');
+    cleanupSessionTimeout();
   });
 
   return true;
@@ -88,6 +90,47 @@ export const initNotification = async () => {
 export const triggerTestAlert = () => {
   Alert.alert('Test', 'OneSignal is ready! Send a real push from dashboard.');
 };
+
+export async function sendPushNotification(title: string, message: string) {
+  const url = 'https://onesignal.com/api/v1/notifications?c=push';
+
+  const ONE_SIGNAL_APP_ID = '81985d30-6da5-4f7a-8b63-e629cddfefb3';
+
+  // Replace with your OneSignal REST API key
+  const REST_API_KEY =
+    'os_v2_app_qgmf2mdnuvhxvc3d4yu43x7pwnmqqkljjnvehdevihpg376ze6252qe5ny6vetxg26l3nt5iifupn25n3mi45rf7dkju2mphrhdrfvy';
+
+  const body = {
+    app_id: ONE_SIGNAL_APP_ID,
+    included_segments: ['All'],
+    headings: { en: title },
+    contents: { en: message },
+  };
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${REST_API_KEY}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const json = await res.json();
+
+    if (!res.ok) {
+      console.log('Push error:', json);
+      throw new Error(json?.errors || 'Failed to send notification');
+    }
+
+    console.log('Push notification sent:', json);
+    return json;
+  } catch (err) {
+    console.error('Push API Error:', err);
+    throw err;
+  }
+}
 
 export default initNotification;
 

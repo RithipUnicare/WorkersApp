@@ -699,7 +699,7 @@ const CreateUserTab: React.FC = () => {
 
     setLoading(true);
     const payload = {
-      name: name,
+      name: name.trimEnd(),
       mobile: mobile.trim(),
       email: email.trim(),
       username: username.trim(),
@@ -708,7 +708,7 @@ const CreateUserTab: React.FC = () => {
     };
 
     try {
-      if (!payload.email) {
+      if (!payload.email && role === 'worker') {
         payload.email = 'worker@gmail.com';
       }
       const res = await UserAPI.create(payload);

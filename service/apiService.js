@@ -85,6 +85,7 @@ async function handleResponse(response, parse = 'json') {
 
 async function jsonRequest(method, path, body, headers = {}) {
   const url = buildUrl(path);
+  console.log('URL:', url);
   const config = { headers };
 
   const response = await api.request({
@@ -134,6 +135,8 @@ export const CustomerAPI = {
   update: (id, payload) =>
     jsonRequest('PUT', `${endpoints.customers}/${id}`, payload),
   delete: id => deleteRequest(`${endpoints.customers}/${id}`),
+  updateStatus: (id, payload) =>
+    jsonRequest('PATCH', endpoints.updateCustomerStatus(id), payload),
 };
 
 export const ProjectAPI = {

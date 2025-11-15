@@ -19,11 +19,13 @@ import { Quotation } from './QuotationDetail';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslator } from 'react-native-translator';
+import { RouteProp } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
 
 type Props = {
   navigation: NativeStackNavigationProp<rootStackParamList, 'QuotationList'>;
+  route: RouteProp<rootStackParamList, 'QuotationList'>;
 };
 
 const enToTa: Record<string, string> = {
@@ -37,9 +39,10 @@ const enToTa: Record<string, string> = {
   'No address': 'முகவரி இல்லை',
 };
 
-const QuotationList: React.FC<Props> = ({ navigation }) => {
+const QuotationList: React.FC<Props> = ({ navigation, route }) => {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [search, setSearch] = useState('');
+  const Completed = route.params?.Completed || false;
   const [refreshing, setRefreshing] = useState(false);
   const [sortAsc, setSortAsc] = useState(true);
   const [isTamil, setIsTamil] = useState(false);
@@ -121,6 +124,7 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
     });
 
   const getStatusColor = (status: string) => {
+    console.log('status', status);
     switch (status?.toUpperCase()) {
       case 'PENDING':
         return '#FFC107';
@@ -161,7 +165,7 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
             ]}
             textStyle={styles.statusText}
           >
-            {getStatusText(item.status || 'DRAFT')}
+            {getStatusText(item.status?.toLocaleUpperCase() || 'DRAFT')}
           </Chip>
         </View>
 
@@ -247,7 +251,11 @@ const QuotationList: React.FC<Props> = ({ navigation }) => {
       </View>
 
       <FlatList
-        data={filteredQuotations}
+        data={
+          Completed
+            ? filteredQuotations.filter(q => q.status === 'COMPLETED')
+            : filteredQuotations.filter(q => q.status !== 'COMPLETED')
+        }
         renderItem={renderItem}
         keyExtractor={item => item.id.toString()}
         showsVerticalScrollIndicator={false}

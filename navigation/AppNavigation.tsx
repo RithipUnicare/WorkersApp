@@ -29,6 +29,7 @@ import AddQuotation from '../Screens/AddQuotationScreen';
 import QuotationList from '../Screens/QuotationList';
 import QuotationDetail from '../Screens/QuotationDetail';
 import PendingPayments from '../Screens/PendingPayments';
+import { processPendingNavigation } from '../utils/navigationService.js';
 
 export type rootStackParamList = {
   login: undefined;
@@ -36,7 +37,7 @@ export type rootStackParamList = {
   WorkersHome: any;
   CustomerList: undefined;
   AddCustomer: { customer: Customer } | any;
-  ProjectList: undefined;
+  ProjectList: { Completed: boolean } | undefined;
   AddProject: { customer: Customer } | { projectToEdit: Project } | any;
   AdminPanel: undefined;
   PaymentPage: { project: Project } | any;
@@ -47,7 +48,7 @@ export type rootStackParamList = {
   RecoredAudio: { project: Project } | { quotation: Quotation } | any;
   splash: undefined;
   AddQuotation: { customer: Customer } | { quotationToEdit: Quotation } | any;
-  QuotationList: undefined;
+  QuotationList: { Completed: boolean } | undefined;
   QuotationDetail: { quotation: Quotation };
   pendingPayments: undefined;
 };
@@ -68,7 +69,12 @@ const AppNavigation = () => {
   }, []);
 
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer
+      ref={navigationRef}
+      onReady={() => {
+        processPendingNavigation();
+      }}
+    >
       <Stack.Navigator
         initialRouteName="splash"
         screenOptions={{
