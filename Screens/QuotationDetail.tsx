@@ -216,7 +216,6 @@ const QuotationDetail: React.FC = () => {
   const [translations, setTranslations] = useState<Record<string, string>>({});
 
   const { translate } = useTranslator();
-  console.log(quotationData);
   const openGoogleMaps = (
     latitude: number,
     longitude: number,
@@ -668,8 +667,6 @@ const QuotationDetail: React.FC = () => {
         throw new Error('PDF generation failed');
       }
 
-      console.log('Generated PDF at:', filePath);
-
       const cleanPath = filePath.replace(/^file:\/\//, '');
 
       // Verify file
@@ -683,7 +680,6 @@ const QuotationDetail: React.FC = () => {
       const cachePath = `${RNFS.CachesDirectoryPath}/${cacheFileName}`;
 
       await RNFS.copyFile(cleanPath, cachePath);
-      console.log('Copied to cache:', cachePath);
 
       // Share using the cache path
       await Share.open({
@@ -697,7 +693,6 @@ const QuotationDetail: React.FC = () => {
         try {
           await RNFS.unlink(cleanPath);
           await RNFS.unlink(cachePath);
-          console.log('Cleaned up files');
         } catch (e) {
           console.log('Cleanup error:', e);
         }

@@ -92,8 +92,6 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
       const currentUser = await AsyncStorage.getItem('user');
       const parsedUser = currentUser ? JSON.parse(currentUser) : null;
 
-      console.log('user', parsedUser);
-
       setUsername(parsedUser?.name || 'Admin User');
       // animation
       Animated.timing(fadeAnim, {

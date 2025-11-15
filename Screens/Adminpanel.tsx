@@ -709,10 +709,10 @@ const CreateUserTab: React.FC = () => {
 
     try {
       if (!payload.email && role === 'worker') {
-        payload.email = 'worker@gmail.com';
+        payload.email = `worker${payload.mobile}@gmail.com`;
+        payload.password = 'worker123';
       }
       const res = await UserAPI.create(payload);
-      console.log('user creation', res);
       if (res.success) {
         setSnackbar({
           visible: true,
@@ -725,14 +725,12 @@ const CreateUserTab: React.FC = () => {
         setPassword('');
         setRole('worker');
       } else {
-        console.log('user creation error', res);
         setSnackbar({
           visible: true,
           message: res.error || t('Failed to create user'),
         });
       }
     } catch (error) {
-      console.log('user creation error', error);
       setSnackbar({ visible: true, message: t('Failed to create user') });
     } finally {
       setLoading(false);

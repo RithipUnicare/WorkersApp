@@ -56,7 +56,6 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
       const user = await AsyncStorage.getItem('user');
       const UserRole = user ? JSON.parse(user).role : null;
       if (pendingScreen && UserRole !== 'worker') {
-        console.log('pendingScreen', pendingScreen);
         navigation.navigate('unattendedCustomers');
         AsyncStorage.removeItem('notificationNavigate');
       } else {

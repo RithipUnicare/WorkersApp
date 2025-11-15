@@ -342,8 +342,13 @@ const ProjectList: React.FC<Props> = ({ navigation, route }) => {
       const parsed = userStr ? JSON.parse(userStr) : null;
       setRole(parsed?.role || '');
       if (res.success && Array.isArray(res.data)) {
-        setProjects(res.data);
-        setFilteredProjects(res.data);
+        const filtered = res.data.filter(
+          (p: Project) =>
+            p.status.toLocaleUpperCase() !== 'DELETED' &&
+            p.status.toLocaleUpperCase() !== 'REJECTED',
+        );
+        setProjects(filtered);
+        setFilteredProjects(filtered);
       }
     } catch (e) {
       console.error(e);

@@ -48,6 +48,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslator } from 'react-native-translator';
 import { Project } from './AdminProductList';
 import { addTextWatermark } from '../utils/Watermarker';
+import { Customer } from './AdminCustomerList';
 
 dayjs.extend(customParseFormat);
 
@@ -272,7 +273,14 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
         CustomerAPI.getAll(),
         UnitAPI.getAll(),
       ]);
-      if (Array.isArray(customerRes.data)) setCustomers(customerRes.data);
+      if (Array.isArray(customerRes.data)) {
+        const filtered = customerRes.data.filter(
+          (c: Customer) =>
+            c.status.toLocaleUpperCase() !== 'DELETED' &&
+            c.status.toLocaleUpperCase() !== 'REJECTED',
+        );
+        setCustomers(filtered);
+      }
       if (Array.isArray(unitRes.data)) setUnits(unitRes.data);
     } catch (e) {
       setSnackbar({ visible: true, message: t('Failed to load data') });
@@ -439,8 +447,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           setImages(prev => [...prev, { uri: wmUri, isLocal: true }]);
         })
         .catch(err => {
-          console.log('Watermark error:', err);
-
           // fallback: original image
           setImages(prev => [...prev, { uri, isLocal: true }]);
         });
@@ -462,8 +468,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           setImages(prev => [...prev, { uri: wmUri, isLocal: true }]);
         })
         .catch(err => {
-          console.log('Watermark error:', err);
-
           // fallback: original captured image
           setImages(prev => [...prev, { uri, isLocal: true }]);
         });
@@ -678,7 +682,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           console.log(error);
         }
         setSnackbar({ visible: true, message: t('Project updated!') });
-        navigation.navigate('ProjectDetails', { project: rawProject });
+        navigation.replace('ProjectDetails', { project: rawProject });
       } else {
         const payload = {
           customerId,
@@ -722,7 +726,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
             );
           });
         }
-        console.log('projectItems', currentProjectForItem);
 
         if (
           Array.isArray(rawProject?.projectItems) &&
@@ -734,18 +737,10 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                 const newItem = currentProjectForItem?.projectItems?.[index];
                 let itemImages: any[] = [];
 
-                console.log(
-                  'Processing item:',
-                  projectItem.id,
-                  '->',
-                  newItem.id,
-                );
-
                 if (
                   Array.isArray(projectItem?.images) &&
                   projectItem?.images?.length > 0
                 ) {
-                  console.log('Images exist for item:', projectItem.images);
                   itemImages.push(...projectItem.images);
                 }
 
@@ -757,12 +752,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                   });
 
                   try {
-                    const res = await ProjectAPI.addItemImages(
-                      newItem.id,
-                      imageUris,
-                      true,
-                    );
-                    console.log('Uploaded images for item:', newItem.id, res);
+                    await ProjectAPI.addItemImages(newItem.id, imageUris, true);
                   } catch (err) {
                     console.log(
                       'Failed to upload images for item:',
@@ -801,7 +791,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           ToastAndroid.SHORT,
         );
         const currentProject: Project = created?.data;
-        navigation.navigate('ProjectDetails', { project: currentProject });
+        navigation.replace('ProjectDetails', { project: currentProject });
         setAdvanceModalOpen(true);
       }
     } catch (e: any) {

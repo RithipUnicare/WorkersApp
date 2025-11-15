@@ -492,7 +492,6 @@ const ProjectDetails: React.FC = () => {
       if (res?.data) setProject(res.data);
       const currentUser = await AsyncStorage.getItem('user');
       const parsedUser = currentUser ? JSON.parse(currentUser) : null;
-      console.log('current user', parsedUser.role);
       setRole(parsedUser?.role || 'worker');
     } catch (e) {
       console.error('Failed to refresh project', e);
@@ -574,7 +573,7 @@ const ProjectDetails: React.FC = () => {
         style: 'destructive',
         onPress: async () => {
           try {
-            await ProjectAPI.delete(project.id);
+            await ProjectAPI.updateStatus(project.id, 'DELETED');
             navigation.goBack();
           } catch (e) {
             Alert.alert(t('Error'), t('Failed to delete'));

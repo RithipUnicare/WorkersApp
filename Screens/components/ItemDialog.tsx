@@ -147,13 +147,11 @@ const ItemDialog: React.FC<Props> = ({
         style: 'destructive',
         onPress: async () => {
           try {
-            console.log('Deleting unit', id);
-            const res = await UnitAPI.delete(id);
-            console.log('Deleted unit', res);
+            await UnitAPI.delete(id);
             setUnits(prev => prev.filter(u => u.id !== id));
             if (unitId === id) setUnitId(null);
           } catch (e) {
-            console.log('Error deleting unit', e);
+            Alert.alert(tr('Delete failed'));
           }
         },
       },
@@ -265,7 +263,6 @@ const ItemDialog: React.FC<Props> = ({
         const returned = res?.data || {};
         saved.id = returned.id || saved.id;
       }
-      console.log('Saved item', saved);
       onSaved(saved);
       onDismiss();
     } catch (e) {

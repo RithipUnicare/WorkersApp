@@ -89,9 +89,6 @@ const UnattendedCustomers: React.FC<Props> = ({ navigation }) => {
     };
     const getNotification = async () => {
       const notification = await AsyncStorage.getItem('notification');
-      if (notification === 'true') {
-        console.log(navigation.getState());
-      }
     };
     getNotification();
     initLang();
@@ -137,7 +134,6 @@ const UnattendedCustomers: React.FC<Props> = ({ navigation }) => {
   const loadCustomers = async () => {
     try {
       const list = await CustomerAPI.getReminder();
-      console.log(list.data);
       if (Array.isArray(list.data)) setCustomers(list.data);
       const storedRole = await AsyncStorage.getItem('role');
       if (storedRole) setRole(storedRole);

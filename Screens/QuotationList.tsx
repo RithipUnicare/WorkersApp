@@ -124,7 +124,6 @@ const QuotationList: React.FC<Props> = ({ navigation, route }) => {
     });
 
   const getStatusColor = (status: string) => {
-    console.log('status', status);
     switch (status?.toUpperCase()) {
       case 'PENDING':
         return '#FFC107';

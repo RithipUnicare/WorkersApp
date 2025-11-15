@@ -220,10 +220,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
 
       setPaymentsIn(Array.isArray(inRes.data) ? inRes.data : []);
       setPaymentsOut(Array.isArray(outRes.data) ? outRes.data : []);
-      console.log('Payments In', inRes.data);
-      console.log('Payments Out', outRes.data);
     } catch (e) {
-      console.error('Failed to load payments', e);
       Alert.alert(t('Error'), t('Failed to load payments'));
     } finally {
       setLoading(false);
@@ -268,9 +265,10 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
       return;
     }
 
-    const finalType = !isPaymentIn && paymentType === 'Custom'
-      ? customType.trim()
-      : paymentType;
+    const finalType =
+      !isPaymentIn && paymentType === 'Custom'
+        ? customType.trim()
+        : paymentType;
 
     const payload = {
       projectId: project.id,
