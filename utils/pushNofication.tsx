@@ -56,6 +56,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ONE_SIGNAL_APP_ID = '81985d30-6da5-4f7a-8b63-e629cddfefb3';
 
+type NotificationAdditionalData = {
+  screen?: string;
+  [key: string]: any;
+};
+
 export const initNotification = async () => {
   if (Platform.OS === 'android' && Platform.Version >= 33) {
     const granted = await PermissionsAndroid.request(
@@ -78,10 +83,15 @@ export const initNotification = async () => {
   OneSignal.Notifications.addEventListener('click', event => {
     const { notification } = event;
     console.log('notification clicked', notification);
-    AsyncStorage.setItem('notificationNavigate', 'unattendedCustomers');
-    const cleanupSessionTimeout = setupSessionTimeout(navigationRef);
-    navigate('splash');
-    cleanupSessionTimeout();
+    const screen =
+      (notification?.additionalData as NotificationAdditionalData)?.screen ||
+      'unattendedCustomers';
+    if (screen) {
+      AsyncStorage.setItem('notificationNavigate', screen);
+      const cleanupSessionTimeout = setupSessionTimeout(navigationRef);
+      navigate('splash');
+      cleanupSessionTimeout();
+    }
   });
 
   return true;
@@ -91,7 +101,11 @@ export const triggerTestAlert = () => {
   Alert.alert('Test', 'OneSignal is ready! Send a real push from dashboard.');
 };
 
-export async function sendPushNotification(title: string, message: string) {
+export async function sendPushNotification(
+  title: string,
+  message: string,
+  screen: string,
+) {
   const url = 'https://onesignal.com/api/v1/notifications?c=push';
 
   const ONE_SIGNAL_APP_ID = '81985d30-6da5-4f7a-8b63-e629cddfefb3';
@@ -105,6 +119,7 @@ export async function sendPushNotification(title: string, message: string) {
     included_segments: ['All'],
     headings: { en: title },
     contents: { en: message },
+    data: { screen },
   };
 
   try {

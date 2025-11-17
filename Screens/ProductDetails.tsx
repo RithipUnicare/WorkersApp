@@ -776,6 +776,7 @@ const ProjectDetails: React.FC = () => {
         sendPushNotification(
           'Image uploaded',
           `New image uploaded to project by ${username}`,
+          'ProjectList',
         );
         Alert.alert(
           t('Success'),
