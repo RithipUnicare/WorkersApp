@@ -237,8 +237,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
   );
   const paidInTotal = paymentsIn.reduce((sum, p) => sum + p.amount, 0);
   const paidOutTotal = paymentsOut.reduce((sum, p) => sum + p.amount, 0);
-  const netRemaining =
-    project.grandTotal - (paidInTotal + advanceTotal) + paidOutTotal;
+  const netRemaining = project.grandTotal - paidInTotal + advanceTotal;
 
   const [modalVisible, setModalVisible] = useState(false);
   const [isPaymentIn, setIsPaymentIn] = useState(true);

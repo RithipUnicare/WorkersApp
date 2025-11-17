@@ -43,6 +43,7 @@ const enToTa: Record<string, string> = {
   Language: 'மொழி',
   English: 'English',
   Tamil: 'தமிழ்',
+  'Payment out': 'செலுத்தல்',
 };
 
 export type Project = {
@@ -63,6 +64,7 @@ export type Project = {
   status: string;
   totalBudget?: number;
   createdAt?: string;
+  totalPaymentOut?: number;
   location: {
     id: number;
     address: string;
@@ -250,6 +252,23 @@ const ProjectCard = React.memo(
                   ₹{item.remainingAmount.toLocaleString('en-IN')}
                 </Text>
               </View>
+              <View style={styles.amountDivider} />
+              <View style={styles.amountBlock}>
+                <Text style={styles.amountLabel}>{t('Payment out')}</Text>
+                <Text
+                  style={[
+                    styles.amountValue,
+                    {
+                      color:
+                        Number(item.totalPaymentOut || 0) > 0
+                          ? '#e74c3c'
+                          : '#27ae60',
+                    },
+                  ]}
+                >
+                  ₹{Number(item.totalPaymentOut || 0).toLocaleString('en-IN')}
+                </Text>
+              </View>
             </View>
           )}
 
@@ -337,7 +356,7 @@ const ProjectList: React.FC<Props> = ({ navigation, route }) => {
     try {
       setLoading(true);
       const res = await ProjectAPI.getAll();
-
+      console.log('Project List Response:', res);
       const userStr = await AsyncStorage.getItem('user');
       const parsed = userStr ? JSON.parse(userStr) : null;
       setRole(parsed?.role || '');
