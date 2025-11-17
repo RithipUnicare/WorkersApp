@@ -1,7 +1,7 @@
 import { PermissionsAndroid, Platform, Alert, Linking } from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
 import Geocoder from 'react-native-geocoding';
-Geocoder.init('AIzaSyB-CyxQda-K2tjS0EaahpBf5HEMnhtb2c8');
+Geocoder.init('AIzaSyAZEvImYpC0VElqzSODnaAJ4C8rrPI-hRA');
 const requestPermissions = async () => {
   if (Platform.OS === 'ios') {
     const status = await Geolocation.requestAuthorization('whenInUse');
