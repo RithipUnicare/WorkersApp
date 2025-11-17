@@ -9,18 +9,18 @@ import { rootStackParamList } from '../navigation/AppNavigation';
 // Type for web event listeners
 type EventHandler = () => void;
 
-const INACTIVITY_TIMEOUT = 10 * 60 * 1000; // 20 minutes in milliseconds
+const INACTIVITY_TIMEOUT = 24 * 60 * 60 * 1000; // 20 minutes in milliseconds
 let logoutTimer: ReturnType<typeof setTimeout> | null = null;
 let navigation: NavigationContainerRef<rootStackParamList> | null = null;
 
-const resetLogoutTimer = () => {
+export const resetLogoutTimer = () => {
   if (logoutTimer) {
     clearTimeout(logoutTimer);
   }
   logoutTimer = setTimeout(logoutUser, INACTIVITY_TIMEOUT);
 };
 
-const handleAppStateChange = (nextAppState: AppStateStatus) => {
+export const handleAppStateChange = (nextAppState: AppStateStatus) => {
   if (nextAppState === 'active') {
     resetLogoutTimer();
   } else if (logoutTimer) {

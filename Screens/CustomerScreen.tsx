@@ -188,13 +188,14 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const res = await CustomerAPI.delete(customer.id);
-              console.log('Customer deleted:', res, customer.id);
+              const res = await CustomerAPI.updateStatus(customer.id, {
+                status: 'DELETED',
+              });
               Alert.alert(t('Deleted'), `${name} ${t('has been removed.')}`);
+              navigation.goBack();
             } catch (e) {
-              console.log('Error deleting customer:', customer.id);
+              Alert.alert(t('Error'), `${t('Error deleting customer')}`);
             }
-            navigation.goBack();
           },
         },
       ],
@@ -270,6 +271,9 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
                   size={wp(6)}
                   iconColor="#e74c3c"
                   onPress={handleDelete}
+                  style={{
+                    marginLeft: -wp(4.5),
+                  }}
                 />
               </View>
             </View>

@@ -51,7 +51,22 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         }
       }
     };
-    alreadyLogin();
+    const checkPendingScreen = async () => {
+      const pendingScreen = await AsyncStorage.getItem('notificationNavigate');
+      const user = await AsyncStorage.getItem('user');
+      const UserRole = user ? JSON.parse(user).role : null;
+      if (pendingScreen && UserRole !== 'worker') {
+        navigation.navigate('unattendedCustomers');
+        AsyncStorage.removeItem('notificationNavigate');
+      } else {
+        alreadyLogin();
+      }
+    };
+    checkPendingScreen();
+    const unsubscribe = navigation.addListener('focus', () => {
+      checkPendingScreen();
+    });
+    return unsubscribe;
   }, []);
 
   const handleWorkerLogin = async () => {

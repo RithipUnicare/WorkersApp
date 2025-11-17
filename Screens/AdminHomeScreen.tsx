@@ -20,6 +20,7 @@ import { CommonActions } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import initNotification from '../utils/pushNofication';
 import { useTranslator } from 'react-native-translator';
+import CustomDrawer from '../utils/customDrawer';
 
 const { width, height } = Dimensions.get('window');
 const wp = (percentage: number) => (width * percentage) / 100;
@@ -71,6 +72,7 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
   const [username, setUsername] = useState('');
   const [isTamil, setIsTamil] = useState(false);
   const [translations, setTranslations] = useState<Record<string, string>>({});
+  const [drawerVisible, setDrawerVisible] = useState(false);
 
   const { translate } = useTranslator();
 
@@ -89,8 +91,6 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
       //await AsyncStorage.setItem('role', 'Admin');
       const currentUser = await AsyncStorage.getItem('user');
       const parsedUser = currentUser ? JSON.parse(currentUser) : null;
-
-      console.log('user', parsedUser);
 
       setUsername(parsedUser?.name || 'Admin User');
       // animation
@@ -144,6 +144,14 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
     return translations[english] ?? enToTa[english] ?? english;
   };
 
+  const openDrawer = () => {
+    setDrawerVisible(true);
+  };
+
+  const closeDrawer = () => {
+    setDrawerVisible(false);
+  };
+
   const menuItems = [
     {
       id: 1,
@@ -167,22 +175,22 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
       icon: 'folder-open',
       onPress: () => navigation.navigate('ProjectList'),
     },
+    // {
+    //   id: 4,
+    //   title: t('Admin Panel'),
+    //   description: t('Manage users and roles'),
+    //   icon: 'cog',
+    //   onPress: () => navigation.navigate('AdminPanel'),
+    // },
     {
       id: 4,
-      title: t('Admin Panel'),
-      description: t('Manage users and roles'),
-      icon: 'cog',
-      onPress: () => navigation.navigate('AdminPanel'),
-    },
-    {
-      id: 5,
       title: t('Unattended Customers'),
       description: t('View customers needing follow-up'),
       icon: 'account-clock',
       onPress: () => navigation.navigate('unattendedCustomers'),
     },
     {
-      id: 6,
+      id: 5,
       title: t('Pending Payments'),
       description: t('View pending payments'),
       icon: 'cash',
@@ -224,13 +232,17 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
       <View style={styles.container}>
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <View style={styles.logoContainer}>
+            <TouchableOpacity
+              onPress={openDrawer}
+              style={styles.logoContainer}
+              activeOpacity={0.7}
+            >
               <Image
                 source={require('../assets/logo.jpg')}
                 style={{ width: wp(16), height: wp(14), borderRadius: wp(3) }}
                 resizeMode="center"
               />
-            </View>
+            </TouchableOpacity>
             <View style={styles.headerText}>
               <Text style={styles.headerTitle}>Indian Steel Company</Text>
               <Text style={styles.headerSubtitle}>{t('Admin Portal')}</Text>
@@ -327,6 +339,13 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
             </Text>
           </View>
         </ScrollView>
+
+        {/* Custom Drawer */}
+        <CustomDrawer
+          visible={drawerVisible}
+          onClose={closeDrawer}
+          navigation={navigation}
+        />
       </View>
     </SafeAreaView>
   );

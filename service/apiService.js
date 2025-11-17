@@ -93,7 +93,7 @@ async function jsonRequest(method, path, body, headers = {}) {
     data: body,
     ...config,
   });
-
+  console.log('Response:', response);
   return handleResponse(response, 'json');
 }
 
@@ -134,6 +134,8 @@ export const CustomerAPI = {
   update: (id, payload) =>
     jsonRequest('PUT', `${endpoints.customers}/${id}`, payload),
   delete: id => deleteRequest(`${endpoints.customers}/${id}`),
+  updateStatus: (id, payload) =>
+    jsonRequest('PATCH', endpoints.updateCustomerStatus(id), payload),
 };
 
 export const ProjectAPI = {

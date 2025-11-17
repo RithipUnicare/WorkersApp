@@ -46,11 +46,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslator } from 'react-native-translator';
 import ItemDialog from './components/ItemDialog';
 import { addTextWatermark } from '../utils/Watermarker';
-
+import RNFS from 'react-native-fs';
+import Share from 'react-native-share';
+import { sendPushNotification } from '../utils/pushNofication';
 const { width, height } = Dimensions.get('window');
 const wp = (percentage: number) => (width * percentage) / 100;
 const hp = (percentage: number) => (height * percentage) / 100;
-
 const enToTa: Record<string, string> = {
   Contact: 'தொடர்பு',
   Location: 'இடம்',
@@ -121,15 +122,12 @@ const enToTa: Record<string, string> = {
   DISCONTINUED: 'நிறுத்தப்பட்டது',
   COMPLETED: 'முடிக்கப்பட்டது',
 };
-
 const STATUS_OPTIONS = ['CREATED', 'IN_PROGRESS', 'DISCONTINUED', 'COMPLETED'];
-
 type ProjectDetailsRouteProp = RouteProp<rootStackParamList, 'ProjectDetails'>;
 type ProjectDetailsNavProp = NativeStackNavigationProp<
   rootStackParamList,
   'ProjectDetails'
 >;
-
 type VoiceRecording = {
   id: number;
   projectId: number;
@@ -137,7 +135,6 @@ type VoiceRecording = {
   url: string;
   createdAt: string;
 };
-
 type Project = {
   id: number;
   customerId: number;
@@ -178,7 +175,6 @@ type Project = {
   }[];
   voiceRecordings?: VoiceRecording[];
 };
-
 export type ProjectItem = {
   id?: number;
   projectId: number;
@@ -191,7 +187,6 @@ export type ProjectItem = {
   taxPercentage?: number;
   hsnSac?: string;
 };
-
 const openGoogleMaps = (
   latitude: number,
   longitude: number,
@@ -205,31 +200,25 @@ const openGoogleMaps = (
   })!;
   Linking.openURL(url).catch(() => {});
 };
-
 const openMobileDialer = (phoneNumber: string) => {
   const url = `tel:${phoneNumber}`;
   Linking.openURL(url).catch(() => {});
 };
-
 const ProjectDetails: React.FC = () => {
   const route = useRoute<ProjectDetailsRouteProp>();
   const navigation = useNavigation<ProjectDetailsNavProp>();
   const initialProject: Project | any = route?.params?.project;
   const [project, setProject] = useState<Project>(initialProject);
-
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-
   // Audio state
   const [isPlaying, setIsPlaying] = useState(false);
   const [playTime, setPlayTime] = useState('00:00:00');
   const [duration, setDuration] = useState('00:00:00');
   const [currentUrl, setCurrentUrl] = useState<string>('');
-
   // Section-specific modals
   const [gpsModalVisible, setGpsModalVisible] = useState(false);
   const [gpsAddress, setGpsAddress] = useState('');
-
   const [itemModalOpen, setItemModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any | null>(null);
   const [itemName, setItemName] = useState('');
@@ -242,13 +231,11 @@ const ProjectDetails: React.FC = () => {
   const [role, setRole] = useState<string | null>('');
   const [isTamil, setIsTamil] = useState(false);
   const [translations, setTranslations] = useState<Record<string, string>>({});
-
   // Image upload state
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [units, setUnits] = useState<Unit[]>([]);
-
   // Item images state (project items)
   const [itemImagesModalOpen, setItemImagesModalOpen] = useState(false);
   const [activeItemForImages, setActiveItemForImages] = useState<any | null>(
@@ -258,16 +245,16 @@ const ProjectDetails: React.FC = () => {
   const [itemImageUploading, setItemImageUploading] = useState(false);
   const [itemImagesViewerOpen, setItemImagesViewerOpen] = useState(false);
   const [selectedItemImageIndex, setSelectedItemImageIndex] = useState(0);
-
   const [refreshing, setRefreshing] = useState(false);
+  const [username, setUsername] = useState('');
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState(
     project.status || 'CREATED',
   );
   const [statusUpdating, setStatusUpdating] = useState(false);
-
+  // Selection state for site images
+  const [selectedImageIds, setSelectedImageIds] = useState(new Set<number>());
   const { translate } = useTranslator();
-
   // Initialize language from AsyncStorage
   useEffect(() => {
     const initLang = async () => {
@@ -275,9 +262,14 @@ const ProjectDetails: React.FC = () => {
       const tamil = saved === 'ta';
       setIsTamil(tamil);
     };
+    const initUsername = async () => {
+      const saved = await AsyncStorage.getItem('user');
+      const user = JSON.parse(saved || '{}');
+      setUsername(user.name || '');
+    };
     initLang();
+    initUsername();
   }, []);
-
   // Item images helpers
   const openItemImages = (item: any) => {
     setActiveItemForImages(item);
@@ -294,7 +286,6 @@ const ProjectDetails: React.FC = () => {
       { mediaType: 'photo', quality: 0.7, selectionLimit: 10 },
       (response: ImagePickerResponse) => {
         if (response.didCancel) return;
-
         if (response.errorCode) {
           Alert.alert(
             t('Error'),
@@ -302,13 +293,11 @@ const ProjectDetails: React.FC = () => {
           );
           return;
         }
-
         const uris = response.assets?.map(a => a.uri!).filter(Boolean) || [];
         setSelectedItemImages(prev => [...prev, ...uris]);
       },
     );
   };
-
   const takeProjectItemPhoto = () => {
     launchCamera(
       { mediaType: 'photo', quality: 0.7 },
@@ -359,7 +348,6 @@ const ProjectDetails: React.FC = () => {
       Alert.alert(t('Error'), t('Failed to delete'));
     }
   };
-
   const deleteSiteImage = async (imageId: number) => {
     try {
       await ProjectAPI.deleteSiteImage(imageId);
@@ -368,7 +356,60 @@ const ProjectDetails: React.FC = () => {
       Alert.alert(t('Error'), t('Failed to delete'));
     }
   };
-
+  // Toggle image selection
+  const toggleImageSelection = useCallback((id: number) => {
+    setSelectedImageIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  }, []);
+  // Handle sharing selected images
+  const handleShareSelectedImages = useCallback(async () => {
+    if (selectedImageIds.size === 0) return;
+    const downloadPromises = Array.from(selectedImageIds).map(async id => {
+      const img = project.siteImages.find(i => i.id === id);
+      if (!img) return null;
+      const filename = `site_image_${id}_${Date.now()}.jpg`;
+      const destPath = `${RNFS.CachesDirectoryPath}/${filename}`;
+      const { promise } = RNFS.downloadFile({
+        fromUrl: img.imageUrl,
+        toFile: destPath,
+      });
+      try {
+        const downloadResult = await promise;
+        if (downloadResult.statusCode === 200) {
+          return `file://${destPath}`;
+        } else {
+          return null;
+        }
+      } catch (e) {
+        console.error('Download error:', e);
+        return null;
+      }
+    });
+    try {
+      const urls = (await Promise.all(downloadPromises)).filter(
+        (url): url is string => Boolean(url),
+      );
+      if (urls.length === 0) {
+        Alert.alert('Error', 'No images could be downloaded for sharing');
+        return;
+      }
+      await Share.open({
+        urls,
+        type: 'image/jpeg',
+      });
+    } catch (e) {
+      Alert.alert('Share Error', 'Failed to share images');
+    } finally {
+      setSelectedImageIds(new Set());
+    }
+  }, [selectedImageIds, project.siteImages]);
   // Item edit/delete
   const openAddItem = () => {
     setEditingItem(null);
@@ -399,7 +440,6 @@ const ProjectDetails: React.FC = () => {
       },
     ]);
   };
-
   // Translate strings when language changes
   useEffect(() => {
     if (!isTamil) {
@@ -420,7 +460,6 @@ const ProjectDetails: React.FC = () => {
     };
     translateAll();
   }, [isTamil, translate]);
-
   const t = useCallback(
     (english: string): string => {
       if (!isTamil) return english;
@@ -428,10 +467,8 @@ const ProjectDetails: React.FC = () => {
     },
     [isTamil, translations],
   );
-
   const formatTime = (time: string) => dayjs(time, 'HH:mm:ss').format('h:mm A');
   const formatDate = (date: string) => dayjs(date).format('DD-MM-YYYY');
-
   // Load units when Add Item modal opens
   useEffect(() => {
     if (itemModalOpen) {
@@ -448,7 +485,6 @@ const ProjectDetails: React.FC = () => {
       setSelectedUnitId('');
     }
   }, [itemModalOpen]);
-
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -456,7 +492,6 @@ const ProjectDetails: React.FC = () => {
       if (res?.data) setProject(res.data);
       const currentUser = await AsyncStorage.getItem('user');
       const parsedUser = currentUser ? JSON.parse(currentUser) : null;
-      console.log('current user', parsedUser.role);
       setRole(parsedUser?.role || 'worker');
     } catch (e) {
       console.error('Failed to refresh project', e);
@@ -464,7 +499,6 @@ const ProjectDetails: React.FC = () => {
       setRefreshing(false);
     }
   }, [initialProject.id]);
-
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', async () => {
       try {
@@ -475,7 +509,6 @@ const ProjectDetails: React.FC = () => {
     });
     return unsubscribe;
   }, [navigation, initialProject.id]);
-
   useEffect(() => {
     const playbackListener = Sound.addPlayBackListener((e: PlayBackType) => {
       setPlayTime(Sound.mmssss(Math.floor(e.currentPosition)));
@@ -483,19 +516,16 @@ const ProjectDetails: React.FC = () => {
         setDuration(Sound.mmssss(Math.floor(e.duration)));
       }
     });
-
     const endListener = Sound.addPlaybackEndListener(() => {
       setIsPlaying(false);
       setPlayTime('00:00:00');
       setCurrentUrl('');
     });
-
     return () => {
       // playbackListener?.remove();
       // endListener?.remove();
     };
   }, []);
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'IN_PROGRESS':
@@ -510,14 +540,11 @@ const ProjectDetails: React.FC = () => {
         return '#9E9E9E';
     }
   };
-
   const displayStatusRaw = project.status || project.siteStatus || 'CREATED';
   const displayStatus = t(displayStatusRaw);
-
   const togglePlayback = useCallback(
     async (recordingUrl: string) => {
       if (!recordingUrl) return;
-
       try {
         if (isPlaying && currentUrl === recordingUrl) {
           await Sound.stopPlayer();
@@ -535,11 +562,9 @@ const ProjectDetails: React.FC = () => {
     },
     [isPlaying, currentUrl, t],
   );
-
   const handleEdit = () => {
     navigation.navigate('AddProject', { projectToEdit: project });
   };
-
   const handleDelete = () => {
     Alert.alert(t('Delete Project'), t('Are you sure?'), [
       { text: t('Cancel') },
@@ -548,7 +573,7 @@ const ProjectDetails: React.FC = () => {
         style: 'destructive',
         onPress: async () => {
           try {
-            await ProjectAPI.delete(project.id);
+            await ProjectAPI.updateStatus(project.id, 'DELETED');
             navigation.goBack();
           } catch (e) {
             Alert.alert(t('Error'), t('Failed to delete'));
@@ -557,20 +582,16 @@ const ProjectDetails: React.FC = () => {
       },
     ]);
   };
-
   const handleRecordVoice = () => {
     navigation.navigate('RecoredAudio', { project });
   };
-
   const handleAddPayment = () => {
     navigation.navigate('PaymentPage', { project });
   };
-
   const openStatusDialog = () => {
     setSelectedStatus(project.status || 'CREATED');
     setStatusModalVisible(true);
   };
-
   const handleStatusUpdate = async () => {
     if (statusUpdating || !selectedStatus) return;
     setStatusUpdating(true);
@@ -585,7 +606,6 @@ const ProjectDetails: React.FC = () => {
       setStatusUpdating(false);
     }
   };
-
   const updateGPS = async () => {
     try {
       const loc: any = await getLocation();
@@ -611,14 +631,12 @@ const ProjectDetails: React.FC = () => {
       Alert.alert(t('Error'), t('Failed to update location'));
     }
   };
-
   // Add Item - Save
   const saveItem = async () => {
     const qty = Number(itemQty) || 0;
     const rate = Number(itemRate) || 0;
     const uId = Number(selectedUnitId) || 0;
     const tax = Number(taxPercentage) || 0;
-
     if (!itemName || qty <= 0 || rate <= 0 || uId <= 0) {
       Alert.alert(
         t('Error'),
@@ -626,7 +644,6 @@ const ProjectDetails: React.FC = () => {
       );
       return;
     }
-
     const newItem: ProjectItem = {
       projectId: project?.id || 0,
       itemName,
@@ -638,7 +655,6 @@ const ProjectDetails: React.FC = () => {
       taxPercentage: tax,
       hsnSac: itemHsnSac,
     };
-
     try {
       await ProjectAPI.createItem(newItem);
       setProject(prev => ({
@@ -662,7 +678,6 @@ const ProjectDetails: React.FC = () => {
       Alert.alert(t('Error'), t('Failed to add item'));
     }
   };
-
   const resetItemForm = () => {
     setItemName('');
     setItemDesc('');
@@ -672,7 +687,6 @@ const ProjectDetails: React.FC = () => {
     setTaxPercentage('');
     setItemHsnSac('');
   };
-
   // Image Picker
   const pickImages = () => {
     launchImageLibrary(
@@ -683,7 +697,6 @@ const ProjectDetails: React.FC = () => {
       },
       (response: ImagePickerResponse) => {
         if (response.didCancel) return;
-
         if (response.errorCode) {
           Alert.alert(
             t('Error'),
@@ -691,13 +704,10 @@ const ProjectDetails: React.FC = () => {
           );
           return;
         }
-
         const processed: string[] = [];
         const promises: Promise<void>[] = [];
-
         for (const asset of response.assets || []) {
           if (!asset.uri) continue;
-
           const p = addTextWatermark(asset.uri)
             .then(wmUri => {
               processed.push(wmUri);
@@ -705,10 +715,8 @@ const ProjectDetails: React.FC = () => {
             .catch(err => {
               console.log('Watermark failed:', err);
             });
-
           promises.push(p);
         }
-
         // When all watermark jobs finish
         Promise.all(promises).then(() => {
           setSelectedImages(prev => [...prev, ...processed]);
@@ -716,7 +724,6 @@ const ProjectDetails: React.FC = () => {
       },
     );
   };
-
   const takePhoto = () => {
     launchCamera(
       {
@@ -732,10 +739,8 @@ const ProjectDetails: React.FC = () => {
         if (response.assets?.[0]?.uri) {
           const processed: string[] = [];
           const promises: Promise<void>[] = [];
-
           for (const asset of response.assets || []) {
             if (!asset.uri) continue;
-
             const p = addTextWatermark(asset.uri)
               .then(wmUri => {
                 processed.push(wmUri);
@@ -743,10 +748,8 @@ const ProjectDetails: React.FC = () => {
               .catch(err => {
                 console.log('Watermark failed:', err);
               });
-
             promises.push(p);
           }
-
           // When all watermark jobs finish
           Promise.all(promises).then(() => {
             setSelectedImages(prev => [...prev, ...processed]);
@@ -755,14 +758,11 @@ const ProjectDetails: React.FC = () => {
       },
     );
   };
-
   const removeImage = (index: number) => {
     setSelectedImages(prev => prev.filter((_, i) => i !== index));
   };
-
   const uploadSiteImages = async () => {
     if (selectedImages.length === 0) return;
-
     setUploading(true);
     try {
       const res = await ProjectAPI.addSiteImages(project.id, selectedImages);
@@ -771,12 +771,15 @@ const ProjectDetails: React.FC = () => {
           ...prev,
           siteImages: [...prev.siteImages, ...res.data],
         }));
+        sendPushNotification(
+          'Image uploaded',
+          `New image uploaded to project by ${username}`,
+        );
         Alert.alert(
           t('Success'),
           `${selectedImages.length} ${t('image(s) uploaded')}`,
         );
       }
-
       setSelectedImages([]);
       setImageModalOpen(false);
       onRefresh();
@@ -789,12 +792,10 @@ const ProjectDetails: React.FC = () => {
       setUploading(false);
     }
   };
-
   const openImageModal = (index: number) => {
     setSelectedImageIndex(index);
     setModalVisible(true);
   };
-
   const renderCarouselItem = ({
     item,
     index,
@@ -813,12 +814,10 @@ const ProjectDetails: React.FC = () => {
       </Text>
     </View>
   );
-
   const parseTime = (time: string): number => {
     const [m, s] = time.split(':').map(Number);
     return m * 60 + s;
   };
-
   const sortedVoiceRecordings = project.voiceRecordings
     ? project.voiceRecordings
         .slice()
@@ -827,7 +826,6 @@ const ProjectDetails: React.FC = () => {
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         )
     : [];
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -860,7 +858,6 @@ const ProjectDetails: React.FC = () => {
               </TouchableOpacity>
             </View>
           </Card>
-
           {/* Details */}
           <Card style={styles.detailsCard}>
             <TouchableOpacity
@@ -875,7 +872,6 @@ const ProjectDetails: React.FC = () => {
               <Text style={styles.infoLabel}>{t('Contact')}</Text>
               <Text style={styles.infoValue}>{project.customerContactNo}</Text>
             </TouchableOpacity>
-
             <TouchableOpacity
               style={styles.infoRow}
               onPress={() =>
@@ -902,7 +898,6 @@ const ProjectDetails: React.FC = () => {
                 disabled={role === 'worker'}
               />
             </TouchableOpacity>
-
             <View style={styles.infoRow}>
               <MaterialCommunityIcons
                 name="calendar"
@@ -914,7 +909,6 @@ const ProjectDetails: React.FC = () => {
                 {formatDate(project.deliveryDate)}
               </Text>
             </View>
-
             <View style={styles.infoRow}>
               <MaterialCommunityIcons
                 name="timer"
@@ -934,7 +928,6 @@ const ProjectDetails: React.FC = () => {
               </Text>
             </View>
           </Card>
-
           {/* Amount */}
           {role !== 'worker' && (
             <Card style={styles.amountCard}>
@@ -965,7 +958,6 @@ const ProjectDetails: React.FC = () => {
               </View>
             </Card>
           )}
-
           {/* Description */}
           {project.projectDescription ? (
             <Card style={styles.descCard}>
@@ -973,7 +965,6 @@ const ProjectDetails: React.FC = () => {
               <Text style={styles.descText}>{project.projectDescription}</Text>
             </Card>
           ) : null}
-
           {/* Site Images */}
           {project.siteImages.length > 0 ? (
             <Card style={styles.imagesCard}>
@@ -995,6 +986,14 @@ const ProjectDetails: React.FC = () => {
                     onPress={() => setImageModalOpen(true)}
                     iconColor="#2874b8"
                   />
+                  {selectedImageIds.size > 0 && (
+                    <IconButton
+                      icon="share-variant"
+                      size={wp(6)}
+                      onPress={handleShareSelectedImages}
+                      iconColor="#2874b8"
+                    />
+                  )}
                 </View>
               </View>
               <ScrollView
@@ -1004,7 +1003,10 @@ const ProjectDetails: React.FC = () => {
               >
                 {project.siteImages.map((img, idx) => (
                   <View key={img.id} style={styles.thumbnailWrapper}>
-                    <TouchableOpacity onPress={() => openImageModal(idx)}>
+                    <TouchableOpacity
+                      onPress={() => openImageModal(idx)}
+                      onLongPress={() => toggleImageSelection(img.id)}
+                    >
                       <Image
                         source={{ uri: img.imageUrl }}
                         style={styles.thumbnail}
@@ -1017,18 +1019,15 @@ const ProjectDetails: React.FC = () => {
                         />
                       </View>
                     </TouchableOpacity>
-                    {/* {role !== 'worker' && (
-                      <TouchableOpacity
-                        onPress={() => deleteSiteImage(img.id)}
-                        style={{ position: 'absolute', top: -6, right: -6 }}
-                      >
+                    {selectedImageIds.has(img.id) && (
+                      <View style={styles.selectionOverlay}>
                         <MaterialCommunityIcons
-                          name="close-circle"
-                          size={wp(5)}
-                          color="#e74c3c"
+                          name="check"
+                          size={24}
+                          color="#fff"
                         />
-                      </TouchableOpacity>
-                    )} */}
+                      </View>
+                    )}
                   </View>
                 ))}
               </ScrollView>
@@ -1049,7 +1048,6 @@ const ProjectDetails: React.FC = () => {
               </Text>
             </Card>
           )}
-
           {/* Items */}
           <Card style={styles.itemsCard}>
             <View style={styles.sectionHeader}>
@@ -1093,12 +1091,10 @@ const ProjectDetails: React.FC = () => {
                       </View>
                     )}
                   </View>
-
                   <Text style={styles.itemDetails}>
                     {item.quantity} {item.unit?.shortName} × ₹{item.rateMrp} = ₹
                     {item.totalCost.toLocaleString('en-IN')}
                   </Text>
-
                   {Array.isArray((item as any).images) &&
                     (item as any).images.length > 0 && (
                       <ScrollView
@@ -1150,7 +1146,6 @@ const ProjectDetails: React.FC = () => {
               ))
             )}
           </Card>
-
           {/* Payments */}
           {project.advancePayments.length > 0 && (
             <Card style={styles.paymentsCard}>
@@ -1172,7 +1167,6 @@ const ProjectDetails: React.FC = () => {
               ))}
             </Card>
           )}
-
           {/* Voice Recordings */}
           {sortedVoiceRecordings.length > 0 ? (
             <Card style={styles.voiceCard}>
@@ -1306,10 +1300,8 @@ const ProjectDetails: React.FC = () => {
               </View>
             </Card>
           )}
-
           <View style={{ height: hp(10) }} />
         </ScrollView>
-
         {/* Bottom Action Buttons */}
         <View style={styles.bottomBar}>
           <IconButton
@@ -1344,7 +1336,6 @@ const ProjectDetails: React.FC = () => {
             disabled={role !== 'superadmin'}
           />
         </View>
-
         {/* Image Full View Modal */}
         <Portal>
           <Modal
@@ -1379,7 +1370,6 @@ const ProjectDetails: React.FC = () => {
               />
             </View>
           </Modal>
-
           {/* Status Update Dialog */}
           <Dialog
             visible={statusModalVisible}
@@ -1422,7 +1412,6 @@ const ProjectDetails: React.FC = () => {
               </Button>
             </Dialog.Actions>
           </Dialog>
-
           {/* GPS Update Dialog */}
           <Dialog
             visible={gpsModalVisible}
@@ -1452,7 +1441,6 @@ const ProjectDetails: React.FC = () => {
               </Button>
             </Dialog.Actions>
           </Dialog>
-
           {/* Add Item Dialog */}
           <ItemDialog
             visible={itemModalOpen}
@@ -1507,7 +1495,6 @@ const ProjectDetails: React.FC = () => {
             title={editingItem ? t('Edit Item') : t('Add Item')}
             t={t}
           />
-
           {/* Add Site Images Dialog */}
           <Dialog
             visible={imageModalOpen}
@@ -1536,7 +1523,6 @@ const ProjectDetails: React.FC = () => {
                   {t('Camera')}
                 </Button>
               </View>
-
               {selectedImages.length > 0 && (
                 <>
                   <Text style={{ marginVertical: hp(1) }}>
@@ -1559,14 +1545,12 @@ const ProjectDetails: React.FC = () => {
                       </View>
                     ))}
                   </ScrollView>
-
                   {uploading && (
                     <ProgressBar
                       indeterminate
                       style={{ marginVertical: hp(1) }}
                     />
                   )}
-
                   <Button
                     mode="contained"
                     onPress={uploadSiteImages}
@@ -1590,7 +1574,6 @@ const ProjectDetails: React.FC = () => {
               </Button>
             </Dialog.Actions>
           </Dialog>
-
           {/* Add Item Images Dialog */}
           <Dialog
             visible={itemImagesModalOpen}
@@ -1624,7 +1607,6 @@ const ProjectDetails: React.FC = () => {
                   {t('Camera')}
                 </Button>
               </View>
-
               {selectedItemImages.length > 0 && (
                 <>
                   <Text style={{ marginVertical: hp(1) }}>
@@ -1647,14 +1629,12 @@ const ProjectDetails: React.FC = () => {
                       </View>
                     ))}
                   </ScrollView>
-
                   {itemImageUploading && (
                     <ProgressBar
                       indeterminate
                       style={{ marginVertical: hp(1) }}
                     />
                   )}
-
                   <Button
                     mode="contained"
                     onPress={uploadItemImages}
@@ -1681,7 +1661,6 @@ const ProjectDetails: React.FC = () => {
               </Button>
             </Dialog.Actions>
           </Dialog>
-
           {/* Item Images Full View Modal */}
           <Modal
             visible={itemImagesViewerOpen}
@@ -1744,7 +1723,6 @@ const ProjectDetails: React.FC = () => {
     </SafeAreaView>
   );
 };
-
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F5F5F5' },
   container: { flex: 1 },
@@ -1873,6 +1851,17 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.3)',
     borderRadius: wp(2),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectionOverlay: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -2009,5 +1998,4 @@ const styles = StyleSheet.create({
   removeBtn: { position: 'absolute', top: -wp(2), right: -wp(2) },
   uploadBtn: { marginTop: hp(2) },
 });
-
 export default ProjectDetails;

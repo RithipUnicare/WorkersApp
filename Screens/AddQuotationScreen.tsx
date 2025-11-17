@@ -37,6 +37,7 @@ import { useTranslator } from 'react-native-translator';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { addTextWatermark } from '../utils/Watermarker';
+import { Customer } from './AdminCustomerList';
 
 const { width, height } = Dimensions.get('window');
 const wp = (p: number) => (width * p) / 100;
@@ -225,7 +226,14 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
         UnitAPI.getAll(),
       ]);
 
-      if (Array.isArray(custRes.data)) setCustomers(custRes.data);
+      if (Array.isArray(custRes.data)) {
+        const filtered = custRes.data.filter(
+          (c: Customer) =>
+            c.status.toLocaleUpperCase() !== 'DELETED' &&
+            c.status.toLocaleUpperCase() !== 'REJECTED',
+        );
+        setCustomers(filtered);
+      }
       if (Array.isArray(unitRes.data)) setUnits(unitRes.data);
     } catch (e) {
       ToastAndroid.show(t('Failed to load data'), ToastAndroid.SHORT);
@@ -550,7 +558,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
 
       setTimeout(
         () =>
-          navigation.navigate('QuotationDetail', {
+          navigation.replace('QuotationDetail', {
             quotation: currentQuotation,
           }),
         800,
@@ -618,6 +626,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             value={mobileNo}
             mode="outlined"
             style={styles.input}
+            onChangeText={setMobileNo}
           />
           <TextInput
             label={t('Address')}
@@ -713,8 +722,6 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
                                 ]);
                               })
                               .catch(err => {
-                                console.log('Watermark error:', err);
-
                                 // fallback: add original image
                                 setImages(prev => [
                                   ...prev,
@@ -752,8 +759,6 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
                                 ]);
                               })
                               .catch(err => {
-                                console.log('Watermark error:', err);
-
                                 // fallback to original photo
                                 setImages(prev => [
                                   ...prev,

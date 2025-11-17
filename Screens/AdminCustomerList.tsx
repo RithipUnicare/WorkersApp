@@ -38,7 +38,8 @@ export type Customer = {
     | 'PAID'
     | 'PENDING'
     | 'CANCELLED'
-    | 'REJECTED';
+    | 'REJECTED'
+    | 'DELETED';
   createdAt?: string;
 };
 
@@ -140,8 +141,13 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
       ]);
 
       if (res.success && Array.isArray(res.data)) {
-        setCustomers(res.data);
-        setFilteredCustomers(res.data);
+        const filtered = res.data.filter(
+          (c: Customer) =>
+            c.status.toLocaleUpperCase() !== 'DELETED' &&
+            c.status.toLocaleUpperCase() !== 'REJECTED',
+        );
+        setCustomers(filtered);
+        setFilteredCustomers(filtered);
       }
 
       setRole(storedRole);
@@ -196,6 +202,8 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
         return { color: '#95a5a6', label: t('Rejected') };
       case 'PROJECT_CREATED':
         return { color: '#01612cff', label: t('Project Created') };
+      case 'COMPLETED':
+        return { color: '#27ae60', label: t('Completed') };
       default:
         return {
           color: '#95a5a6',

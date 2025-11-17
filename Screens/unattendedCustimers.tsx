@@ -87,6 +87,10 @@ const UnattendedCustomers: React.FC<Props> = ({ navigation }) => {
       const tamil = saved === 'ta';
       setIsTamil(tamil);
     };
+    const getNotification = async () => {
+      const notification = await AsyncStorage.getItem('notification');
+    };
+    getNotification();
     initLang();
   }, []);
 
@@ -101,6 +105,7 @@ const UnattendedCustomers: React.FC<Props> = ({ navigation }) => {
       for (const en of Object.keys(enToTa)) {
         try {
           const ta = await translate('en', 'ta', en, { type: 'google' });
+          AsyncStorage.setItem('notificationNavigate', '');
           result[en] = ta;
         } catch {
           result[en] = enToTa[en] ?? en;
@@ -129,7 +134,6 @@ const UnattendedCustomers: React.FC<Props> = ({ navigation }) => {
   const loadCustomers = async () => {
     try {
       const list = await CustomerAPI.getReminder();
-      console.log(list.data);
       if (Array.isArray(list.data)) setCustomers(list.data);
       const storedRole = await AsyncStorage.getItem('role');
       if (storedRole) setRole(storedRole);

@@ -19,6 +19,7 @@ import { ProjectAPI } from '../service/apiService';
 import dayjs from 'dayjs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslator } from 'react-native-translator';
+import { RouteProp } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
 const wp = (p: number) => (width * p) / 100;
@@ -87,10 +88,12 @@ export type Project = {
     paymentDate: string;
     paymentMode: string;
   }[];
+  updatedAt?: string;
 };
 
 type Props = {
   navigation: NativeStackNavigationProp<rootStackParamList, 'ProjectList'>;
+  route: RouteProp<rootStackParamList, 'ProjectList'>;
 };
 
 const getStatusColor = (status: string) => {
@@ -267,16 +270,17 @@ const ProjectCard = React.memo(
   },
 );
 
-const ProjectList: React.FC<Props> = ({ navigation }) => {
+const ProjectList: React.FC<Props> = ({ navigation, route }) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
+  const Completed = route.params?.Completed || false;
   const [search, setSearch] = useState('');
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isTamil, setIsTamil] = useState(false);
   const [translations, setTranslations] = useState<Record<string, string>>({});
-  const [sortAsc, setSortAsc] = useState(true);
+  const [sortAsc, setSortAsc] = useState(false);
 
   const { translate } = useTranslator();
 
@@ -333,12 +337,18 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
     try {
       setLoading(true);
       const res = await ProjectAPI.getAll();
+
       const userStr = await AsyncStorage.getItem('user');
       const parsed = userStr ? JSON.parse(userStr) : null;
       setRole(parsed?.role || '');
       if (res.success && Array.isArray(res.data)) {
-        setProjects(res.data);
-        setFilteredProjects(res.data);
+        const filtered = res.data.filter(
+          (p: Project) =>
+            p.status.toLocaleUpperCase() !== 'DELETED' &&
+            p.status.toLocaleUpperCase() !== 'REJECTED',
+        );
+        setProjects(filtered);
+        setFilteredProjects(filtered);
       }
     } catch (e) {
       console.error(e);
@@ -371,9 +381,18 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
           ? t
           : Number(p?.id) || 0;
       };
+      const getUpdatedTime = (p: any) => {
+        const ts =
+          p?.updatedAt || p?.updated_at || p?.updatedDate || p?.updated_on;
+        const t = ts ? new Date(ts).getTime() : undefined;
+        // Fallback to id if timestamp unavailable
+        return typeof t === 'number' && !Number.isNaN(t)
+          ? t
+          : Number(p?.id) || 0;
+      };
       const sorted = [...filtered].sort((a, b) => {
-        const at = getCreatedTime(a);
-        const bt = getCreatedTime(b);
+        const at = getUpdatedTime(a);
+        const bt = getUpdatedTime(b);
         return sortAsc ? at - bt : bt - at;
       });
       setFilteredProjects(sorted);
@@ -498,7 +517,11 @@ const ProjectList: React.FC<Props> = ({ navigation }) => {
           </View>
         ) : (
           <FlatList
-            data={filteredProjects}
+            data={
+              Completed
+                ? filteredProjects.filter(q => q.status === 'COMPLETED')
+                : filteredProjects.filter(q => q.status !== 'COMPLETED')
+            }
             renderItem={renderItem}
             keyExtractor={keyExtractor}
             showsVerticalScrollIndicator={false}

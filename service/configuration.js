@@ -13,6 +13,7 @@ export const endpoints = {
     `/api/v1/customers/status/${encodeURIComponent(status)}`,
   customersSearch: '/api/v1/customers/search',
   customersReminder: '/api/v1/customers/reminder',
+  updateCustomerStatus: id => `/api/v1/customers/${id}/status`,
 
   // Project endpoints
   projects: '/api/v1/projects',
