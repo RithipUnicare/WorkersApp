@@ -626,6 +626,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             value={mobileNo}
             mode="outlined"
             style={styles.input}
+            onChangeText={setMobileNo}
           />
           <TextInput
             label={t('Address')}

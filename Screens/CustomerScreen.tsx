@@ -271,6 +271,9 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
                   size={wp(6)}
                   iconColor="#e74c3c"
                   onPress={handleDelete}
+                  style={{
+                    marginLeft: -wp(4.5),
+                  }}
                 />
               </View>
             </View>
