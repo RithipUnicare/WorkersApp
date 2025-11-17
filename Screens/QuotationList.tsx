@@ -275,19 +275,21 @@ const QuotationList: React.FC<Props> = ({ navigation, route }) => {
       />
 
       {/* Add Quotation Button */}
-      <View style={styles.addButtonContainer}>
-        <Button
-          mode="contained"
-          icon="plus"
-          onPress={() => navigation.navigate('AddQuotation')}
-          style={styles.addButton}
-          contentStyle={styles.addButtonContent}
-          labelStyle={styles.addButtonLabel}
-          buttonColor="#075E54"
-        >
-          {t('Add Quotation')}
-        </Button>
-      </View>
+      {!Completed && (
+        <View style={styles.addButtonContainer}>
+          <Button
+            mode="contained"
+            icon="plus"
+            onPress={() => navigation.navigate('AddQuotation')}
+            style={styles.addButton}
+            contentStyle={styles.addButtonContent}
+            labelStyle={styles.addButtonLabel}
+            buttonColor="#075E54"
+          >
+            {t('Add Quotation')}
+          </Button>
+        </View>
+      )}
     </SafeAreaView>
   );
 };

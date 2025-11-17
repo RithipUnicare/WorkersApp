@@ -24,6 +24,7 @@ import {
   Dialog,
   ProgressBar,
   TextInput,
+  RadioButton,
 } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
@@ -173,12 +174,25 @@ const enToTa: Record<string, string> = {
   'Quotation Preview': 'மேற்கோள் முன்னோட்டம்',
   Close: 'மூடு',
   'Generate & Share PDF': 'PDF உருவாக்கி பகிரவும்',
+  'Update Status': 'நிலையைப் புதுப்பிக்கவும்',
+  'Status updated': 'நிலை புதுப்பிக்கப்பட்டது',
+  'Failed to update status': 'நிலையை புதுப்பிக்க முடியவில்லை',
 
   // Tooltips (optional)
   Edit: 'திருத்து',
   Share: 'பகிரவும்',
   'Convert to Project': 'திட்டமாக மாற்று',
 };
+
+const STATUS_OPTIONS = [
+  'CREATED',
+  'IN_PROGRESS',
+  'DISCONTINUED',
+  'COMPLETED',
+  'PENDING',
+  'APPROVED',
+  'REJECTED',
+];
 
 const QuotationDetail: React.FC = () => {
   const route = useRoute<QuotationDetailsRouteProp>();
@@ -215,6 +229,13 @@ const QuotationDetail: React.FC = () => {
   const [isTamil, setIsTamil] = useState(false);
   const [translations, setTranslations] = useState<Record<string, string>>({});
 
+  const [role, setRole] = useState<string | null>('');
+  const [statusModalVisible, setStatusModalVisible] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState(
+    initialQuotation.status || 'CREATED',
+  );
+  const [statusUpdating, setStatusUpdating] = useState(false);
+
   const { translate } = useTranslator();
   const openGoogleMaps = (
     latitude: number,
@@ -240,7 +261,13 @@ const QuotationDetail: React.FC = () => {
       const tamil = saved === 'ta';
       setIsTamil(tamil);
     };
+    const initRole = async () => {
+      const saved = await AsyncStorage.getItem('user');
+      const user = JSON.parse(saved || '{}');
+      setRole(user.role || 'worker');
+    };
     initLang();
+    initRole();
   }, []);
 
   // Translate when Tamil is enabled
@@ -562,8 +589,12 @@ const QuotationDetail: React.FC = () => {
         return '#e74c3c';
       case 'CREATED':
         return '#0a660dff';
+      case 'IN_PROGRESS':
+        return '#FFC107';
+      case 'DISCONTINUED':
+        return '#e74c3c';
       case 'COMPLETED':
-        return '#008104ff';
+        return '#4CAF50';
       default:
         return '#9E9E9E';
     }
@@ -571,6 +602,28 @@ const QuotationDetail: React.FC = () => {
 
   const getStatusText = (status: string) => {
     return t(status?.toUpperCase() || 'CREATED');
+  };
+
+  const openStatusDialog = () => {
+    setSelectedStatus(quotationData.status || 'CREATED');
+    setStatusModalVisible(true);
+  };
+
+  const handleStatusUpdate = async () => {
+    if (statusUpdating || !selectedStatus) return;
+    setStatusUpdating(true);
+    try {
+      await QuotationAPI.updateQuotationStatus(quotationData.id, {
+        status: selectedStatus,
+      });
+      setQuotationData(prev => ({ ...prev, status: selectedStatus }));
+      setStatusModalVisible(false);
+      Alert.alert(t('Success'), t('Status updated'));
+    } catch (e: any) {
+      Alert.alert(t('Error'), e.message || t('Failed to update status'));
+    } finally {
+      setStatusUpdating(false);
+    }
   };
 
   const handleEdit = () => {
@@ -724,19 +777,24 @@ const QuotationDetail: React.FC = () => {
         <Card style={styles.headerCard}>
           <View style={styles.headerRow}>
             <Text style={styles.name}>{quotationData.customerName}</Text>
-            <Chip
-              style={[
-                styles.statusChip,
-                {
-                  backgroundColor: getStatusColor(
-                    quotationData.status || 'CREATED',
-                  ),
-                },
-              ]}
-              textStyle={styles.statusText}
+            <TouchableOpacity
+              onPress={openStatusDialog}
+              disabled={role !== 'superadmin'}
             >
-              {getStatusText(quotationData.status || 'CREATED')}
-            </Chip>
+              <Chip
+                style={[
+                  styles.statusChip,
+                  {
+                    backgroundColor: getStatusColor(
+                      quotationData.status || 'CREATED',
+                    ),
+                  },
+                ]}
+                textStyle={styles.statusText}
+              >
+                {getStatusText(quotationData.status || 'CREATED')}
+              </Chip>
+            </TouchableOpacity>
           </View>
         </Card>
 
@@ -1509,6 +1567,39 @@ const QuotationDetail: React.FC = () => {
           <Dialog.Actions>
             <Button onPress={() => setGpsModalVisible(false)}>Cancel</Button>
             <Button onPress={updateGPS}>Fetch & Update GPS</Button>
+          </Dialog.Actions>
+        </Dialog>
+        {/* Status Update Dialog */}
+        <Dialog
+          visible={statusModalVisible}
+          onDismiss={() => setStatusModalVisible(false)}
+        >
+          <Dialog.Title>{t('Update Status')}</Dialog.Title>
+          <Dialog.Content>
+            {STATUS_OPTIONS.map(option => (
+              <View
+                key={option}
+                style={{ flexDirection: 'row', alignItems: 'center' }}
+              >
+                <RadioButton
+                  value={option}
+                  status={selectedStatus === option ? 'checked' : 'unchecked'}
+                  onPress={() => setSelectedStatus(option)}
+                />
+                <Text>{getStatusText(option)}</Text>
+              </View>
+            ))}
+            {statusUpdating && (
+              <ProgressBar indeterminate style={{ marginTop: 8 }} />
+            )}
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setStatusModalVisible(false)}>
+              {t('Cancel')}
+            </Button>
+            <Button onPress={handleStatusUpdate} disabled={statusUpdating}>
+              {t('Update Status')}
+            </Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>

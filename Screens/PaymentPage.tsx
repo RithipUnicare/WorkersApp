@@ -37,6 +37,7 @@ import generateInvoiceHTML from '../utils/InvoiceHTML';
 import { Table, Row, Rows } from 'react-native-table-component';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslator } from 'react-native-translator';
+import VoiceFriendlyInput from '../utils/VoiceFriendlyInput';
 
 const { width, height } = Dimensions.get('window');
 const wp = (percentage: number) => (width * percentage) / 100;
@@ -237,8 +238,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
   );
   const paidInTotal = paymentsIn.reduce((sum, p) => sum + p.amount, 0);
   const paidOutTotal = paymentsOut.reduce((sum, p) => sum + p.amount, 0);
-  const netRemaining =
-    project.grandTotal - (paidInTotal + advanceTotal) + paidOutTotal;
+  const netRemaining = project.grandTotal - (paidInTotal + advanceTotal);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [isPaymentIn, setIsPaymentIn] = useState(true);
@@ -790,7 +790,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                     )}
                   </RadioButton.Group>
                   {!isPaymentIn && paymentType === 'Custom' && (
-                    <TextInput
+                    <VoiceFriendlyInput
                       label={t('Custom')}
                       value={customType}
                       onChangeText={setCustomType}
@@ -813,7 +813,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                       />
                     }
                   />
-                  <TextInput
+                  <VoiceFriendlyInput
                     label={t('Notes (Optional)')}
                     value={notes}
                     onChangeText={setNotes}

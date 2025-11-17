@@ -159,11 +159,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   const rawCustomer: any = route.params?.customer || null;
   const rawProject: any =
     route.params?.projectToEdit || route.params?.productEdit;
-  //const routeLength = useNavigationState(state => state.routes.length);
   let previousScreenName = '';
-  // if (routeLength > 1) {
-  //   previousScreenName = useNavigationState(state => state.routes[state.index - 1].name);
-  // }
   previousScreenName = useNavigationState(
     state => state.routes[state.index - 1].name,
   );

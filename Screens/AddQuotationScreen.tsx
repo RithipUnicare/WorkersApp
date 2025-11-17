@@ -259,15 +259,24 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
 
           const quot = quotRes.data;
           const loadedItems = Array.isArray(itemsRes.data) ? itemsRes.data : [];
-
           const custIdx = customers.findIndex(c => c.id === quot.customerId);
           if (custIdx > -1) {
             const cust = customers[custIdx];
             setSelectedCustomerIdx(custIdx);
             setCustomerId(cust.id);
             setCustomerName(cust.customerName || cust.name);
-            setMobileNo(cust.customerContactNo || cust.phone || '');
-            setAddress(cust.customerAddress || cust.address || '');
+            setMobileNo(
+              cust.customerContactNo ||
+                cust.phone ||
+                rawQuotation.customerContactNo ||
+                '',
+            );
+            setAddress(
+              cust.customerAddress ||
+                cust.address ||
+                rawQuotation.customerAddress ||
+                '',
+            );
           }
 
           setDeliveryDate(dayjs(quot.deliveryDate).format('DD-MM-YYYY'));
@@ -320,8 +329,10 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
         setSelectedCustomerIdx(idx);
         setCustomerId(cust.id);
         setCustomerName(cust.name);
-        setMobileNo(cust.contactNo || cust.phone || '');
-        setAddress(cust.address || '');
+        setMobileNo(
+          cust.contactNo || cust.phone || rawCustomer.contactNo || '',
+        );
+        setAddress(cust.address || rawCustomer.address || '');
       }
     }
     if (isFromInquiry) {

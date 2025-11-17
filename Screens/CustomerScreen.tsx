@@ -227,6 +227,29 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
                 {name}
               </Text>
               <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'flex-end',
+                  justifyContent: 'flex-end',
+                }}
+              >
+                <IconButton
+                  icon="pencil"
+                  size={wp(6)}
+                  iconColor="#075E54"
+                  onPress={handleEdit}
+                />
+                <IconButton
+                  icon="delete"
+                  size={wp(6)}
+                  iconColor="#e74c3c"
+                  onPress={handleDelete}
+                  style={{
+                    marginLeft: -wp(4),
+                  }}
+                />
+              </View>
+              <View
                 style={[
                   styles.statusBadge,
                   { backgroundColor: getStatusColor(status) },
@@ -253,29 +276,6 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
                 {'  '}
                 {address}
               </Text>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'flex-end',
-                  justifyContent: 'flex-end',
-                }}
-              >
-                <IconButton
-                  icon="pencil"
-                  size={wp(6)}
-                  iconColor="#075E54"
-                  onPress={handleEdit}
-                />
-                <IconButton
-                  icon="delete"
-                  size={wp(6)}
-                  iconColor="#e74c3c"
-                  onPress={handleDelete}
-                  style={{
-                    marginLeft: -wp(4.5),
-                  }}
-                />
-              </View>
             </View>
           </View>
 

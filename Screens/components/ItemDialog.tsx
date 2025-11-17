@@ -252,20 +252,26 @@ const ItemDialog: React.FC<Props> = ({
       if (hasValidId) {
         let res: any = null;
         if (mode === 'project') {
-          if (isEdit && item?.id)
+          if (isEdit && item?.id) {
             res = await ProjectAPI.updateItem(item.id, payload);
-          else res = await ProjectAPI.createItem(payload);
+          } else {
+            res = await ProjectAPI.createItem(payload);
+          }
         } else {
-          if (isEdit && item?.id)
+          if (isEdit && item?.id) {
             res = await QuotationAPI.updateItem(item.id, payload);
-          else res = await QuotationAPI.createItem(payload);
+          } else {
+            res = await QuotationAPI.createItem(payload);
+          }
         }
+        console.log(res);
         const returned = res?.data || {};
         saved.id = returned.id || saved.id;
       }
       onSaved(saved);
       onDismiss();
     } catch (e) {
+      Alert.alert('Failed to save item', 'Project not created');
       // swallow; host can handle error display if needed
     } finally {
       setSaving(false);

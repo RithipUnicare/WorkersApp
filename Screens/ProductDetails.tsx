@@ -117,6 +117,7 @@ const enToTa: Record<string, string> = {
   'Playback Error': 'பிளேபேக் பிழை',
   'Could not play audio': 'ஆடியோவை இயக்க முடியவில்லை',
   'Delete Voice Recording': 'குரல் பதிவை நீக்கு',
+  'Payment Out': 'செலுத்துதல்',
   CREATED: 'உருவாக்கப்பட்டது',
   IN_PROGRESS: 'செயல்பாட்டில்',
   DISCONTINUED: 'நிறுத்தப்பட்டது',
@@ -152,6 +153,7 @@ type Project = {
   remainingAmount: number;
   discount?: number;
   totalBudget?: number;
+  totalPaymentOut?: number;
   location: {
     id: number;
     address: string;
@@ -953,6 +955,16 @@ const ProjectDetails: React.FC = () => {
                     {(
                       project.totalAmount - project.remainingAmount
                     ).toLocaleString('en-IN')}
+                  </Text>
+                </View>
+                <View style={styles.divider} />
+                <View style={styles.amountBlock}>
+                  <Text style={styles.amountLabel}>{t('Payment Out')}</Text>
+                  <Text style={[styles.amountValue, { color: '#e71d1dff' }]}>
+                    ₹
+                    {Number(project.totalPaymentOut || 0).toLocaleString(
+                      'en-IN',
+                    )}
                   </Text>
                 </View>
               </View>
