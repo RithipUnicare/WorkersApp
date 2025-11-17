@@ -634,6 +634,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             mode="outlined"
             multiline
             style={[styles.input, styles.textArea]}
+            onChangeText={setAddress}
           />
 
           <TextInput
