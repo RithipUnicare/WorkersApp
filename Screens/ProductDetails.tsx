@@ -1106,8 +1106,11 @@ const ProjectDetails: React.FC = () => {
                     )}
                   </View>
                   <Text style={styles.itemDetails}>
-                    {item.quantity} {item.unit?.shortName} × ₹{item.rateMrp} = ₹
-                    {item.totalCost.toLocaleString('en-IN')}
+                    {role !== 'worker'
+                      ? `${item.quantity} ${item.unit?.shortName} × ₹${
+                          item.rateMrp
+                        } = ₹${item.totalCost.toLocaleString('en-IN')}`
+                      : `${item.quantity} ${item.unit?.shortName}`}
                   </Text>
                   {Array.isArray((item as any).images) &&
                     (item as any).images.length > 0 && (
