@@ -75,10 +75,7 @@ export default function generateInvoiceHTML(projectData) {
         text-transform: uppercase;
       }
       
-      .top-info { 
-        text-align: right; 
-        margin-bottom: 30px; 
-      }
+      .top-info { text-align: right; margin-bottom: 30px; }
       
       .top-info table { 
         margin-left: auto; 
@@ -113,21 +110,9 @@ export default function generateInvoiceHTML(projectData) {
         margin-bottom: 10px; 
       }
       
-      .company-info { 
-        flex: 1; 
-        text-align: right; 
-        align-items: flex-end;
-      }
-      
-      .company-header { 
-        background-color: #2196F3; 
-        color: white; 
-        padding: 8px; 
-        font-weight: bold; 
-        text-align: right; 
-        margin-bottom: 10px; 
-      }
-      
+      .company-info { flex: 1; text-align: center; }
+      .company-header { background-color: #2196F3; color: white; padding: 8px; font-weight: bold; text-align: center; margin-bottom: 10px; }
+      .table-header { background-color: #2196F3; color: white; padding: 8px; font-weight: bold; text-align: right; height: 15px; }
       .info-text { 
         margin: 3px 0; 
         line-height: 1.6; 
@@ -297,22 +282,7 @@ export default function generateInvoiceHTML(projectData) {
     
     <div class="invoice-title">INVOICE</div>
     
-    <div class="top-info">
-      <table>
-        <tr>
-          <td>DATE:</td>
-          <td>${currentDate}</td>
-        </tr>
-        <tr>
-          <td>INVOICE #</td>
-          <td>${projectData.id}</td>
-        </tr>
-        <tr>
-          <td>Customer ID</td>
-          <td>${projectData.customerId || 'N/A'}</td>
-        </tr>
-      </table>
-    </div>
+    
     
     <div class="header-row">
       <div class="invoice-to">
@@ -334,8 +304,27 @@ export default function generateInvoiceHTML(projectData) {
         <div class="info-text">Tel: 086809 74194</div>
         <div class="info-text">Prepared by: Admin</div>
       </div>
+      <div class="top-info">
+    <div class = "table-header"></div>
+      <table>
+        <tr>
+          <td>DATE:</td>
+          <td>${currentDate}</td>
+        </tr>
+        <tr>
+          <td>INVOICE #</td>
+          <td>${projectData.id}</td>
+        </tr>
+        <tr>
+          <td>Customer ID</td>
+          <td>${projectData.customerId || 'N/A'}</td>
+        </tr>
+      </table>
+    </div>
     </div>
     
+    
+
     <div class="section-header">PROJECT ITEMS</div>
     <table class="items-table">
       <thead>
@@ -482,24 +471,6 @@ export default function generateInvoiceHTML(projectData) {
           ${netRemaining < 0 ? ' (Extra Paid)' : ''}
         </div>
       </div>
-    </div>
-    
-    <div class="notes-section">
-      <strong>Payment Summary:</strong><br/>
-      Total project value: ₹${grandTotal.toLocaleString('en-IN')}<br/>
-      Amount paid by customer: ₹${paymentsInTotal.toLocaleString('en-IN')}<br/>
-      Amount paid to vendors/expenses: ₹${paymentsOutTotal.toLocaleString(
-        'en-IN',
-      )}<br/>
-      ${
-        netRemaining > 0
-          ? `Outstanding balance: ₹${netRemaining.toLocaleString('en-IN')}`
-          : netRemaining < 0
-          ? `Overpaid amount: ₹${Math.abs(netRemaining).toLocaleString(
-              'en-IN',
-            )}`
-          : 'Fully settled - No outstanding balance'
-      }
     </div>
     
     <div class="signature-section">

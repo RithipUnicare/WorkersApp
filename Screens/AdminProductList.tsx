@@ -294,6 +294,22 @@ const ProjectList: React.FC<Props> = ({ navigation, route }) => {
   }, []);
 
   useEffect(() => {
+    (async () => {
+      try {
+        const openId = await AsyncStorage.getItem('openId');
+        if (!openId) return;
+        const res = await ProjectAPI.getById(Number(openId));
+        if (res?.data) {
+          navigation.navigate('ProjectDetails', { project: res.data });
+          await AsyncStorage.removeItem('openId');
+        }
+      } catch (e) {
+        console.error('Failed to navigate using openId', e);
+      }
+    })();
+  }, [navigation]);
+
+  useEffect(() => {
     if (!isTamil) {
       setTranslations({});
       return;
