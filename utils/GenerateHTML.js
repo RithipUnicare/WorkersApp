@@ -144,11 +144,10 @@ export default function generateHTML(quotationData) {
     </table>
 
     <div class="totals-section">
-    
       <div class="totals-row">
-        <div class="total-label">TOTAL AMOUNT</div>
+        <div class="total-label">GRAND TOTAL</div>
         <div class="total-value">₹${Number(
-          quotationData.totalBudget - quotationData.discount,
+          quotationData.totalBudget,
         ).toLocaleString('en-IN')}</div>
       </div>
       <div class="totals-row">
@@ -158,9 +157,9 @@ export default function generateHTML(quotationData) {
         ).toLocaleString('en-IN')}</div>
       </div>
       <div class="totals-row">
-        <div class="total-label">GRAND TOTAL</div>
+        <div class="total-label">TOTAL AMOUNT</div>
         <div class="total-value">₹${Number(
-          quotationData.totalBudget,
+          quotationData.totalBudget - quotationData.discount,
         ).toLocaleString('en-IN')}</div>
       </div>
     </div>
