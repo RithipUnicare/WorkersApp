@@ -58,6 +58,7 @@ const ONE_SIGNAL_APP_ID = '81985d30-6da5-4f7a-8b63-e629cddfefb3';
 
 type NotificationAdditionalData = {
   screen?: string;
+  id?: number;
   [key: string]: any;
 };
 
@@ -88,6 +89,7 @@ export const initNotification = async () => {
       'unattendedCustomers';
     if (screen) {
       AsyncStorage.setItem('notificationNavigate', screen);
+      AsyncStorage.setItem('openId', (notification?.additionalData as NotificationAdditionalData)?.id?.toString()|| '');
       const cleanupSessionTimeout = setupSessionTimeout(navigationRef);
       navigate('splash');
       cleanupSessionTimeout();
@@ -105,6 +107,7 @@ export async function sendPushNotification(
   title: string,
   message: string,
   screen: string,
+  id?: number,
 ) {
   const url = 'https://onesignal.com/api/v1/notifications?c=push';
 
@@ -119,7 +122,7 @@ export async function sendPushNotification(
     included_segments: ['All'],
     headings: { en: title },
     contents: { en: message },
-    data: { screen },
+    data: { screen, id },
   };
 
   try {
