@@ -21,7 +21,7 @@ export default function generateInvoiceHTML(projectData) {
   );
 
   const grandTotal = projectData.grandTotal;
-  const netRemaining = grandTotal - paymentsInTotal + paymentsOutTotal;
+  const netRemaining = grandTotal - paymentsInTotal;
 
   let html = `
   <!DOCTYPE html>

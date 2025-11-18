@@ -287,11 +287,12 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
               <TouchableOpacity
                 style={styles.infoRow}
                 onPress={async () => {
-                  const url = `tel:${contactNo}`;
-                  const supported = await Linking.canOpenURL(url);
-                  if (supported) {
+                  const cleaned = contactNo;
+                  const url = `tel:${cleaned}`;
+                  try {
                     await Linking.openURL(url);
-                  } else {
+                  } catch (error) {
+                    console.log('Dialer error:', error);
                     Alert.alert(t('Error'), t('Cannot open phone dialer'));
                   }
                 }}
