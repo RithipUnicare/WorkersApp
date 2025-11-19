@@ -214,7 +214,10 @@ const QuotationList: React.FC<Props> = ({ navigation, route }) => {
           <View>
             <Text style={styles.amountLabel}>{t('Budget')}</Text>
             <Text style={styles.amountValue}>
-              ₹{item.totalBudget?.toLocaleString('en-IN') || 0}
+              ₹
+              {Number(
+                Number(item.totalAmount) + Number(item.discount),
+              )?.toLocaleString('en-IN') || 0}
             </Text>
           </View>
           <View style={styles.itemCount}>
