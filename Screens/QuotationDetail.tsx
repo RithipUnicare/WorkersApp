@@ -657,8 +657,8 @@ const QuotationDetail: React.FC = () => {
       customerAddress: quotationData.customerAddress,
       deliveryDate: quotationData.deliveryDate,
       projectDescription: quotationData.projectDescription,
-      totalBudget: quotationData.totalBudget,
-      totalAmount: quotationData.totalBudget - quotationData.discount,
+      totalBudget: quotationData.totalAmount + quotationData.discount,
+      totalAmount: quotationData.totalAmount,
       grandTotal: quotationData.totalAmount,
       remainingAmount: 0,
       discount: quotationData.discount,
@@ -881,19 +881,19 @@ const QuotationDetail: React.FC = () => {
         <Card style={styles.amountCard}>
           <View style={styles.amountRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.amountLabel}>{t('Total Amount')}</Text>
+              <Text style={styles.amountLabel}>{t('Total Budget')}</Text>
               <Text style={styles.amountValue}>
                 ₹
                 {(
-                  quotationData.totalBudget - quotationData.discount
+                  quotationData.totalAmount + quotationData.discount
                 ).toLocaleString('en-IN')}
               </Text>
             </View>
             <View style={styles.divider} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.amountLabel}>{t('Total Budget')}</Text>
+              <Text style={styles.amountLabel}>{t('Total Amount')}</Text>
               <Text style={styles.amountValue}>
-                ₹{quotationData.totalBudget?.toLocaleString('en-IN') || 0}
+                ₹{quotationData.totalAmount?.toLocaleString('en-IN') || 0}
               </Text>
             </View>
           </View>

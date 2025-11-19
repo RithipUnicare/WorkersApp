@@ -911,6 +911,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
             theme={{ roundness: wp(2.5) }}
             right={<TextInput.Affix text="₹" />}
             disabled={false}
+            editable={!isFromQuotationDetail || false}
           />
 
           {/* Status */}

@@ -17,17 +17,17 @@ export default function generateHTML(quotationData) {
       .company-address { font-size: 11px; line-height: 1.5; }
 
       .top-info { text-align: right; margin-bottom: 30px; }
-      .top-info table { margin-left: auto; border-collapse: collapse; }
+      .top-info table { margin-left: auto; border-collapse: collapse; margin-right: auto; margin-top:15px;}
       .top-info td { padding: 5px 10px; border: 1px solid #333; }
       .top-info td:first-child { font-weight: bold; background-color: #f5f5f5; }
 
       .header-row { display: flex; justify-content: space-between; margin-bottom: 20px; }
       .quotation-to { flex: 1; }
       .quotation-to-header { background-color: #2196F3; color: white; padding: 8px; font-weight: bold; margin-bottom: 10px; }
-      .company-info { flex: 1; text-align: right; }
-      .company-header { background-color: #2196F3; color: white; padding: 8px; font-weight: bold; text-align: right; margin-bottom: 10px; }
+      .company-info { flex: 1; text-align: center; }
+      .company-header { background-color: #2196F3; color: white; padding: 8px; font-weight: bold; text-align: center; margin-bottom: 10px; }
       .info-text { margin: 3px 0; line-height: 1.6; }
-
+      .table-header { background-color: #2196F3; color: white; padding: 8px; font-weight: bold; text-align: right; height: 15px; }
       .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
       .items-table th { background-color: #2196F3; color: white; padding: 10px; text-align: left; border: 1px solid #2196F3; font-size: 11px; }
       .items-table td { border: 1px solid #ddd; padding: 10px; }
@@ -61,27 +61,6 @@ export default function generateHTML(quotationData) {
       </div>
     </div>
 
-    <div class="top-info">
-      <table>
-        <tr>
-          <td>DATE:</td>
-          <td>${currentDate}</td>
-        </tr>
-        <tr>
-          <td>QUOTE #</td>
-          <td>${quotationData.id}</td>
-        </tr>
-        <tr>
-          <td>Customer ID</td>
-          <td>${quotationData.customerId || 'N/A'}</td>
-        </tr>
-        <tr>
-          <td>Delivery Date:</td>
-          <td>${formatDate(quotationData.deliveryDate)}</td>
-        </tr>
-      </table>
-    </div>
-
     <div class="header-row">
       <div class="quotation-to">
         <div class="quotation-to-header">Quotation To,</div>
@@ -103,6 +82,28 @@ export default function generateHTML(quotationData) {
         <div class="info-text">Tirupathur, Tamil Nadu 635601</div>
         <div class="info-text">Tel: 086809 74194</div>
         <div class="info-text">Prepared by: Admin</div>
+      </div>
+      
+      <div class="top-info">
+      <div class = "table-header"></div>
+        <table>
+          <tr>
+            <td>DATE:</td>
+            <td>${currentDate}</td>
+          </tr>
+          <tr>
+            <td>QUOTE #</td>
+            <td>${quotationData.id}</td>
+          </tr>
+          <tr>
+            <td>Customer ID</td>
+            <td>${quotationData.customerId || 'N/A'}</td>
+          </tr>
+          <tr>
+            <td>Delivery Date:</td>
+            <td>${formatDate(quotationData.deliveryDate)}</td>
+          </tr>
+        </table>
       </div>
     </div>
 
@@ -143,17 +144,22 @@ export default function generateHTML(quotationData) {
     </table>
 
     <div class="totals-section">
-    
       <div class="totals-row">
-        <div class="total-label">TOTAL AMOUNT</div>
+        <div class="total-label">GRAND TOTAL</div>
         <div class="total-value">₹${Number(
-          quotationData.totalBudget - quotationData.discount,
+          quotationData.totalAmount + quotationData.discount,
         ).toLocaleString('en-IN')}</div>
       </div>
       <div class="totals-row">
         <div class="total-label">DISCOUNT</div>
         <div class="total-value">₹${Number(
           quotationData.discount,
+        ).toLocaleString('en-IN')}</div>
+      </div>
+      <div class="totals-row">
+        <div class="total-label">TOTAL AMOUNT</div>
+        <div class="total-value">₹${Number(
+          quotationData.totalAmount,
         ).toLocaleString('en-IN')}</div>
       </div>
     </div>

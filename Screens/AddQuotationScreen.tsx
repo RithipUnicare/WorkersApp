@@ -668,7 +668,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             mode="outlined"
             keyboardType="numeric"
             style={styles.input}
-            editable={!isEditMode}
+            editable={false}
             left={<TextInput.Affix text="₹" />}
           />
           {/* <TextInput
