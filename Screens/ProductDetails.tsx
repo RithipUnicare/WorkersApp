@@ -206,6 +206,42 @@ const openMobileDialer = (phoneNumber: string) => {
   const url = `tel:${phoneNumber}`;
   Linking.openURL(url).catch(() => {});
 };
+const downloadImageToDevice = async (imageUrl: string, filename: string) => {
+  const basePath =
+    Platform.OS === 'android'
+      ? RNFS.DownloadDirectoryPath
+      : RNFS.DocumentDirectoryPath;
+  const destPath = `${basePath}/${filename}`;
+  const { promise } = RNFS.downloadFile({
+    fromUrl: imageUrl,
+    toFile: destPath,
+  });
+  const result = await promise;
+  if (result.statusCode === 200) {
+    if (Platform.OS === 'android') {
+      ToastAndroid.show('Image downloaded', ToastAndroid.SHORT);
+    } else {
+      Alert.alert('Success', 'Image downloaded');
+    }
+  } else {
+    throw new Error('Download failed');
+  }
+};
+const shareSingleImage = async (imageUrl: string, filename: string) => {
+  const destPath = `${RNFS.CachesDirectoryPath}/${filename}`;
+  const { promise } = RNFS.downloadFile({
+    fromUrl: imageUrl,
+    toFile: destPath,
+  });
+  const result = await promise;
+  if (result.statusCode !== 200) {
+    throw new Error('Download failed');
+  }
+  await Share.open({
+    url: `file://${destPath}`,
+    type: 'image/jpeg',
+  });
+};
 const ProjectDetails: React.FC = () => {
   const route = useRoute<ProjectDetailsRouteProp>();
   const navigation = useNavigation<ProjectDetailsNavProp>();
@@ -370,6 +406,17 @@ const ProjectDetails: React.FC = () => {
       return newSet;
     });
   }, []);
+  const handleDownloadSiteImage = useCallback(
+    async (imageUrl: string, imageId: number) => {
+      try {
+        const filename = `site_image_${imageId}_${Date.now()}.jpg`;
+        await downloadImageToDevice(imageUrl, filename);
+      } catch (e) {
+        Alert.alert('Error', 'Failed to download image');
+      }
+    },
+    [],
+  );
   // Handle sharing selected images
   const handleShareSelectedImages = useCallback(async () => {
     if (selectedImageIds.size === 0) return;
@@ -412,6 +459,28 @@ const ProjectDetails: React.FC = () => {
       setSelectedImageIds(new Set());
     }
   }, [selectedImageIds, project.siteImages]);
+  const handleShareItemImage = useCallback(
+    async (imageUrl: string, imageId: number) => {
+      try {
+        const filename = `item_image_${imageId}_${Date.now()}.jpg`;
+        await shareSingleImage(imageUrl, filename);
+      } catch (e) {
+        Alert.alert('Share Error', 'Failed to share image');
+      }
+    },
+    [],
+  );
+  const handleDownloadItemImage = useCallback(
+    async (imageUrl: string, imageId: number) => {
+      try {
+        const filename = `item_image_${imageId}_${Date.now()}.jpg`;
+        await downloadImageToDevice(imageUrl, filename);
+      } catch (e) {
+        Alert.alert('Error', 'Failed to download image');
+      }
+    },
+    [],
+  );
   // Item edit/delete
   const openAddItem = () => {
     setEditingItem(null);
@@ -1033,6 +1102,18 @@ const ProjectDetails: React.FC = () => {
                         />
                       </View>
                     </TouchableOpacity>
+                    <TouchableOpacity
+                      style={{ position: 'absolute', bottom: 4, right: 4 }}
+                      onPress={() =>
+                        handleDownloadSiteImage(img.imageUrl, img.id)
+                      }
+                    >
+                      <MaterialCommunityIcons
+                        name="download"
+                        size={wp(5)}
+                        color="#083486ff"
+                      />
+                    </TouchableOpacity>
                     {selectedImageIds.has(img.id) && (
                       <View style={styles.selectionOverlay}>
                         <MaterialCommunityIcons
@@ -1140,6 +1221,38 @@ const ProjectDetails: React.FC = () => {
                                 }}
                               />
                             </TouchableOpacity>
+                            <View
+                              style={{
+                                position: 'absolute',
+                                bottom: 2,
+                                left: 2,
+                                flexDirection: 'row',
+                              }}
+                            >
+                              <TouchableOpacity
+                                onPress={() =>
+                                  handleShareItemImage(img.imageUrl, img.id)
+                                }
+                                style={{ marginRight: 6 }}
+                              >
+                                <MaterialCommunityIcons
+                                  name="share-variant"
+                                  size={wp(4.5)}
+                                  color="#425cecff"
+                                />
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                onPress={() =>
+                                  handleDownloadItemImage(img.imageUrl, img.id)
+                                }
+                              >
+                                <MaterialCommunityIcons
+                                  name="download"
+                                  size={wp(4.5)}
+                                  color="#0616a3ff"
+                                />
+                              </TouchableOpacity>
+                            </View>
                             <TouchableOpacity
                               onPress={() => deleteItemImage(item.id, img.id)}
                               style={{
