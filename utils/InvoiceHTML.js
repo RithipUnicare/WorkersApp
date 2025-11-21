@@ -455,8 +455,8 @@ export default function generateInvoiceHTML(projectData) {
       </div>
       
       <div class="totals-row">
-        <div class="total-label">TOTAL PAYMENTS RECEIVED</div>
-        <div class="total-value positive">₹${paymentsInTotal.toLocaleString(
+        <div class="total-label" style="font-size: 16px;">TOTAL PAYMENTS RECEIVED</div>
+        <div class="total-value positive" style="font-size: 16px;">₹${paymentsInTotal.toLocaleString(
           'en-IN',
         )}</div>
       </div>
