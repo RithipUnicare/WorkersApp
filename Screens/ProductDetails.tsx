@@ -968,7 +968,7 @@ const ProjectDetails: React.FC = () => {
                 size={wp(6)}
                 onPress={() => setGpsModalVisible(true)}
                 iconColor="#2874b8"
-                disabled={role === 'worker'}
+                //disabled={role === 'worker'}
               />
             </TouchableOpacity>
             <View style={styles.infoRow}>
