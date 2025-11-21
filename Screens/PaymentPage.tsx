@@ -83,7 +83,7 @@ const enToTa: Record<string, string> = {
   'Material Expenses': 'பொருள் செலவுகள்',
   'No payments received': 'பணம் பெறப்படவில்லை',
   'No payments made': 'பணம் செலுத்தப்படவில்லை',
-
+  discount: 'தள்ளுபடி',
   // Labels
   'Project Total': 'மொத்த தொகை',
   'Items Cost': 'பொருட்கள் செலவு',
@@ -145,6 +145,7 @@ const enToTa: Record<string, string> = {
 
 const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
   const project = route.params?.project;
+  console.log(project);
   const [paymentsIn, setPaymentsIn] = useState<Payment[]>([]);
   const [paymentsOut, setPaymentsOut] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -238,7 +239,8 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
   );
   const paidInTotal = paymentsIn.reduce((sum, p) => sum + p.amount, 0);
   const paidOutTotal = paymentsOut.reduce((sum, p) => sum + p.amount, 0);
-  const netRemaining = project.grandTotal - (paidInTotal + advanceTotal);
+  const netRemaining =
+    project.grandTotal - project.discount - (paidInTotal + advanceTotal);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [isPaymentIn, setIsPaymentIn] = useState(true);
@@ -530,7 +532,10 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                     <Text
                       style={[styles.value, { fontSize: getFontSize(wp(4)) }]}
                     >
-                      ₹{project.grandTotal.toLocaleString('en-IN')}
+                      ₹
+                      {(project.grandTotal - project.discount).toLocaleString(
+                        'en-IN',
+                      )}
                     </Text>
                   </View>
                   <Divider style={styles.divider} />
@@ -545,6 +550,20 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                       style={[styles.value, { fontSize: getFontSize(wp(4)) }]}
                     >
                       ₹{itemsTotal.toLocaleString('en-IN')}
+                    </Text>
+                  </View>
+                  <Divider style={styles.divider} />
+
+                  <View style={styles.row}>
+                    <Text
+                      style={[styles.label, { fontSize: getFontSize(wp(3.8)) }]}
+                    >
+                      {t('discount')}
+                    </Text>
+                    <Text
+                      style={[styles.value, { fontSize: getFontSize(wp(4)) }]}
+                    >
+                      ₹{project.discount.toLocaleString('en-IN')}
                     </Text>
                   </View>
                   <Divider style={styles.divider} />
@@ -738,99 +757,105 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
 
           {/* Add/Edit Modal */}
           <Portal>
-            <Dialog
-              visible={modalVisible}
-              onDismiss={closeModal}
-              style={styles.dialog}
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={{ flex: 1 }}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
             >
-              <Dialog.Title
-                style={[styles.dialogTitle, { fontSize: getFontSize(wp(5)) }]}
+              <Dialog
+                visible={modalVisible}
+                onDismiss={closeModal}
+                style={styles.dialog}
               >
-                {editingId ? t('Edit') : t('Record')}{' '}
-                {isPaymentIn ? t('Payment In') : t('Payment Out')}
-              </Dialog.Title>
-              <Dialog.ScrollArea style={styles.dialogScrollArea}>
-                <ScrollView contentContainerStyle={styles.dialogContent}>
-                  <TextInput
-                    label={t('Amount')}
-                    value={amount}
-                    onChangeText={setAmount}
-                    mode="outlined"
-                    keyboardType="numeric"
-                    style={styles.input}
-                    theme={{ roundness: wp(2) }}
-                    left={<TextInput.Affix text="₹" />}
-                  />
-                  <Text
-                    style={[
-                      styles.radioLabel,
-                      { fontSize: getFontSize(wp(4)) },
-                    ]}
-                  >
-                    {t('Payment Type')}
-                  </Text>
-                  <RadioButton.Group
-                    onValueChange={setPaymentType}
-                    value={paymentType}
-                  >
-                    {(isPaymentIn ? IN_TYPES : [...OUT_TYPES, 'Custom']).map(
-                      type => (
-                        <View key={type} style={styles.radioRow}>
-                          <RadioButton value={type} />
-                          <Text
-                            style={[
-                              styles.radioText,
-                              { fontSize: getFontSize(wp(3.8)) },
-                            ]}
-                          >
-                            {type === paymentType ? t(paymentType) : t(type)}
-                          </Text>
-                        </View>
-                      ),
-                    )}
-                  </RadioButton.Group>
-                  {!isPaymentIn && paymentType === 'Custom' && (
-                    <VoiceFriendlyInput
-                      label={t('Custom')}
-                      value={customType}
-                      onChangeText={setCustomType}
+                <Dialog.Title
+                  style={[styles.dialogTitle, { fontSize: getFontSize(wp(5)) }]}
+                >
+                  {editingId ? t('Edit') : t('Record')}{' '}
+                  {isPaymentIn ? t('Payment In') : t('Payment Out')}
+                </Dialog.Title>
+                <Dialog.ScrollArea style={styles.dialogScrollArea}>
+                  <ScrollView contentContainerStyle={styles.dialogContent}>
+                    <TextInput
+                      label={t('Amount')}
+                      value={amount}
+                      onChangeText={setAmount}
                       mode="outlined"
+                      keyboardType="numeric"
                       style={styles.input}
                       theme={{ roundness: wp(2) }}
+                      left={<TextInput.Affix text="₹" />}
                     />
-                  )}
-                  <TextInput
-                    label={t('Date')}
-                    value={dayjs(date).format('DD-MM-YYYY')}
-                    mode="outlined"
-                    style={styles.input}
-                    editable={false}
-                    right={
-                      <TextInput.Icon
-                        icon="calendar"
-                        onPress={() => setShowDatePicker(true)}
-                        size={wp(6)}
+                    <Text
+                      style={[
+                        styles.radioLabel,
+                        { fontSize: getFontSize(wp(4)) },
+                      ]}
+                    >
+                      {t('Payment Type')}
+                    </Text>
+                    <RadioButton.Group
+                      onValueChange={setPaymentType}
+                      value={paymentType}
+                    >
+                      {(isPaymentIn ? IN_TYPES : [...OUT_TYPES, 'Custom']).map(
+                        type => (
+                          <View key={type} style={styles.radioRow}>
+                            <RadioButton value={type} />
+                            <Text
+                              style={[
+                                styles.radioText,
+                                { fontSize: getFontSize(wp(3.8)) },
+                              ]}
+                            >
+                              {type === paymentType ? t(paymentType) : t(type)}
+                            </Text>
+                          </View>
+                        ),
+                      )}
+                    </RadioButton.Group>
+                    {!isPaymentIn && paymentType === 'Custom' && (
+                      <VoiceFriendlyInput
+                        label={t('Custom')}
+                        value={customType}
+                        onChangeText={setCustomType}
+                        mode="outlined"
+                        style={styles.input}
+                        theme={{ roundness: wp(2) }}
                       />
-                    }
-                  />
-                  <VoiceFriendlyInput
-                    label={t('Notes (Optional)')}
-                    value={notes}
-                    onChangeText={setNotes}
-                    mode="outlined"
-                    style={[styles.input, styles.multiline]}
-                    multiline
-                    numberOfLines={3}
-                  />
-                </ScrollView>
-              </Dialog.ScrollArea>
-              <Dialog.Actions>
-                <Button onPress={closeModal}>{t('Cancel')}</Button>
-                <Button onPress={handleAddPayment} disabled={!amount.trim()}>
-                  {editingId ? t('Update') : t('Save')}
-                </Button>
-              </Dialog.Actions>
-            </Dialog>
+                    )}
+                    <TextInput
+                      label={t('Date')}
+                      value={dayjs(date).format('DD-MM-YYYY')}
+                      mode="outlined"
+                      style={styles.input}
+                      editable={false}
+                      right={
+                        <TextInput.Icon
+                          icon="calendar"
+                          onPress={() => setShowDatePicker(true)}
+                          size={wp(6)}
+                        />
+                      }
+                    />
+                    <VoiceFriendlyInput
+                      label={t('Notes (Optional)')}
+                      value={notes}
+                      onChangeText={setNotes}
+                      mode="outlined"
+                      style={[styles.input, styles.multiline]}
+                      multiline
+                      numberOfLines={3}
+                    />
+                  </ScrollView>
+                </Dialog.ScrollArea>
+                <Dialog.Actions>
+                  <Button onPress={closeModal}>{t('Cancel')}</Button>
+                  <Button onPress={handleAddPayment} disabled={!amount.trim()}>
+                    {editingId ? t('Update') : t('Save')}
+                  </Button>
+                </Dialog.Actions>
+              </Dialog>
+            </KeyboardAvoidingView>
           </Portal>
 
           <DatePicker

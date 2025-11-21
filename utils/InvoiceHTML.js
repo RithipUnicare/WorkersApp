@@ -21,7 +21,8 @@ export default function generateInvoiceHTML(projectData) {
   );
 
   const grandTotal = projectData.grandTotal;
-  const netRemaining = grandTotal - paymentsInTotal;
+  const netRemaining =
+    grandTotal - (projectData.discount || 0) - paymentsInTotal;
 
   let html = `
   <!DOCTYPE html>
@@ -339,7 +340,7 @@ export default function generateInvoiceHTML(projectData) {
       </thead>
       <tbody>
   `;
-
+  console.log(projectData);
   projectData.projectItems.forEach(item => {
     html += `
         <tr>
@@ -454,6 +455,12 @@ export default function generateInvoiceHTML(projectData) {
       <div class="totals-row grand-total">
         <div class="total-label" style="font-size: 16px;">GRAND TOTAL</div>
         <div class="total-value" style="font-size: 16px;">₹${grandTotal.toLocaleString(
+          'en-IN',
+        )}</div>
+      </div>
+       <div class="totals-row grand-total">
+        <div class="total-label" style="font-size: 16px;">DISCOUNT</div>
+        <div class="total-value" style="font-size: 16px;">₹${projectData.discount.toLocaleString(
           'en-IN',
         )}</div>
       </div>

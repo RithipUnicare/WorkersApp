@@ -30,6 +30,7 @@ import QuotationList from '../Screens/QuotationList';
 import QuotationDetail from '../Screens/QuotationDetail';
 import PendingPayments from '../Screens/PendingPayments';
 import { processPendingNavigation } from '../utils/navigationService.js';
+import CreatedQuotationList from '../Screens/ProjectCreatedQuotations';
 
 export type rootStackParamList = {
   login: undefined;
@@ -51,6 +52,7 @@ export type rootStackParamList = {
   QuotationList: { Completed: boolean } | undefined;
   QuotationDetail: { quotation: Quotation };
   pendingPayments: undefined;
+  createdQuotation: undefined;
 };
 
 const Stack = createNativeStackNavigator<rootStackParamList>();
@@ -281,6 +283,18 @@ const AppNavigation = () => {
           component={PendingPayments}
           options={{
             title: 'Pending Payments',
+            headerStyle: { backgroundColor: '#075E54' },
+            headerTitleStyle: {
+              color: '#fff',
+            },
+            headerTintColor: '#fff',
+          }}
+        />
+        <Stack.Screen
+          name="createdQuotation"
+          component={CreatedQuotationList}
+          options={{
+            title: 'Created Quotation',
             headerStyle: { backgroundColor: '#075E54' },
             headerTitleStyle: {
               color: '#fff',

@@ -256,7 +256,11 @@ const QuotationList: React.FC<Props> = ({ navigation, route }) => {
         data={
           Completed
             ? filteredQuotations.filter(q => q.status === 'COMPLETED')
-            : filteredQuotations.filter(q => q.status !== 'COMPLETED')
+            : filteredQuotations.filter(
+                q =>
+                  q.status !== 'COMPLETED' &&
+                  q.status?.toLocaleLowerCase() === 'created',
+              )
         }
         renderItem={renderItem}
         keyExtractor={item => item.id.toString()}

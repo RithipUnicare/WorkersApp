@@ -119,7 +119,7 @@ export default function generateHTML(quotationData) {
       </thead>
       <tbody>
   `;
-
+  console.log(quotationData.item);
   quotationData.items.forEach(item => {
     html += `
         <tr>
