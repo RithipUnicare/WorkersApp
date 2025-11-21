@@ -364,16 +364,16 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
         directory: 'Documents',
       });
 
-      const fileName = `${project.customerName}_Invoice_${project.id}.pdf`;
+      const fileName = `${project.customerName}_Quotation_${project.id}.pdf`;
       const downloadsPath =
         Platform.OS === 'android'
-          ? `${RNFS.DownloadDirectoryPath}/${fileName}`
-          : `${RNFS.DocumentDirectoryPath}/${fileName}`;
+          ? `${RNFS.CachesDirectoryPath}/${fileName}`
+          : `${RNFS.CachesDirectoryPath}/${fileName}`;
 
       await RNFS.copyFile(filePath, downloadsPath);
       await Share.open({
-        title: `Invoice - ${project.customerName}`,
-        message: `Invoice for project #${project.id}`,
+        title: `Quotation - ${project.customerName}`,
+        message: `Quotation for project #${project.id}`,
         url: `file://${downloadsPath}`,
         type: 'application/pdf',
       });

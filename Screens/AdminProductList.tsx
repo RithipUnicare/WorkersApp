@@ -226,7 +226,10 @@ const ProjectCard = React.memo(
               <View style={styles.amountBlock}>
                 <Text style={styles.amountLabel}>{t('Total')}</Text>
                 <Text style={styles.amountValue}>
-                  ₹{item.grandTotal.toLocaleString('en-IN')}
+                  ₹
+                  {(item.grandTotal - (item.discount || 0)).toLocaleString(
+                    'en-IN',
+                  )}
                 </Text>
               </View>
               <View style={styles.amountDivider} />
@@ -247,7 +250,10 @@ const ProjectCard = React.memo(
                     },
                   ]}
                 >
-                  ₹{item.remainingAmount.toLocaleString('en-IN')}
+                  {/* ₹{item.remainingAmount.toLocaleString('en-IN')} */}₹
+                  {(item.remainingAmount - (item.discount || 0)).toLocaleString(
+                    'en-IN',
+                  )}
                 </Text>
               </View>
             </View>

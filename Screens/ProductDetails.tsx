@@ -1015,7 +1015,10 @@ const ProjectDetails: React.FC = () => {
                 <View style={styles.amountBlock}>
                   <Text style={styles.amountLabel}>{t('Total Amount')}</Text>
                   <Text style={[styles.amountValue, { color: '#27ae60' }]}>
-                    ₹{project.totalAmount.toLocaleString('en-IN')}
+                    ₹
+                    {Number(
+                      project.totalAmount - (project.discount || 0),
+                    ).toLocaleString('en-IN')}
                   </Text>
                 </View>
                 <View style={styles.divider} />
