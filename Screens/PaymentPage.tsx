@@ -610,7 +610,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                     <Text
                       style={[
                         styles.value,
-                        { fontSize: getFontSize(wp(4)), color: '#e74c3c' },
+                        { fontSize: getFontSize(wp(4)), color: '#27ae60' },
                       ]}
                     >
                       ₹{(paidInTotal - paidOutTotal).toLocaleString('en-IN')}

@@ -378,6 +378,15 @@ const ProjectDetails: React.FC = () => {
       setItemImageUploading(false);
     }
   };
+  useEffect(() => {
+    if (
+      itemImagesModalOpen &&
+      selectedItemImages.length > 0 &&
+      !itemImageUploading
+    ) {
+      uploadItemImages();
+    }
+  }, [itemImagesModalOpen, selectedItemImages, itemImageUploading]);
   const deleteItemImage = async (itemId: number, imageId: number) => {
     try {
       await ProjectAPI.deleteItemImage(itemId, imageId);
@@ -865,6 +874,11 @@ const ProjectDetails: React.FC = () => {
       setUploading(false);
     }
   };
+  useEffect(() => {
+    if (imageModalOpen && selectedImages.length > 0 && !uploading) {
+      uploadSiteImages();
+    }
+  }, [imageModalOpen, selectedImages, uploading]);
   const openImageModal = (index: number) => {
     setSelectedImageIndex(index);
     setModalVisible(true);
