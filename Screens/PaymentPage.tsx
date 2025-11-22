@@ -98,7 +98,7 @@ const enToTa: Record<string, string> = {
   '+ Material expense': '+ பொருள் செலவுகள்',
   'Preview Invoice': 'விலைப்பட்டியல் முன்னோட்டம்',
   'Share Invoice': 'விலைப்பட்டியல் பகிர்',
-
+  profit: 'லாபம்',
   // Modal
   Record: 'பதிவு',
   Edit: 'திருத்து',
@@ -598,6 +598,22 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                       ]}
                     >
                       ₹{paidOutTotal.toLocaleString('en-IN')}
+                    </Text>
+                  </View>
+                  <Divider style={styles.divider} />
+                  <View style={styles.row}>
+                    <Text
+                      style={[styles.label, { fontSize: getFontSize(wp(3.8)) }]}
+                    >
+                      {t('Profit')}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.value,
+                        { fontSize: getFontSize(wp(4)), color: '#e74c3c' },
+                      ]}
+                    >
+                      ₹{(paidInTotal - paidOutTotal).toLocaleString('en-IN')}
                     </Text>
                   </View>
                   <Divider style={styles.divider} />
