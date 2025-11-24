@@ -214,7 +214,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   const [advanceAmount, setAdvanceAmount] = useState('');
   const [createdProjectId, setCreatedProjectId] = useState<number | null>(null);
   const [discount, setDiscount] = useState<number>(0);
-  const [discountPercentage, setDisCountPercentage] = useState<number>(0);
+  const [discountPercentage, setDisCountPercentage] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
@@ -329,9 +329,11 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       setStatus(rawProject.status || 'CREATED');
       setDiscount(rawProject.discount || 0);
       setDisCountPercentage(
-        (Number(rawProject.discount) /
-          (rawProject.totalBudget - rawProject.discount)) *
-          100,
+        (
+          (Number(rawProject.discount) /
+            (rawProject.totalBudget - rawProject.discount)) *
+          100
+        ).toString(),
       );
 
       if (rawProject.customerTime) {
@@ -1058,9 +1060,12 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                   setDiscount(discountValue);
                   if (discountValue === 0 || text === '') {
                     setTotalAmount(String(actualAmount));
-                    setDisCountPercentage(0);
+                    setDisCountPercentage('0');
                   } else {
-                    const percentage = (discountValue / actualAmount) * 100;
+                    const percentage = (
+                      (discountValue / actualAmount) *
+                      100
+                    ).toString();
                     setDisCountPercentage(percentage);
                     setTotalAmount(String(actualAmount - discountValue));
                   }
@@ -1073,25 +1078,35 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               />
               <TextInput
                 label={t('Percentage')}
-                value={
-                  discountPercentage === 0
-                    ? '0.00'
-                    : discountPercentage.toFixed(2)
-                }
+                value={discountPercentage}
                 onChangeText={text => {
-                  const percentValue = text === '' ? 0 : Number(text);
-                  setDisCountPercentage(percentValue);
-                  if (percentValue === 0 || text === '') {
+                  if (text === '') {
+                    setDisCountPercentage('');
                     setDiscount(0);
                     setTotalAmount(String(actualAmount));
-                  } else {
-                    const discountValue = (actualAmount * percentValue) / 100;
-                    setDiscount(discountValue);
-                    setTotalAmount(String(actualAmount - discountValue));
+                    return;
                   }
+
+                  const normalized = text.replace(',', '.');
+                  const percentValue = parseFloat(normalized);
+
+                  if (
+                    isNaN(percentValue) ||
+                    percentValue < 0 ||
+                    percentValue > 100
+                  ) {
+                    setDisCountPercentage(normalized);
+                    return;
+                  }
+
+                  setDisCountPercentage(normalized);
+
+                  const discountValue = (actualAmount * percentValue) / 100;
+                  setDiscount(discountValue);
+                  setTotalAmount(String(actualAmount - discountValue));
                 }}
                 mode="outlined"
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
                 style={[styles.input, { width: wp(30) }]}
                 theme={{ roundness: wp(2.5) }}
                 editable={true}
