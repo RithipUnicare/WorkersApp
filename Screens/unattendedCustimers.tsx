@@ -148,6 +148,12 @@ const UnattendedCustomers: React.FC<Props> = ({ navigation }) => {
       c.location.toLowerCase().includes(search.toLowerCase()),
   );
 
+  const sortedCustomers = [...filteredCustomers].sort((a, b) => {
+    const aTime = a.date ? new Date(a.date).getTime() : 0;
+    const bTime = b.date ? new Date(b.date).getTime() : 0;
+    return aTime - bTime;
+  });
+
   const calculateTotalPaid = (customer: Customer) => {
     return (customer.payments || []).reduce(
       (sum, payment) => sum + payment.amount,
@@ -261,7 +267,7 @@ const UnattendedCustomers: React.FC<Props> = ({ navigation }) => {
         />
 
         <FlatList
-          data={filteredCustomers}
+          data={sortedCustomers}
           renderItem={renderItem}
           keyExtractor={(_, index) => index.toString()}
           showsVerticalScrollIndicator={false}

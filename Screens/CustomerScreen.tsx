@@ -18,7 +18,7 @@ import { FAB, IconButton, Portal } from 'react-native-paper';
 import { CustomerAPI } from '../service/apiService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslator } from 'react-native-translator';
-
+import dayjs from 'dayjs';
 const { width, height } = Dimensions.get('window');
 const wp = (percentage: number) => (width * percentage) / 100;
 const hp = (percentage: number) => (height * percentage) / 100;
@@ -130,7 +130,10 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
   const createdAt = customer.createdAt
     ? new Date(customer.createdAt).toLocaleDateString('en-IN')
     : 'N/A';
-
+  const notAskedDates = dayjs(customer.date, 'YYYY-MM-DD').diff(
+    new Date(),
+    'day',
+  );
   const formattedStatus = status
     .toLowerCase()
     .replace(/_/g, ' ')
@@ -384,6 +387,27 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
                   {noOfDaysToVisit > 0
                     ? `${noOfDaysToVisit} day${noOfDaysToVisit > 1 ? 's' : ''}`
                     : t('No follow-up scheduled')}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.infoRow}>
+              <View style={styles.iconContainer}>
+                <MaterialCommunityIcons
+                  name="calendar-clock"
+                  size={wp(5.5)}
+                  color="#075E54"
+                />
+              </View>
+              <View style={styles.infoTextContainer}>
+                <Text style={styles.infoLabel}>{t('Follow-up days')}</Text>
+                <Text
+                  style={[
+                    styles.infoValue,
+                    { color: notAskedDates > 0 ? 'green' : 'red' },
+                  ]}
+                >
+                  {notAskedDates}{' '}
+                  {notAskedDates > 0 && notAskedDates === 1 ? 'day' : 'days'}
                 </Text>
               </View>
             </View>
