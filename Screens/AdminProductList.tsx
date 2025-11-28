@@ -63,6 +63,9 @@ export type Project = {
   status: string;
   totalBudget?: number;
   createdAt?: string;
+  totalAdvance?: number;
+  advancePaymentDate?: string;
+  paymentEnteredBy?: string;
   location: {
     id: number;
     address: string;
@@ -359,7 +362,7 @@ const ProjectList: React.FC<Props> = ({ navigation, route }) => {
     try {
       setLoading(true);
       const res = await ProjectAPI.getAll();
-
+      console.log(res);
       const userStr = await AsyncStorage.getItem('user');
       const parsed = userStr ? JSON.parse(userStr) : null;
       setRole(parsed?.role || '');

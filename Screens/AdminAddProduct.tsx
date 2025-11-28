@@ -27,6 +27,7 @@ import {
   Chip,
 } from 'react-native-paper';
 import ItemDialog from './components/ItemDialog';
+import AdvanceDialog from './components/AdvanceDialog';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
@@ -189,6 +190,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   const [selectedDateObj, setSelectedDateObj] = useState<Date>(new Date());
   const [timePickerOpen, setTimePickerOpen] = useState(false);
   const [time, setTime] = useState('');
+  const [user, setUser] = useState('');
 
   const [items, setItems] = useState<ProjectItem[]>([]);
   const [itemModalOpen, setItemModalOpen] = useState(false);
@@ -219,6 +221,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
   const [actualAmount, setActualAmount] = useState<number>(0);
+  const [advanceAmountDate, setAdvanceAmountDate] = useState('');
 
   const [isTamil, setIsTamil] = useState(false);
   const [translations, setTranslations] = useState<Record<string, string>>({});
@@ -230,7 +233,13 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       const tamil = saved === 'ta';
       setIsTamil(tamil);
     };
+    const initRole = async () => {
+      const saved = await AsyncStorage.getItem('user');
+      const user = JSON.parse(saved || '{}');
+      setUser(user?.name);
+    };
     initLang();
+    initRole();
   }, []);
   // Translate all strings
   useEffect(() => {
@@ -335,7 +344,8 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           100
         ).toString(),
       );
-
+      setAdvanceAmount(rawProject.totalAdvance.toString() || '');
+      setAdvanceAmountDate(rawProject.advanceAmountDate || '');
       if (rawProject.customerTime) {
         const { hour, minute } = rawProject.customerTime;
         setTime(dayjs().hour(hour).minute(minute).toISOString());
@@ -682,7 +692,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
         setSnackbar({ visible: true, message: t('Project updated!') });
         navigation.replace('ProjectDetails', { project: rawProject });
       } else {
-        const payload = {
+        const payload: any = {
           customerId,
           deliveryDate: dayjs(deliveryDate, 'DD-MM-YYYY').format('YYYY-MM-DD'),
           projectDescription,
@@ -693,6 +703,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           totalBudget: actualAmount,
           items: items.map(i => ({
             itemName: i.itemName,
+            itemDescription: i.itemDescription,
             rateMrp: i.rateMrp,
             quantity: i.quantity,
             unitId: i.unitId,
@@ -700,11 +711,18 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
             hsnSac: i.hsnSac || '',
           })),
         };
-
+        if (advanceAmount) {
+          payload.totalAdvance = Number(advanceAmount);
+          payload.advancePaymentDate = advanceAmountDate
+            ? advanceAmountDate
+            : dayjs().format('YYYY-MM-DD');
+          payload.paymentEnteredBy = rawProject?.paymentEnteredBy || user;
+        }
         if (!items.length) {
           setSnackbar({ visible: true, message: t('Enter at least one item') });
           return;
         }
+        console.log(payload);
         const created: any = await ProjectAPI.create(payload);
         projectId = created.data.id || created.data.projectId;
         setCreatedProjectId(projectId);
@@ -781,7 +799,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
 
         if (isFromQuotationDetail) {
           await QuotationAPI.updateQuotationStatus(rawProject.id, {
-            status: 'IN PROGRESS',
+            status: 'COMPLETED',
           });
         }
         ToastAndroid.show(
@@ -1116,7 +1134,16 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               />
             </View>
           )}
-
+          <TextInput
+            label={t('Advance Amount')}
+            value={advanceAmount}
+            onChangeText={setAdvanceAmount}
+            mode="outlined"
+            keyboardType="numeric"
+            style={styles.input}
+            theme={{ roundness: wp(2.5) }}
+            editable={true}
+          />
           {/* Delivery Date (last field) */}
           <TouchableOpacity onPress={() => setDatePickerOpen(true)}>
             <TextInput
@@ -1233,35 +1260,18 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
         </Portal>
 
         {/* Advance Dialog */}
-        <Portal>
-          <Dialog visible={false} onDismiss={() => setAdvanceModalOpen(false)}>
-            <Dialog.Title>{t('Add Advance Payment')}</Dialog.Title>
-            <Dialog.Content>
-              <TextInput
-                label={t('Advance Amount')}
-                value={advanceAmount}
-                onChangeText={setAdvanceAmount}
-                mode="outlined"
-                keyboardType="numeric"
-                style={styles.dialogInput}
-                left={<TextInput.Affix text="₹" />}
-              />
-            </Dialog.Content>
-            <Dialog.Actions>
-              <Button
-                onPress={() => {
-                  setAdvanceModalOpen(false);
-                  navigation.goBack();
-                }}
-              >
-                {t('Skip')}
-              </Button>
-              <Button onPress={saveAdvance} disabled={!advanceAmount}>
-                {t('Save')}
-              </Button>
-            </Dialog.Actions>
-          </Dialog>
-        </Portal>
+        <AdvanceDialog
+          visible={advanceModalOpen}
+          amount={advanceAmount}
+          onAmountChange={setAdvanceAmount}
+          onSkip={() => {
+            setAdvanceModalOpen(false);
+            navigation.goBack();
+          }}
+          onSave={saveAdvance}
+          t={t}
+          dialogInputStyle={styles.dialogInput}
+        />
 
         {/* Date & Time Pickers */}
         <DatePicker

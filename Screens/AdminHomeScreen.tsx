@@ -21,6 +21,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import initNotification from '../utils/pushNofication';
 import { useTranslator } from 'react-native-translator';
 import CustomDrawer from '../utils/customDrawer';
+import { onLoginSuccess } from '../utils/pushNofication';
 
 const { width, height } = Dimensions.get('window');
 const wp = (percentage: number) => (width * percentage) / 100;
@@ -91,7 +92,7 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
       //await AsyncStorage.setItem('role', 'Admin');
       const currentUser = await AsyncStorage.getItem('user');
       const parsedUser = currentUser ? JSON.parse(currentUser) : null;
-
+      onLoginSuccess(parsedUser);
       setUsername(parsedUser?.name || 'Admin User');
       // animation
       Animated.timing(fadeAnim, {

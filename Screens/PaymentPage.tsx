@@ -38,6 +38,7 @@ import { Table, Row, Rows } from 'react-native-table-component';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslator } from 'react-native-translator';
 import VoiceFriendlyInput from '../utils/VoiceFriendlyInput';
+import { sendPushPaymentNotification } from '../utils/pushNofication';
 
 const { width, height } = Dimensions.get('window');
 const wp = (percentage: number) => (width * percentage) / 100;
@@ -57,6 +58,7 @@ type Payment = {
   createdAt: string;
   paymentDate: string;
   paymentTime?: PaymentTime;
+  paymentInEnteredBy?: string;
   notes?: string;
 };
 
@@ -137,7 +139,7 @@ const enToTa: Record<string, string> = {
   'Are you sure you want to delete this payment?':
     'இந்த பணத்தை நிச்சயமாக நீக்க வேண்டுமா?',
   Delete: 'நீக்கு',
-
+  Discount: 'தள்ளுபடி',
   // Preview
   'Invoice Preview': 'விலைப்பட்டியல் முன்னோட்டம்',
   'Loading preview...': 'முன்னோட்டம் ஏற்றுகிறது...',
@@ -145,11 +147,10 @@ const enToTa: Record<string, string> = {
 
 const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
   const project = route.params?.project;
-  console.log(project);
   const [paymentsIn, setPaymentsIn] = useState<Payment[]>([]);
   const [paymentsOut, setPaymentsOut] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const [user, setUser] = useState('');
   const [isTamil, setIsTamil] = useState(false);
   const [translations, setTranslations] = useState<Record<string, string>>({});
   const { translate } = useTranslator();
@@ -168,6 +169,12 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
       setIsTamil(tamil);
     };
     initLang();
+    const initRole = async () => {
+      const saved = await AsyncStorage.getItem('user');
+      const user = JSON.parse(saved || '{}');
+      setUser(user?.name);
+    };
+    initRole();
   }, []);
 
   // Translate all strings
@@ -219,7 +226,6 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
         ProjectAPI.getPaymentsIn(project.id),
         ProjectAPI.getPaymentsOut(project.id),
       ]);
-
       setPaymentsIn(Array.isArray(inRes.data) ? inRes.data : []);
       setPaymentsOut(Array.isArray(outRes.data) ? outRes.data : []);
     } catch (e) {
@@ -241,6 +247,8 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
   const paidOutTotal = paymentsOut.reduce((sum, p) => sum + p.amount, 0);
   const netRemaining =
     project.grandTotal - project.discount - (paidInTotal + advanceTotal);
+  const totalAmount = project.grandTotal - project.discount;
+  const materialProfit = totalAmount - paidOutTotal;
 
   const [modalVisible, setModalVisible] = useState(false);
   const [isPaymentIn, setIsPaymentIn] = useState(true);
@@ -277,6 +285,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
       amount: amt,
       paymentDate: dayjs(date).format('YYYY-MM-DD'),
       type: finalType,
+      paymentInEnteredBy: user,
       notes,
     };
 
@@ -290,6 +299,12 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
       }
 
       closeModal();
+      sendPushPaymentNotification(
+        t('Payment Added'),
+        t('Payment added successfully by ' + user + 'amount: ' + amount),
+        'ProjectList',
+        project.id,
+      );
       loadPayments();
     } catch (e: any) {
       Alert.alert(t('Error'), e.message || t('Failed to save payment'));
@@ -407,6 +422,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
     t('Date & Type'),
     t('Amount'),
     t('Notes'),
+    t('Payment In Entered By'),
     t('Actions'),
   ];
   const paymentsInTableData = paymentsIn.map(item => [
@@ -430,6 +446,13 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
       numberOfLines={2}
     >
       {item.notes || '-'}
+    </Text>,
+    <Text
+      key={`payment-in-${item.id}`}
+      style={[styles.cellNotes, { fontSize: getFontSize(wp(3.2)) }]}
+      numberOfLines={2}
+    >
+      {item.paymentInEnteredBy || '-'}
     </Text>,
     <View key={`in-actions-${item.id}`} style={styles.actionButtons}>
       <IconButton
@@ -558,7 +581,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                     <Text
                       style={[styles.label, { fontSize: getFontSize(wp(3.8)) }]}
                     >
-                      {t('discount')}
+                      {t('Discount')}
                     </Text>
                     <Text
                       style={[styles.value, { fontSize: getFontSize(wp(4)) }]}
@@ -568,7 +591,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                   </View>
                   <Divider style={styles.divider} />
 
-                  <View style={styles.row}>
+                  {/* <View style={styles.row}>
                     <Text
                       style={[styles.label, { fontSize: getFontSize(wp(3.8)) }]}
                     >
@@ -616,7 +639,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                       ₹{(paidInTotal - paidOutTotal).toLocaleString('en-IN')}
                     </Text>
                   </View>
-                  <Divider style={styles.divider} />
+                  <Divider style={styles.divider} /> */}
 
                   <View style={styles.row}>
                     <Text
@@ -684,24 +707,33 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                       {t('No payments received')}
                     </Text>
                   ) : (
-                    <Table
-                      borderStyle={{ borderWidth: 1, borderColor: '#ddd' }}
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={true}
+                      persistentScrollbar={true}
+                      style={styles.horizontalScroll}
+                      indicatorStyle="default"
                     >
-                      <Row
-                        data={paymentsInTableHead}
-                        flexArr={[2, 1.5, 2, 1.5]}
-                        style={styles.tableHeaderIn}
-                        textStyle={[
-                          styles.headerText,
-                          { fontSize: getFontSize(wp(3.5)) },
-                        ]}
-                      />
-                      <Rows
-                        data={paymentsInTableData}
-                        flexArr={[2, 1.5, 2, 1.5]}
-                        style={styles.tableRow}
-                      />
-                    </Table>
+                      <Table
+                        borderStyle={{ borderWidth: 1, borderColor: '#ddd' }}
+                        style={{ width: wp(180) }}
+                      >
+                        <Row
+                          data={paymentsInTableHead}
+                          flexArr={[2, 1.5, 2, 1]}
+                          style={styles.tableHeaderIn}
+                          textStyle={[
+                            styles.headerText,
+                            { fontSize: getFontSize(wp(3.5)) },
+                          ]}
+                        />
+                        <Rows
+                          data={paymentsInTableData}
+                          flexArr={[2, 1.5, 2, 1]}
+                          style={styles.tableRow}
+                        />
+                      </Table>
+                    </ScrollView>
                   )}
                 </Card.Content>
               </Card>
@@ -723,25 +755,79 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                       {t('No payments made')}
                     </Text>
                   ) : (
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={true}
+                      persistentScrollbar={true}
+                      style={styles.horizontalScroll}
+                    >
+                      <Table
+                        borderStyle={{ borderWidth: 1, borderColor: '#ddd' }}
+                        style={{ width: wp(180) }}
+                      >
+                        <Row
+                          data={paymentsOutTableHead}
+                          flexArr={[2, 1.5, 2, 1.5]}
+                          style={styles.tableHeaderOut}
+                          textStyle={[
+                            styles.headerText,
+                            { fontSize: getFontSize(wp(3.5)) },
+                          ]}
+                        />
+                        <Rows
+                          data={paymentsOutTableData}
+                          flexArr={[2, 1.5, 2, 1.5]}
+                          style={styles.tableRow}
+                          textStyle={{ textAlign: 'center' }}
+                        />
+                      </Table>
+                    </ScrollView>
+                  )}
+                </Card.Content>
+              </Card>
+
+              <Card style={styles.tableCard}>
+                <Card.Content>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={true}
+                    persistentScrollbar={true}
+                    style={styles.horizontalScroll}
+                  >
                     <Table
                       borderStyle={{ borderWidth: 1, borderColor: '#ddd' }}
+                      style={{ width: wp(180) }}
                     >
                       <Row
-                        data={paymentsOutTableHead}
-                        flexArr={[2, 1.5, 2, 1.5]}
-                        style={styles.tableHeaderOut}
+                        data={[
+                          t('Total Amount'),
+                          t('Total In'),
+                          t('Total Material Expense'),
+                          t('Profit'),
+                        ]}
+                        flexArr={[1, 1, 1, 1]}
+                        style={styles.tableHeaderIn}
                         textStyle={[
                           styles.headerText,
                           { fontSize: getFontSize(wp(3.5)) },
                         ]}
                       />
-                      <Rows
-                        data={paymentsOutTableData}
-                        flexArr={[2, 1.5, 2, 1.5]}
+                      <Row
+                        data={[
+                          `₹${totalAmount.toLocaleString('en-IN')}`,
+                          `₹${paidInTotal.toLocaleString('en-IN')}`,
+                          `₹${paidOutTotal.toLocaleString('en-IN')}`,
+                          `₹${materialProfit.toLocaleString('en-IN')}`,
+                        ]}
+                        flexArr={[1, 1, 1, 1]}
                         style={styles.tableRow}
+                        textStyle={[
+                          styles.value,
+                          { fontSize: getFontSize(wp(3.5)) },
+                        ]}
                       />
                     </Table>
-                  )}
+                  </ScrollView>
                 </Card.Content>
               </Card>
 
@@ -980,7 +1066,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   label: { color: '#555', fontWeight: '500' },
-  value: { fontWeight: '600', color: '#000' },
+  value: { fontWeight: '600', color: '#000', textAlign: 'center' },
   divider: { marginVertical: hp(0.8), backgroundColor: '#eee' },
   buttonRow: {
     flexDirection: 'row',
@@ -1001,7 +1087,12 @@ const styles = StyleSheet.create({
   tableHeaderIn: { height: hp(6), backgroundColor: '#27ae60' },
   tableHeaderOut: { height: hp(6), backgroundColor: '#e74c3c' },
   headerText: { color: '#fff', fontWeight: '600', textAlign: 'center' },
-  tableRow: { height: hp(8), borderBottomWidth: 1, borderColor: '#eee' },
+  tableRow: {
+    height: hp(8),
+    borderBottomWidth: 1,
+    borderColor: '#eee',
+    textAlign: 'center',
+  },
   dateTypeContainer: { padding: wp(2) },
   cellDate: { fontWeight: '600', color: '#1a1a1a', marginBottom: hp(0.3) },
   cellType: {
@@ -1074,6 +1165,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   webViewLoaderText: { marginTop: hp(2), color: '#666' },
+  horizontalScroll: {
+    marginTop: hp(1),
+  },
 });
 
 export default PaymentPage;

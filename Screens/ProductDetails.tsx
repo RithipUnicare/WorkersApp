@@ -154,6 +154,9 @@ type Project = {
   discount?: number;
   totalBudget?: number;
   totalPaymentOut?: number;
+  totalAdvance?: number;
+  advancePaymentDate?: string;
+  paymentEnteredBy?: string;
   location: {
     id: number;
     address: string;
@@ -1058,6 +1061,31 @@ const ProjectDetails: React.FC = () => {
               </View>
             </Card>
           )}
+          {role !== 'worker' &&
+            (project.totalAdvance ||
+              project.advancePaymentDate ||
+              project.paymentEnteredBy) && (
+              <Card style={styles.descCard}>
+                <Text style={styles.descTitle}>{t('Advance Details')}</Text>
+                {project.totalAdvance != null && (
+                  <Text style={styles.descText}>
+                    {t('Advance Amount')}: ₹
+                    {Number(project.totalAdvance).toLocaleString('en-IN')}
+                  </Text>
+                )}
+                {project.advancePaymentDate && (
+                  <Text style={styles.descText}>
+                    {t('Advance Payment Date')}:{' '}
+                    {formatDate(project.advancePaymentDate)}
+                  </Text>
+                )}
+                {project.paymentEnteredBy && (
+                  <Text style={styles.descText}>
+                    {t('Payment Entered By')}: {project.paymentEnteredBy}
+                  </Text>
+                )}
+              </Card>
+            )}
           {/* Description */}
           {project.projectDescription ? (
             <Card style={styles.descCard}>
