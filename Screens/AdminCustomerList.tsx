@@ -18,6 +18,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CustomerAPI } from '../service/apiService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslator } from 'react-native-translator';
+import { RouteProp } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
 const wp = (percentage: number) => (width * percentage) / 100;
@@ -46,6 +47,7 @@ export type Customer = {
 
 type Props = {
   navigation: NativeStackNavigationProp<rootStackParamList, 'CustomerList'>;
+  route: RouteProp<rootStackParamList, 'CustomerList'>;
 };
 
 const enToTa: Record<string, string> = {
@@ -70,10 +72,11 @@ const enToTa: Record<string, string> = {
   days: 'நாட்கள்',
 };
 
-const CustomerList: React.FC<Props> = ({ navigation }) => {
+const CustomerList: React.FC<Props> = ({ navigation, route }) => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState('');
+  const isRejectedScreen = route.params?.rejected || false;
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -159,11 +162,15 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
       ]);
 
       if (res.success && Array.isArray(res.data)) {
-        const filtered = res.data.filter(
-          (c: Customer) =>
-            c.status.toLocaleUpperCase() !== 'DELETED' &&
-            c.status.toLocaleUpperCase() !== 'REJECTED',
-        );
+        const filtered = !isRejectedScreen
+          ? res.data.filter(
+              (c: Customer) =>
+                c.status.toLocaleUpperCase() !== 'DELETED' &&
+                c.status.toLocaleUpperCase() !== 'REJECTED',
+            )
+          : res.data.filter(
+              (c: Customer) => c.status.toLocaleUpperCase() !== 'DELETED',
+            );
         setCustomers(filtered);
         setFilteredCustomers(filtered);
       }
@@ -377,7 +384,13 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
           </View>
         ) : (
           <FlatList
-            data={filteredCustomers}
+            data={
+              isRejectedScreen
+                ? filteredCustomers.filter(
+                    c => c.status.toLocaleUpperCase() === 'REJECTED',
+                  )
+                : filteredCustomers
+            }
             renderItem={renderItem}
             keyExtractor={item => item.id}
             showsVerticalScrollIndicator={false}

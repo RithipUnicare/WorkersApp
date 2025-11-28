@@ -301,7 +301,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
       closeModal();
       sendPushPaymentNotification(
         t('Payment Added'),
-        t('Payment added successfully by ' + user + ' amount: ' + amount),
+        t('Payment of ₹' + amount + ' successfully added by ' + user),
         'ProjectList',
         project.id,
       );
@@ -796,7 +796,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                   >
                     <Table
                       borderStyle={{ borderWidth: 1, borderColor: '#ddd' }}
-                      style={{ width: wp(180) }}
+                      style={{ width: wp(80) }}
                     >
                       <Row
                         data={[

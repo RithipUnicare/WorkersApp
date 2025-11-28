@@ -200,7 +200,13 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
     const unsubscribe = navigation.addListener('focus', () => {
       setFabVisible(true);
     });
-    return unsubscribe;
+    const unsubscribe2 = navigation.addListener('beforeRemove', () => {
+      setFabVisible(false);
+    });
+    return () => {
+      unsubscribe;
+      unsubscribe2;
+    };
   }, [navigation]);
 
   const handleDelete = () => {

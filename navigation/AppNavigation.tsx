@@ -36,7 +36,7 @@ export type rootStackParamList = {
   login: undefined;
   AdminHome: any;
   WorkersHome: any;
-  CustomerList: undefined;
+  CustomerList: { rejected?: boolean } | undefined;
   AddCustomer: { customer: Customer } | any;
   ProjectList: { Completed: boolean } | undefined;
   AddProject: { customer: Customer } | { projectToEdit: Project } | any;

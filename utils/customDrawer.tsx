@@ -75,6 +75,8 @@ const CustomDrawer: React.FC<CustomDrawerProps> = ({
     onClose();
     if (route === 'AdminPanel') {
       navigation.navigate(route);
+    } else if (route === 'CustomerList') {
+      navigation.navigate(route, { rejected: true });
     } else {
       navigation.navigate(route, { Completed: true });
     }
@@ -166,6 +168,24 @@ const CustomDrawer: React.FC<CustomDrawerProps> = ({
               )}
               onPress={() => {
                 handleNavigation('AdminPanel');
+              }}
+              style={styles.drawerItem}
+              //labelStyle={styles.drawerLabel}
+            />
+            <Drawer.Item
+              label={t(
+                'Rejected Customers',
+                'நிராகரிக்கப்பட்ட வாடிக்கையாளர்கள்',
+              )}
+              icon={({ size, color }) => (
+                <MaterialCommunityIcons
+                  name="cog"
+                  size={size}
+                  color="#075E54"
+                />
+              )}
+              onPress={() => {
+                handleNavigation('CustomerList');
               }}
               style={styles.drawerItem}
               //labelStyle={styles.drawerLabel}
