@@ -698,6 +698,7 @@ const QuotationDetail: React.FC = () => {
         id: item.id,
         itemName: item.itemName,
         quantity: item.quantity,
+        itemDescription: item.itemDescription,
         rateMrp: item.rateMrp,
         totalCost: item.totalCost,
         unitId: item.unit.id,
@@ -1266,15 +1267,15 @@ const QuotationDetail: React.FC = () => {
           iconColor="#075E54"
         />
         <IconButton
-          icon="plus"
-          onPress={handleConvertToProject}
+          icon="cash-plus"
+          onPress={() => setAdvanceModalOpen(true)}
           style={styles.actionButton}
           contentStyle={styles.actionButtonContent}
           iconColor="#075E54"
         />
         <IconButton
-          icon="cash-plus"
-          onPress={() => setAdvanceModalOpen(true)}
+          icon="hammer-screwdriver"
+          onPress={handleConvertToProject}
           style={styles.actionButton}
           contentStyle={styles.actionButtonContent}
           iconColor="#075E54"

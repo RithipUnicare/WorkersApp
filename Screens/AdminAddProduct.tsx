@@ -391,6 +391,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       }
 
       const projectItems = rawProject.projectItems || rawProject.items || [];
+      console.log(projectItems);
       if (projectItems.length) {
         setItems(
           projectItems.map((it: any) => ({
