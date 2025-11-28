@@ -14,11 +14,18 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { rootStackParamList } from '../navigation/AppNavigation';
-import { FAB, IconButton, Portal } from 'react-native-paper';
+import {
+  FAB,
+  IconButton,
+  Portal,
+  Dialog,
+  Button,
+  Checkbox,
+} from 'react-native-paper';
 import { CustomerAPI } from '../service/apiService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslator } from 'react-native-translator';
-
+import dayjs from 'dayjs';
 const { width, height } = Dimensions.get('window');
 const wp = (percentage: number) => (width * percentage) / 100;
 const hp = (percentage: number) => (height * percentage) / 100;
@@ -73,6 +80,10 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
   const [customer, setCustomer] = useState(customer1.customer);
   const [fabOpen, setFabOpen] = useState(false);
   const [fabVisible, setFabVisible] = useState(true);
+  const [statusDialogVisible, setStatusDialogVisible] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<string>(
+    customer1.customer.status || 'INQUIRED',
+  );
 
   const [isTamil, setIsTamil] = useState(false);
   const [translations, setTranslations] = useState<Record<string, string>>({});
@@ -117,6 +128,14 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
     [isTamil, translations],
   );
 
+  const STATUS_OPTIONS: string[] = [
+    'INQUIRED',
+    'ATTENDED',
+    'PROJECT_CREATED',
+    'COMPLETED',
+    'REJECTED',
+  ];
+
   // Safely extract values
   const name = customer.name || t('Unknown Customer');
   const contactNo = customer.contactNo;
@@ -130,11 +149,18 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
   const createdAt = customer.createdAt
     ? new Date(customer.createdAt).toLocaleDateString('en-IN')
     : 'N/A';
-
+  const notAskedDates = dayjs(customer.date, 'YYYY-MM-DD').diff(
+    new Date(),
+    'day',
+  );
   const formattedStatus = status
     .toLowerCase()
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (l: string) => l.toUpperCase());
+
+  useEffect(() => {
+    setSelectedStatus(status);
+  }, [status]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -209,6 +235,34 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
     setFabOpen(false);
   };
 
+  const handleStatusChipPress = () => {
+    setSelectedStatus(status);
+    setStatusDialogVisible(true);
+  };
+
+  const handleStatusUpdate = async () => {
+    if (!selectedStatus || selectedStatus === status) {
+      setStatusDialogVisible(false);
+      return;
+    }
+
+    try {
+      const res = await CustomerAPI.updateStatus(customer.id, {
+        status: selectedStatus,
+      });
+
+      if (res && res.data) {
+        setCustomer(res.data);
+      } else {
+        setCustomer((prev: any) => ({ ...prev, status: selectedStatus }));
+      }
+
+      setStatusDialogVisible(false);
+    } catch (e) {
+      Alert.alert(t('Error'), t('Failed to update status'));
+    }
+  };
+
   return (
     <SafeAreaView
       style={styles.safeArea}
@@ -249,16 +303,21 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
                   }}
                 />
               </View>
-              <View
-                style={[
-                  styles.statusBadge,
-                  { backgroundColor: getStatusColor(status) },
-                ]}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={handleStatusChipPress}
               >
-                <Text style={styles.statusText}>
-                  {t(formattedStatus) || formattedStatus}
-                </Text>
-              </View>
+                <View
+                  style={[
+                    styles.statusBadge,
+                    { backgroundColor: getStatusColor(status) },
+                  ]}
+                >
+                  <Text style={styles.statusText}>
+                    {t(formattedStatus) || formattedStatus}
+                  </Text>
+                </View>
+              </TouchableOpacity>
             </View>
             <View
               style={{
@@ -387,6 +446,27 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
                 </Text>
               </View>
             </View>
+            <View style={styles.infoRow}>
+              <View style={styles.iconContainer}>
+                <MaterialCommunityIcons
+                  name="calendar-clock"
+                  size={wp(5.5)}
+                  color="#075E54"
+                />
+              </View>
+              <View style={styles.infoTextContainer}>
+                <Text style={styles.infoLabel}>{t('Follow-up days')}</Text>
+                <Text
+                  style={[
+                    styles.infoValue,
+                    { color: notAskedDates > 0 ? 'green' : 'red' },
+                  ]}
+                >
+                  {notAskedDates}{' '}
+                  {notAskedDates > 0 && notAskedDates === 1 ? 'day' : 'days'}
+                </Text>
+              </View>
+            </View>
 
             {date && (
               <>
@@ -427,6 +507,44 @@ const CustomerDetail: React.FC<Props> = ({ navigation, route }) => {
           {/* Bottom Spacer */}
           <View style={{ height: hp(20) }} />
         </ScrollView>
+
+        <Portal>
+          <Dialog
+            visible={statusDialogVisible}
+            onDismiss={() => setStatusDialogVisible(false)}
+          >
+            <Dialog.Title>{t('Update Status')}</Dialog.Title>
+            <Dialog.Content>
+              {STATUS_OPTIONS.map(option => {
+                const label = option
+                  .toLowerCase()
+                  .replace(/_/g, ' ')
+                  .replace(/\b\w/g, (l: string) => l.toUpperCase());
+                return (
+                  <TouchableOpacity
+                    key={option}
+                    style={{ flexDirection: 'row', alignItems: 'center' }}
+                    onPress={() => setSelectedStatus(option)}
+                  >
+                    <Checkbox
+                      status={
+                        selectedStatus === option ? 'checked' : 'unchecked'
+                      }
+                      onPress={() => setSelectedStatus(option)}
+                    />
+                    <Text style={{ fontSize: wp(4) }}>{label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </Dialog.Content>
+            <Dialog.Actions>
+              <Button onPress={() => setStatusDialogVisible(false)}>
+                {t('Cancel')}
+              </Button>
+              <Button onPress={handleStatusUpdate}>{t('Save')}</Button>
+            </Dialog.Actions>
+          </Dialog>
+        </Portal>
 
         {/* Bottom Convert Button */}
         <View style={styles.bottomButtonContainer}>

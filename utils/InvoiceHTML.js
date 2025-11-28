@@ -21,7 +21,8 @@ export default function generateInvoiceHTML(projectData) {
   );
 
   const grandTotal = projectData.grandTotal;
-  const netRemaining = grandTotal - paymentsInTotal;
+  const discount = projectData.discount || 0;
+  const netRemaining = grandTotal - discount - paymentsInTotal;
 
   let html = `
   <!DOCTYPE html>
@@ -280,7 +281,6 @@ export default function generateInvoiceHTML(projectData) {
       </div>
     </div>
     
-    <div class="invoice-title">INVOICE</div>
     
     
     
@@ -312,10 +312,6 @@ export default function generateInvoiceHTML(projectData) {
           <td>${currentDate}</td>
         </tr>
         <tr>
-          <td>INVOICE #</td>
-          <td>${projectData.id}</td>
-        </tr>
-        <tr>
           <td>Customer ID</td>
           <td>${projectData.customerId || 'N/A'}</td>
         </tr>
@@ -339,7 +335,7 @@ export default function generateInvoiceHTML(projectData) {
       </thead>
       <tbody>
   `;
-
+  console.log(projectData);
   projectData.projectItems.forEach(item => {
     html += `
         <tr>
@@ -438,25 +434,37 @@ export default function generateInvoiceHTML(projectData) {
   html += `
     <div class="totals-section">
       <div class="totals-row">
-        <div class="total-label">ITEMS TOTAL</div>
-        <div class="total-value">₹${itemsTotal.toLocaleString('en-IN')}</div>
+        <div class="total-label" style="font-size: 16px;">ITEMS TOTAL</div>
+        <div class="total-value" style="font-size: 16px;">₹${itemsTotal.toLocaleString(
+          'en-IN',
+        )}</div>
+      </div>
+
+      ${
+        discount > 0
+          ? `<div class="totals-row grand-total">
+        <div class="total-label" style="font-size: 16px;">DISCOUNT</div>
+        <div class="total-value" style="font-size: 16px;">₹${discount.toLocaleString(
+          'en-IN',
+        )}</div>
+      </div>`
+          : ''
+      }
+
+      <div class="totals-row grand-total">
+        <div class="total-label" style="font-size: 16px;">GRAND TOTAL</div>
+        <div class="total-value" style="font-size: 16px;">₹${(
+          grandTotal - discount
+        ).toLocaleString('en-IN')}</div>
       </div>
       
       <div class="totals-row">
-        <div class="total-label">TOTAL PAYMENTS RECEIVED</div>
-        <div class="total-value positive">₹${paymentsInTotal.toLocaleString(
+        <div class="total-label" style="font-size: 16px;">TOTAL PAYMENTS RECEIVED</div>
+        <div class="total-value positive" style="font-size: 16px;">₹${paymentsInTotal.toLocaleString(
           'en-IN',
         )}</div>
       </div>
       
-     
-      
-      <div class="totals-row grand-total">
-        <div class="total-label" style="font-size: 16px;">GRAND TOTAL</div>
-        <div class="total-value" style="font-size: 16px;">₹${grandTotal.toLocaleString(
-          'en-IN',
-        )}</div>
-      </div>
       
       <div class="totals-row grand-total">
         <div class="total-label" style="font-size: 16px; color: ${

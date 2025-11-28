@@ -63,6 +63,9 @@ export type Project = {
   status: string;
   totalBudget?: number;
   createdAt?: string;
+  totalAdvance?: number;
+  advancePaymentDate?: string;
+  paymentEnteredBy?: string;
   location: {
     id: number;
     address: string;
@@ -226,7 +229,10 @@ const ProjectCard = React.memo(
               <View style={styles.amountBlock}>
                 <Text style={styles.amountLabel}>{t('Total')}</Text>
                 <Text style={styles.amountValue}>
-                  ₹{item.grandTotal.toLocaleString('en-IN')}
+                  ₹
+                  {(item.grandTotal - (item.discount || 0)).toLocaleString(
+                    'en-IN',
+                  )}
                 </Text>
               </View>
               <View style={styles.amountDivider} />
@@ -247,7 +253,10 @@ const ProjectCard = React.memo(
                     },
                   ]}
                 >
-                  ₹{item.remainingAmount.toLocaleString('en-IN')}
+                  {/* ₹{item.remainingAmount.toLocaleString('en-IN')} */}₹
+                  {(item.remainingAmount - (item.discount || 0)).toLocaleString(
+                    'en-IN',
+                  )}
                 </Text>
               </View>
             </View>
@@ -353,7 +362,7 @@ const ProjectList: React.FC<Props> = ({ navigation, route }) => {
     try {
       setLoading(true);
       const res = await ProjectAPI.getAll();
-
+      console.log(res);
       const userStr = await AsyncStorage.getItem('user');
       const parsed = userStr ? JSON.parse(userStr) : null;
       setRole(parsed?.role || '');

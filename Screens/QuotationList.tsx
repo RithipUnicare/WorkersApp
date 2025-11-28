@@ -188,7 +188,7 @@ const QuotationList: React.FC<Props> = ({ navigation, route }) => {
           </Text>
         </View>
 
-        <View style={styles.infoRow}>
+        {/* <View style={styles.infoRow}>
           <MaterialCommunityIcons
             name="calendar"
             size={width * 0.045}
@@ -197,7 +197,7 @@ const QuotationList: React.FC<Props> = ({ navigation, route }) => {
           <Text style={styles.infoText}>
             {t('Delivery')}: {dayjs(item.deliveryDate).format('DD-MM-YYYY')}
           </Text>
-        </View>
+        </View> */}
 
         <View style={styles.infoRow}>
           <MaterialCommunityIcons
@@ -256,7 +256,11 @@ const QuotationList: React.FC<Props> = ({ navigation, route }) => {
         data={
           Completed
             ? filteredQuotations.filter(q => q.status === 'COMPLETED')
-            : filteredQuotations.filter(q => q.status !== 'COMPLETED')
+            : filteredQuotations.filter(
+                q =>
+                  q.status !== 'COMPLETED' &&
+                  q.status?.toLocaleLowerCase() === 'created',
+              )
         }
         renderItem={renderItem}
         keyExtractor={item => item.id.toString()}

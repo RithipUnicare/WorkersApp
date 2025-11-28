@@ -27,6 +27,7 @@ import {
   Chip,
 } from 'react-native-paper';
 import ItemDialog from './components/ItemDialog';
+import AdvanceDialog from './components/AdvanceDialog';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
@@ -189,6 +190,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   const [selectedDateObj, setSelectedDateObj] = useState<Date>(new Date());
   const [timePickerOpen, setTimePickerOpen] = useState(false);
   const [time, setTime] = useState('');
+  const [user, setUser] = useState('');
 
   const [items, setItems] = useState<ProjectItem[]>([]);
   const [itemModalOpen, setItemModalOpen] = useState(false);
@@ -214,11 +216,12 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
   const [advanceAmount, setAdvanceAmount] = useState('');
   const [createdProjectId, setCreatedProjectId] = useState<number | null>(null);
   const [discount, setDiscount] = useState<number>(0);
-  const [discountPercentage, setDisCountPercentage] = useState<number>(0);
+  const [discountPercentage, setDisCountPercentage] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
   const [actualAmount, setActualAmount] = useState<number>(0);
+  const [advanceAmountDate, setAdvanceAmountDate] = useState('');
 
   const [isTamil, setIsTamil] = useState(false);
   const [translations, setTranslations] = useState<Record<string, string>>({});
@@ -230,7 +233,13 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       const tamil = saved === 'ta';
       setIsTamil(tamil);
     };
+    const initRole = async () => {
+      const saved = await AsyncStorage.getItem('user');
+      const user = JSON.parse(saved || '{}');
+      setUser(user?.name);
+    };
     initLang();
+    initRole();
   }, []);
   // Translate all strings
   useEffect(() => {
@@ -329,11 +338,14 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       setStatus(rawProject.status || 'CREATED');
       setDiscount(rawProject.discount || 0);
       setDisCountPercentage(
-        (Number(rawProject.discount) /
-          (rawProject.totalBudget - rawProject.discount)) *
-          100,
+        (
+          (Number(rawProject.discount) /
+            (rawProject.totalBudget - rawProject.discount)) *
+          100
+        ).toString(),
       );
-
+      setAdvanceAmount(rawProject.totalAdvance.toString() || '');
+      setAdvanceAmountDate(rawProject.advanceAmountDate || '');
       if (rawProject.customerTime) {
         const { hour, minute } = rawProject.customerTime;
         setTime(dayjs().hour(hour).minute(minute).toISOString());
@@ -379,6 +391,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       }
 
       const projectItems = rawProject.projectItems || rawProject.items || [];
+      console.log(projectItems);
       if (projectItems.length) {
         setItems(
           projectItems.map((it: any) => ({
@@ -680,7 +693,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
         setSnackbar({ visible: true, message: t('Project updated!') });
         navigation.replace('ProjectDetails', { project: rawProject });
       } else {
-        const payload = {
+        const payload: any = {
           customerId,
           deliveryDate: dayjs(deliveryDate, 'DD-MM-YYYY').format('YYYY-MM-DD'),
           projectDescription,
@@ -691,6 +704,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           totalBudget: actualAmount,
           items: items.map(i => ({
             itemName: i.itemName,
+            itemDescription: i.itemDescription,
             rateMrp: i.rateMrp,
             quantity: i.quantity,
             unitId: i.unitId,
@@ -698,11 +712,18 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
             hsnSac: i.hsnSac || '',
           })),
         };
-
+        if (advanceAmount) {
+          payload.totalAdvance = Number(advanceAmount);
+          payload.advancePaymentDate = advanceAmountDate
+            ? advanceAmountDate
+            : dayjs().format('YYYY-MM-DD');
+          payload.paymentEnteredBy = rawProject?.paymentEnteredBy || user;
+        }
         if (!items.length) {
           setSnackbar({ visible: true, message: t('Enter at least one item') });
           return;
         }
+        console.log(payload);
         const created: any = await ProjectAPI.create(payload);
         projectId = created.data.id || created.data.projectId;
         setCreatedProjectId(projectId);
@@ -779,7 +800,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
 
         if (isFromQuotationDetail) {
           await QuotationAPI.updateQuotationStatus(rawProject.id, {
-            status: 'IN PROGRESS',
+            status: 'COMPLETED',
           });
         }
         ToastAndroid.show(
@@ -1058,9 +1079,12 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                   setDiscount(discountValue);
                   if (discountValue === 0 || text === '') {
                     setTotalAmount(String(actualAmount));
-                    setDisCountPercentage(0);
+                    setDisCountPercentage('0');
                   } else {
-                    const percentage = (discountValue / actualAmount) * 100;
+                    const percentage = (
+                      (discountValue / actualAmount) *
+                      100
+                    ).toString();
                     setDisCountPercentage(percentage);
                     setTotalAmount(String(actualAmount - discountValue));
                   }
@@ -1073,25 +1097,35 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               />
               <TextInput
                 label={t('Percentage')}
-                value={
-                  discountPercentage === 0
-                    ? '0.00'
-                    : discountPercentage.toFixed(2)
-                }
+                value={discountPercentage}
                 onChangeText={text => {
-                  const percentValue = text === '' ? 0 : Number(text);
-                  setDisCountPercentage(percentValue);
-                  if (percentValue === 0 || text === '') {
+                  if (text === '') {
+                    setDisCountPercentage('');
                     setDiscount(0);
                     setTotalAmount(String(actualAmount));
-                  } else {
-                    const discountValue = (actualAmount * percentValue) / 100;
-                    setDiscount(discountValue);
-                    setTotalAmount(String(actualAmount - discountValue));
+                    return;
                   }
+
+                  const normalized = text.replace(',', '.');
+                  const percentValue = parseFloat(normalized);
+
+                  if (
+                    isNaN(percentValue) ||
+                    percentValue < 0 ||
+                    percentValue > 100
+                  ) {
+                    setDisCountPercentage(normalized);
+                    return;
+                  }
+
+                  setDisCountPercentage(normalized);
+
+                  const discountValue = (actualAmount * percentValue) / 100;
+                  setDiscount(discountValue);
+                  setTotalAmount(String(actualAmount - discountValue));
                 }}
                 mode="outlined"
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
                 style={[styles.input, { width: wp(30) }]}
                 theme={{ roundness: wp(2.5) }}
                 editable={true}
@@ -1101,7 +1135,16 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               />
             </View>
           )}
-
+          <TextInput
+            label={t('Advance Amount')}
+            value={advanceAmount}
+            onChangeText={setAdvanceAmount}
+            mode="outlined"
+            keyboardType="numeric"
+            style={styles.input}
+            theme={{ roundness: wp(2.5) }}
+            editable={true}
+          />
           {/* Delivery Date (last field) */}
           <TouchableOpacity onPress={() => setDatePickerOpen(true)}>
             <TextInput
@@ -1218,35 +1261,18 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
         </Portal>
 
         {/* Advance Dialog */}
-        <Portal>
-          <Dialog visible={false} onDismiss={() => setAdvanceModalOpen(false)}>
-            <Dialog.Title>{t('Add Advance Payment')}</Dialog.Title>
-            <Dialog.Content>
-              <TextInput
-                label={t('Advance Amount')}
-                value={advanceAmount}
-                onChangeText={setAdvanceAmount}
-                mode="outlined"
-                keyboardType="numeric"
-                style={styles.dialogInput}
-                left={<TextInput.Affix text="₹" />}
-              />
-            </Dialog.Content>
-            <Dialog.Actions>
-              <Button
-                onPress={() => {
-                  setAdvanceModalOpen(false);
-                  navigation.goBack();
-                }}
-              >
-                {t('Skip')}
-              </Button>
-              <Button onPress={saveAdvance} disabled={!advanceAmount}>
-                {t('Save')}
-              </Button>
-            </Dialog.Actions>
-          </Dialog>
-        </Portal>
+        <AdvanceDialog
+          visible={advanceModalOpen}
+          amount={advanceAmount}
+          onAmountChange={setAdvanceAmount}
+          onSkip={() => {
+            setAdvanceModalOpen(false);
+            navigation.goBack();
+          }}
+          onSave={saveAdvance}
+          t={t}
+          dialogInputStyle={styles.dialogInput}
+        />
 
         {/* Date & Time Pickers */}
         <DatePicker

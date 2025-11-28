@@ -93,7 +93,6 @@ async function jsonRequest(method, path, body, headers = {}) {
     data: body,
     ...config,
   });
-  console.log('Response:', response);
   return handleResponse(response, 'json');
 }
 

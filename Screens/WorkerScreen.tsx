@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonActions } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslator } from 'react-native-translator';
+import { onLoginSuccess } from '../utils/pushNofication';
 
 const { width, height } = Dimensions.get('window');
 const wp = (percentage: number) => (width * percentage) / 100;
@@ -67,6 +68,7 @@ const WorkerHomePage: React.FC<Props> = ({ navigation }) => {
       // Get username
       const currentUser = await AsyncStorage.getItem('user');
       const parsedUser = currentUser ? JSON.parse(currentUser) : null;
+      onLoginSuccess(parsedUser);
       setUsername(parsedUser?.name || 'Worker User');
     };
     init();

@@ -89,7 +89,12 @@ export const initNotification = async () => {
       'unattendedCustomers';
     if (screen) {
       AsyncStorage.setItem('notificationNavigate', screen);
-      AsyncStorage.setItem('openId', (notification?.additionalData as NotificationAdditionalData)?.id?.toString()|| '');
+      AsyncStorage.setItem(
+        'openId',
+        (
+          notification?.additionalData as NotificationAdditionalData
+        )?.id?.toString() || '',
+      );
       const cleanupSessionTimeout = setupSessionTimeout(navigationRef);
       navigate('splash');
       cleanupSessionTimeout();
@@ -103,6 +108,26 @@ export const triggerTestAlert = () => {
   Alert.alert('Test', 'OneSignal is ready! Send a real push from dashboard.');
 };
 
+export async function onLoginSuccess(user: any) {
+  const tags = await OneSignal.User.getTags();
+  const existingRole = tags?.role;
+  console.log(user);
+  if (user?.role === 'admin' || user?.role === 'superadmin') {
+    if (existingRole !== 'admin') {
+      await OneSignal.User.addTag('role', 'admin');
+      console.log('Admin tag added');
+    } else {
+      console.log('Admin tag already exists — no need to add again');
+    }
+  } else {
+    if (existingRole === 'admin') {
+      await OneSignal.User.removeTag('role');
+      console.log('Admin tag removed because user is not admin');
+    }
+    console.log('Failed to assign admin rights');
+  }
+}
+
 export async function sendPushNotification(
   title: string,
   message: string,
@@ -113,7 +138,6 @@ export async function sendPushNotification(
 
   const ONE_SIGNAL_APP_ID = '81985d30-6da5-4f7a-8b63-e629cddfefb3';
 
-  // Replace with your OneSignal REST API key
   const REST_API_KEY =
     'os_v2_app_qgmf2mdnuvhxvc3d4yu43x7pwnmqqkljjnvehdevihpg376ze6252qe5ny6vetxg26l3nt5iifupn25n3mi45rf7dkju2mphrhdrfvy';
 
@@ -144,6 +168,43 @@ export async function sendPushNotification(
 
     console.log('Push notification sent:', json);
     return json;
+  } catch (err) {
+    console.error('Push API Error:', err);
+    throw err;
+  }
+}
+
+export async function sendPushPaymentNotification(
+  title: string,
+  message: string,
+  screen: string,
+  id?: number,
+) {
+  const url = 'https://onesignal.com/api/v1/notifications?c=push';
+
+  const ONE_SIGNAL_APP_ID = '81985d30-6da5-4f7a-8b63-e629cddfefb3';
+  const REST_API_KEY =
+    'os_v2_app_qgmf2mdnuvhxvc3d4yu43x7pwnmqqkljjnvehdevihpg376ze6252qe5ny6vetxg26l3nt5iifupn25n3mi45rf7dkju2mphrhdrfvy';
+
+  const body = {
+    app_id: ONE_SIGNAL_APP_ID,
+    filters: [{ field: 'tag', key: 'role', relation: '=', value: 'admin' }],
+    headings: { en: title },
+    contents: { en: message },
+    data: { screen, id },
+  };
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Basic ${REST_API_KEY}`, // Use Basic for REST API
+      },
+      body: JSON.stringify(body),
+    });
+
+    return await res.json();
   } catch (err) {
     console.error('Push API Error:', err);
     throw err;

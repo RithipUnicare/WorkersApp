@@ -21,6 +21,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import initNotification from '../utils/pushNofication';
 import { useTranslator } from 'react-native-translator';
 import CustomDrawer from '../utils/customDrawer';
+import { onLoginSuccess } from '../utils/pushNofication';
 
 const { width, height } = Dimensions.get('window');
 const wp = (percentage: number) => (width * percentage) / 100;
@@ -91,7 +92,7 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
       //await AsyncStorage.setItem('role', 'Admin');
       const currentUser = await AsyncStorage.getItem('user');
       const parsedUser = currentUser ? JSON.parse(currentUser) : null;
-
+      onLoginSuccess(parsedUser);
       setUsername(parsedUser?.name || 'Admin User');
       // animation
       Animated.timing(fadeAnim, {
@@ -158,6 +159,7 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
       title: t('Customer List'),
       description: t('View and manage customers'),
       icon: 'account-group',
+      color: '#4CAF50', // Green → people/customer friendly
       onPress: () => navigation.navigate('CustomerList'),
     },
 
@@ -166,34 +168,33 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
       title: t('Quotations List'),
       description: t('Track ongoing projects'),
       icon: 'folder-open',
+      color: '#2196F3', // Blue → documents, quotations, files
       onPress: () => navigation.navigate('QuotationList'),
     },
+
     {
       id: 3,
       title: t('Projects List'),
       description: t('Track ongoing projects'),
-      icon: 'folder-open',
+      icon: 'hammer-screwdriver',
+      color: '#FF9800', // Orange → construction/work/project tools
       onPress: () => navigation.navigate('ProjectList'),
     },
-    // {
-    //   id: 4,
-    //   title: t('Admin Panel'),
-    //   description: t('Manage users and roles'),
-    //   icon: 'cog',
-    //   onPress: () => navigation.navigate('AdminPanel'),
-    // },
     {
       id: 4,
       title: t('Unattended Customers'),
       description: t('View customers needing follow-up'),
       icon: 'account-clock',
+      color: '#F44336', // Red → urgent, attention needed
       onPress: () => navigation.navigate('unattendedCustomers'),
     },
+
     {
       id: 5,
       title: t('Pending Payments'),
       description: t('View pending payments'),
       icon: 'cash',
+      color: '#009688', // Teal → finance, money, calm status
       onPress: () => navigation.navigate('pendingPayments'),
     },
   ];
@@ -310,7 +311,7 @@ const AdminHomePage: React.FC<Props> = ({ navigation }) => {
                         <MaterialCommunityIcons
                           name={item.icon}
                           size={wp(8)}
-                          color="#075E54"
+                          color={item.color}
                         />
                       </View>
                       <View style={styles.menuTextContainer}>

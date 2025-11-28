@@ -13,6 +13,7 @@ import {
   Image,
   Linking,
   FlatList,
+  ToastAndroid,
 } from 'react-native';
 
 import {
@@ -33,6 +34,7 @@ import dayjs from 'dayjs';
 import { rootStackParamList } from '../navigation/AppNavigation';
 import { QuotationAPI } from '../service/apiService';
 import ItemDialog from './components/ItemDialog';
+import AdvanceDialog from './components/AdvanceDialog';
 import { generatePDF } from 'react-native-html-to-pdf';
 import { WebView } from 'react-native-webview';
 import Share from 'react-native-share';
@@ -75,6 +77,9 @@ export type Quotation = {
   createdAt: string;
   updatedAt: string;
   discount: number;
+  totalAdvance?: number;
+  advancePaymentDate?: string;
+  paymentEnteredBy?: string;
   status?: string;
   address?: string;
   location?: {
@@ -163,6 +168,10 @@ const enToTa: Record<string, string> = {
   Tax: 'வரி',
   'HSN/SAC': 'HSN/SAC',
   Total: 'மொத்தம்',
+  'Advance Details': 'முன்பணம் விவரங்கள்',
+  'Advance Amount': 'முன்பண தொகை',
+  'Advance Payment Date': 'முன்பண கட்டண தேதி',
+  'Payment Entered By': 'கட்டணம் உள்ளிட்டவர்',
 
   // Buttons & Actions
   'Delete Quotation': 'மேற்கோளை நீக்கு',
@@ -235,6 +244,9 @@ const QuotationDetail: React.FC = () => {
     initialQuotation.status || 'CREATED',
   );
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const [user, setUser] = useState('');
+  const [advanceModalOpen, setAdvanceModalOpen] = useState(false);
+  const [advanceAmount, setAdvanceAmount] = useState('');
 
   const { translate } = useTranslator();
   const openGoogleMaps = (
@@ -264,6 +276,7 @@ const QuotationDetail: React.FC = () => {
     const initRole = async () => {
       const saved = await AsyncStorage.getItem('user');
       const user = JSON.parse(saved || '{}');
+      setUser(user?.name);
       setRole(user.role || 'worker');
     };
     initLang();
@@ -391,6 +404,25 @@ const QuotationDetail: React.FC = () => {
     },
     [isPlaying, currentUrl],
   );
+
+  const addAdvanceAmount = async () => {
+    try {
+      const payload: Partial<Quotation> = {
+        totalAdvance: parseFloat(advanceAmount),
+        advancePaymentDate: dayjs().format('YYYY-MM-DD'),
+        paymentEnteredBy: user,
+      };
+
+      const res = await QuotationAPI.update(quotationData.id, payload);
+      if (res?.data) {
+        reloadQuotation();
+      }
+      ToastAndroid.show('Quotation updated successfully', ToastAndroid.SHORT);
+    } catch (error) {
+      console.log(error);
+      Alert.alert('Failed to update quotation');
+    }
+  };
 
   const pickImages = () => {
     launchImageLibrary(
@@ -666,6 +698,7 @@ const QuotationDetail: React.FC = () => {
         id: item.id,
         itemName: item.itemName,
         quantity: item.quantity,
+        itemDescription: item.itemDescription,
         rateMrp: item.rateMrp,
         totalCost: item.totalCost,
         unitId: item.unit.id,
@@ -692,6 +725,11 @@ const QuotationDetail: React.FC = () => {
       siteImages: [],
       advancePayments: [],
     };
+    if (quotationData.totalAdvance) {
+      projectToEdit.totalAdvance = quotationData.totalAdvance;
+      projectToEdit.advancePaymentDate = quotationData.advancePaymentDate;
+      projectToEdit.paymentEnteredBy = quotationData.paymentEnteredBy;
+    }
     navigation.navigate('AddProject', { projectToEdit });
   };
 
@@ -852,7 +890,7 @@ const QuotationDetail: React.FC = () => {
             />
           </View>
 
-          <View style={styles.infoRow}>
+          {/* <View style={styles.infoRow}>
             <MaterialCommunityIcons
               name="calendar"
               size={width * 0.05}
@@ -862,7 +900,7 @@ const QuotationDetail: React.FC = () => {
             <Text style={styles.infoValue}>
               {formatDate(quotationData.deliveryDate)}
             </Text>
-          </View>
+          </View> */}
 
           <View style={styles.infoRow}>
             <MaterialCommunityIcons
@@ -898,6 +936,31 @@ const QuotationDetail: React.FC = () => {
             </View>
           </View>
         </Card>
+        {role !== 'worker' &&
+          (quotationData.totalAdvance ||
+            quotationData.advancePaymentDate ||
+            quotationData.paymentEnteredBy) && (
+            <Card style={styles.descCard}>
+              <Text style={styles.descTitle}>{t('Advance Details')}</Text>
+              {quotationData.totalAdvance != null && (
+                <Text style={styles.descText}>
+                  {t('Advance Amount')}: ₹
+                  {Number(quotationData.totalAdvance).toLocaleString('en-IN')}
+                </Text>
+              )}
+              {quotationData.advancePaymentDate && (
+                <Text style={styles.descText}>
+                  {t('Advance Payment Date')}:{' '}
+                  {formatDate(quotationData.advancePaymentDate)}
+                </Text>
+              )}
+              {quotationData.paymentEnteredBy && (
+                <Text style={styles.descText}>
+                  {t('Payment Entered By')}: {quotationData.paymentEnteredBy}
+                </Text>
+              )}
+            </Card>
+          )}
 
         {/* Description */}
         <Card style={styles.descCard}>
@@ -1204,13 +1267,37 @@ const QuotationDetail: React.FC = () => {
           iconColor="#075E54"
         />
         <IconButton
-          icon="plus"
+          icon="cash-plus"
+          onPress={() => setAdvanceModalOpen(true)}
+          style={styles.actionButton}
+          contentStyle={styles.actionButtonContent}
+          iconColor="#075E54"
+        />
+        <IconButton
+          icon="hammer-screwdriver"
           onPress={handleConvertToProject}
           style={styles.actionButton}
           contentStyle={styles.actionButtonContent}
           iconColor="#075E54"
         />
       </View>
+
+      <AdvanceDialog
+        visible={advanceModalOpen}
+        amount={advanceAmount}
+        onAmountChange={setAdvanceAmount}
+        onSkip={() => {
+          setAdvanceModalOpen(false);
+          setAdvanceAmount('');
+        }}
+        onSave={async () => {
+          await addAdvanceAmount();
+          setAdvanceModalOpen(false);
+          setAdvanceAmount('');
+        }}
+        t={t}
+        dialogInputStyle={styles.dialogInput}
+      />
 
       {/* Add Item Dialog */}
       <ItemDialog
@@ -1678,6 +1765,9 @@ const styles = StyleSheet.create({
     color: '#333',
     textAlign: 'center',
     marginTop: 2,
+  },
+  dialogInput: {
+    marginTop: 8,
   },
   divider: {
     width: 1,

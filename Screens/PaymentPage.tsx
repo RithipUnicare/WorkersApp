@@ -38,6 +38,7 @@ import { Table, Row, Rows } from 'react-native-table-component';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslator } from 'react-native-translator';
 import VoiceFriendlyInput from '../utils/VoiceFriendlyInput';
+import { sendPushPaymentNotification } from '../utils/pushNofication';
 
 const { width, height } = Dimensions.get('window');
 const wp = (percentage: number) => (width * percentage) / 100;
@@ -57,6 +58,7 @@ type Payment = {
   createdAt: string;
   paymentDate: string;
   paymentTime?: PaymentTime;
+  paymentInEnteredBy?: string;
   notes?: string;
 };
 
@@ -83,7 +85,7 @@ const enToTa: Record<string, string> = {
   'Material Expenses': 'பொருள் செலவுகள்',
   'No payments received': 'பணம் பெறப்படவில்லை',
   'No payments made': 'பணம் செலுத்தப்படவில்லை',
-
+  discount: 'தள்ளுபடி',
   // Labels
   'Project Total': 'மொத்த தொகை',
   'Items Cost': 'பொருட்கள் செலவு',
@@ -98,7 +100,7 @@ const enToTa: Record<string, string> = {
   '+ Material expense': '+ பொருள் செலவுகள்',
   'Preview Invoice': 'விலைப்பட்டியல் முன்னோட்டம்',
   'Share Invoice': 'விலைப்பட்டியல் பகிர்',
-
+  profit: 'லாபம்',
   // Modal
   Record: 'பதிவு',
   Edit: 'திருத்து',
@@ -137,7 +139,7 @@ const enToTa: Record<string, string> = {
   'Are you sure you want to delete this payment?':
     'இந்த பணத்தை நிச்சயமாக நீக்க வேண்டுமா?',
   Delete: 'நீக்கு',
-
+  Discount: 'தள்ளுபடி',
   // Preview
   'Invoice Preview': 'விலைப்பட்டியல் முன்னோட்டம்',
   'Loading preview...': 'முன்னோட்டம் ஏற்றுகிறது...',
@@ -148,7 +150,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
   const [paymentsIn, setPaymentsIn] = useState<Payment[]>([]);
   const [paymentsOut, setPaymentsOut] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const [user, setUser] = useState('');
   const [isTamil, setIsTamil] = useState(false);
   const [translations, setTranslations] = useState<Record<string, string>>({});
   const { translate } = useTranslator();
@@ -167,6 +169,12 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
       setIsTamil(tamil);
     };
     initLang();
+    const initRole = async () => {
+      const saved = await AsyncStorage.getItem('user');
+      const user = JSON.parse(saved || '{}');
+      setUser(user?.name);
+    };
+    initRole();
   }, []);
 
   // Translate all strings
@@ -218,7 +226,6 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
         ProjectAPI.getPaymentsIn(project.id),
         ProjectAPI.getPaymentsOut(project.id),
       ]);
-
       setPaymentsIn(Array.isArray(inRes.data) ? inRes.data : []);
       setPaymentsOut(Array.isArray(outRes.data) ? outRes.data : []);
     } catch (e) {
@@ -238,7 +245,10 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
   );
   const paidInTotal = paymentsIn.reduce((sum, p) => sum + p.amount, 0);
   const paidOutTotal = paymentsOut.reduce((sum, p) => sum + p.amount, 0);
-  const netRemaining = project.grandTotal - (paidInTotal + advanceTotal);
+  const netRemaining =
+    project.grandTotal - project.discount - (paidInTotal + advanceTotal);
+  const totalAmount = project.grandTotal - project.discount;
+  const materialProfit = totalAmount - paidOutTotal;
 
   const [modalVisible, setModalVisible] = useState(false);
   const [isPaymentIn, setIsPaymentIn] = useState(true);
@@ -275,6 +285,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
       amount: amt,
       paymentDate: dayjs(date).format('YYYY-MM-DD'),
       type: finalType,
+      paymentInEnteredBy: user,
       notes,
     };
 
@@ -288,6 +299,12 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
       }
 
       closeModal();
+      sendPushPaymentNotification(
+        t('Payment Added'),
+        t('Payment added successfully by ' + user + ' amount: ' + amount),
+        'ProjectList',
+        project.id,
+      );
       loadPayments();
     } catch (e: any) {
       Alert.alert(t('Error'), e.message || t('Failed to save payment'));
@@ -362,16 +379,16 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
         directory: 'Documents',
       });
 
-      const fileName = `${project.customerName}_Invoice_${project.id}.pdf`;
+      const fileName = `${project.customerName}_Quotation_${project.id}.pdf`;
       const downloadsPath =
         Platform.OS === 'android'
-          ? `${RNFS.DownloadDirectoryPath}/${fileName}`
-          : `${RNFS.DocumentDirectoryPath}/${fileName}`;
+          ? `${RNFS.CachesDirectoryPath}/${fileName}`
+          : `${RNFS.CachesDirectoryPath}/${fileName}`;
 
       await RNFS.copyFile(filePath, downloadsPath);
       await Share.open({
-        title: `Invoice - ${project.customerName}`,
-        message: `Invoice for project #${project.id}`,
+        title: `Quotation - ${project.customerName}`,
+        message: `Quotation for project #${project.id}`,
         url: `file://${downloadsPath}`,
         type: 'application/pdf',
       });
@@ -405,6 +422,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
     t('Date & Type'),
     t('Amount'),
     t('Notes'),
+    t('Payment In Entered By'),
     t('Actions'),
   ];
   const paymentsInTableData = paymentsIn.map(item => [
@@ -428,6 +446,13 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
       numberOfLines={2}
     >
       {item.notes || '-'}
+    </Text>,
+    <Text
+      key={`payment-in-${item.id}`}
+      style={[styles.cellNotes, { fontSize: getFontSize(wp(3.2)) }]}
+      numberOfLines={2}
+    >
+      {item.paymentInEnteredBy || '-'}
     </Text>,
     <View key={`in-actions-${item.id}`} style={styles.actionButtons}>
       <IconButton
@@ -530,7 +555,10 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                     <Text
                       style={[styles.value, { fontSize: getFontSize(wp(4)) }]}
                     >
-                      ₹{project.grandTotal.toLocaleString('en-IN')}
+                      ₹
+                      {(project.grandTotal - project.discount).toLocaleString(
+                        'en-IN',
+                      )}
                     </Text>
                   </View>
                   <Divider style={styles.divider} />
@@ -550,6 +578,20 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                   <Divider style={styles.divider} />
 
                   <View style={styles.row}>
+                    <Text
+                      style={[styles.label, { fontSize: getFontSize(wp(3.8)) }]}
+                    >
+                      {t('Discount')}
+                    </Text>
+                    <Text
+                      style={[styles.value, { fontSize: getFontSize(wp(4)) }]}
+                    >
+                      ₹{project.discount.toLocaleString('en-IN')}
+                    </Text>
+                  </View>
+                  <Divider style={styles.divider} />
+
+                  {/* <View style={styles.row}>
                     <Text
                       style={[styles.label, { fontSize: getFontSize(wp(3.8)) }]}
                     >
@@ -582,6 +624,22 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                     </Text>
                   </View>
                   <Divider style={styles.divider} />
+                  <View style={styles.row}>
+                    <Text
+                      style={[styles.label, { fontSize: getFontSize(wp(3.8)) }]}
+                    >
+                      {t('Profit')}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.value,
+                        { fontSize: getFontSize(wp(4)), color: '#27ae60' },
+                      ]}
+                    >
+                      ₹{(paidInTotal - paidOutTotal).toLocaleString('en-IN')}
+                    </Text>
+                  </View>
+                  <Divider style={styles.divider} /> */}
 
                   <View style={styles.row}>
                     <Text
@@ -649,24 +707,33 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                       {t('No payments received')}
                     </Text>
                   ) : (
-                    <Table
-                      borderStyle={{ borderWidth: 1, borderColor: '#ddd' }}
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={true}
+                      persistentScrollbar={true}
+                      style={styles.horizontalScroll}
+                      indicatorStyle="default"
                     >
-                      <Row
-                        data={paymentsInTableHead}
-                        flexArr={[2, 1.5, 2, 1.5]}
-                        style={styles.tableHeaderIn}
-                        textStyle={[
-                          styles.headerText,
-                          { fontSize: getFontSize(wp(3.5)) },
-                        ]}
-                      />
-                      <Rows
-                        data={paymentsInTableData}
-                        flexArr={[2, 1.5, 2, 1.5]}
-                        style={styles.tableRow}
-                      />
-                    </Table>
+                      <Table
+                        borderStyle={{ borderWidth: 1, borderColor: '#ddd' }}
+                        style={{ width: wp(180) }}
+                      >
+                        <Row
+                          data={paymentsInTableHead}
+                          flexArr={[2, 1.5, 2, 1]}
+                          style={styles.tableHeaderIn}
+                          textStyle={[
+                            styles.headerText,
+                            { fontSize: getFontSize(wp(3.5)) },
+                          ]}
+                        />
+                        <Rows
+                          data={paymentsInTableData}
+                          flexArr={[2, 1.5, 2, 1]}
+                          style={styles.tableRow}
+                        />
+                      </Table>
+                    </ScrollView>
                   )}
                 </Card.Content>
               </Card>
@@ -688,25 +755,79 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
                       {t('No payments made')}
                     </Text>
                   ) : (
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={true}
+                      persistentScrollbar={true}
+                      style={styles.horizontalScroll}
+                    >
+                      <Table
+                        borderStyle={{ borderWidth: 1, borderColor: '#ddd' }}
+                        style={{ width: wp(180) }}
+                      >
+                        <Row
+                          data={paymentsOutTableHead}
+                          flexArr={[2, 1.5, 2, 1.5]}
+                          style={styles.tableHeaderOut}
+                          textStyle={[
+                            styles.headerText,
+                            { fontSize: getFontSize(wp(3.5)) },
+                          ]}
+                        />
+                        <Rows
+                          data={paymentsOutTableData}
+                          flexArr={[2, 1.5, 2, 1.5]}
+                          style={styles.tableRow}
+                          textStyle={{ textAlign: 'center' }}
+                        />
+                      </Table>
+                    </ScrollView>
+                  )}
+                </Card.Content>
+              </Card>
+
+              <Card style={styles.tableCard}>
+                <Card.Content>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={true}
+                    persistentScrollbar={true}
+                    style={styles.horizontalScroll}
+                  >
                     <Table
                       borderStyle={{ borderWidth: 1, borderColor: '#ddd' }}
+                      style={{ width: wp(180) }}
                     >
                       <Row
-                        data={paymentsOutTableHead}
-                        flexArr={[2, 1.5, 2, 1.5]}
-                        style={styles.tableHeaderOut}
+                        data={[
+                          t('Total Amount'),
+                          t('Total In'),
+                          t('Total Material Expense'),
+                          t('Profit'),
+                        ]}
+                        flexArr={[1, 1, 1, 1]}
+                        style={styles.tableHeaderIn}
                         textStyle={[
                           styles.headerText,
                           { fontSize: getFontSize(wp(3.5)) },
                         ]}
                       />
-                      <Rows
-                        data={paymentsOutTableData}
-                        flexArr={[2, 1.5, 2, 1.5]}
+                      <Row
+                        data={[
+                          `₹${totalAmount.toLocaleString('en-IN')}`,
+                          `₹${paidInTotal.toLocaleString('en-IN')}`,
+                          `₹${paidOutTotal.toLocaleString('en-IN')}`,
+                          `₹${materialProfit.toLocaleString('en-IN')}`,
+                        ]}
+                        flexArr={[1, 1, 1, 1]}
                         style={styles.tableRow}
+                        textStyle={[
+                          styles.value,
+                          { fontSize: getFontSize(wp(3.5)) },
+                        ]}
                       />
                     </Table>
-                  )}
+                  </ScrollView>
                 </Card.Content>
               </Card>
 
@@ -738,99 +859,105 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
 
           {/* Add/Edit Modal */}
           <Portal>
-            <Dialog
-              visible={modalVisible}
-              onDismiss={closeModal}
-              style={styles.dialog}
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={{ flex: 1 }}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
             >
-              <Dialog.Title
-                style={[styles.dialogTitle, { fontSize: getFontSize(wp(5)) }]}
+              <Dialog
+                visible={modalVisible}
+                onDismiss={closeModal}
+                style={styles.dialog}
               >
-                {editingId ? t('Edit') : t('Record')}{' '}
-                {isPaymentIn ? t('Payment In') : t('Payment Out')}
-              </Dialog.Title>
-              <Dialog.ScrollArea style={styles.dialogScrollArea}>
-                <ScrollView contentContainerStyle={styles.dialogContent}>
-                  <TextInput
-                    label={t('Amount')}
-                    value={amount}
-                    onChangeText={setAmount}
-                    mode="outlined"
-                    keyboardType="numeric"
-                    style={styles.input}
-                    theme={{ roundness: wp(2) }}
-                    left={<TextInput.Affix text="₹" />}
-                  />
-                  <Text
-                    style={[
-                      styles.radioLabel,
-                      { fontSize: getFontSize(wp(4)) },
-                    ]}
-                  >
-                    {t('Payment Type')}
-                  </Text>
-                  <RadioButton.Group
-                    onValueChange={setPaymentType}
-                    value={paymentType}
-                  >
-                    {(isPaymentIn ? IN_TYPES : [...OUT_TYPES, 'Custom']).map(
-                      type => (
-                        <View key={type} style={styles.radioRow}>
-                          <RadioButton value={type} />
-                          <Text
-                            style={[
-                              styles.radioText,
-                              { fontSize: getFontSize(wp(3.8)) },
-                            ]}
-                          >
-                            {type === paymentType ? t(paymentType) : t(type)}
-                          </Text>
-                        </View>
-                      ),
-                    )}
-                  </RadioButton.Group>
-                  {!isPaymentIn && paymentType === 'Custom' && (
-                    <VoiceFriendlyInput
-                      label={t('Custom')}
-                      value={customType}
-                      onChangeText={setCustomType}
+                <Dialog.Title
+                  style={[styles.dialogTitle, { fontSize: getFontSize(wp(5)) }]}
+                >
+                  {editingId ? t('Edit') : t('Record')}{' '}
+                  {isPaymentIn ? t('Payment In') : t('Payment Out')}
+                </Dialog.Title>
+                <Dialog.ScrollArea style={styles.dialogScrollArea}>
+                  <ScrollView contentContainerStyle={styles.dialogContent}>
+                    <TextInput
+                      label={t('Amount')}
+                      value={amount}
+                      onChangeText={setAmount}
                       mode="outlined"
+                      keyboardType="numeric"
                       style={styles.input}
                       theme={{ roundness: wp(2) }}
+                      left={<TextInput.Affix text="₹" />}
                     />
-                  )}
-                  <TextInput
-                    label={t('Date')}
-                    value={dayjs(date).format('DD-MM-YYYY')}
-                    mode="outlined"
-                    style={styles.input}
-                    editable={false}
-                    right={
-                      <TextInput.Icon
-                        icon="calendar"
-                        onPress={() => setShowDatePicker(true)}
-                        size={wp(6)}
+                    <Text
+                      style={[
+                        styles.radioLabel,
+                        { fontSize: getFontSize(wp(4)) },
+                      ]}
+                    >
+                      {t('Payment Type')}
+                    </Text>
+                    <RadioButton.Group
+                      onValueChange={setPaymentType}
+                      value={paymentType}
+                    >
+                      {(isPaymentIn ? IN_TYPES : [...OUT_TYPES, 'Custom']).map(
+                        type => (
+                          <View key={type} style={styles.radioRow}>
+                            <RadioButton value={type} />
+                            <Text
+                              style={[
+                                styles.radioText,
+                                { fontSize: getFontSize(wp(3.8)) },
+                              ]}
+                            >
+                              {type === paymentType ? t(paymentType) : t(type)}
+                            </Text>
+                          </View>
+                        ),
+                      )}
+                    </RadioButton.Group>
+                    {!isPaymentIn && paymentType === 'Custom' && (
+                      <VoiceFriendlyInput
+                        label={t('Custom')}
+                        value={customType}
+                        onChangeText={setCustomType}
+                        mode="outlined"
+                        style={styles.input}
+                        theme={{ roundness: wp(2) }}
                       />
-                    }
-                  />
-                  <VoiceFriendlyInput
-                    label={t('Notes (Optional)')}
-                    value={notes}
-                    onChangeText={setNotes}
-                    mode="outlined"
-                    style={[styles.input, styles.multiline]}
-                    multiline
-                    numberOfLines={3}
-                  />
-                </ScrollView>
-              </Dialog.ScrollArea>
-              <Dialog.Actions>
-                <Button onPress={closeModal}>{t('Cancel')}</Button>
-                <Button onPress={handleAddPayment} disabled={!amount.trim()}>
-                  {editingId ? t('Update') : t('Save')}
-                </Button>
-              </Dialog.Actions>
-            </Dialog>
+                    )}
+                    <TextInput
+                      label={t('Date')}
+                      value={dayjs(date).format('DD-MM-YYYY')}
+                      mode="outlined"
+                      style={styles.input}
+                      editable={false}
+                      right={
+                        <TextInput.Icon
+                          icon="calendar"
+                          onPress={() => setShowDatePicker(true)}
+                          size={wp(6)}
+                        />
+                      }
+                    />
+                    <VoiceFriendlyInput
+                      label={t('Notes (Optional)')}
+                      value={notes}
+                      onChangeText={setNotes}
+                      mode="outlined"
+                      style={[styles.input, styles.multiline]}
+                      multiline
+                      numberOfLines={3}
+                    />
+                  </ScrollView>
+                </Dialog.ScrollArea>
+                <Dialog.Actions>
+                  <Button onPress={closeModal}>{t('Cancel')}</Button>
+                  <Button onPress={handleAddPayment} disabled={!amount.trim()}>
+                    {editingId ? t('Update') : t('Save')}
+                  </Button>
+                </Dialog.Actions>
+              </Dialog>
+            </KeyboardAvoidingView>
           </Portal>
 
           <DatePicker
@@ -939,7 +1066,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   label: { color: '#555', fontWeight: '500' },
-  value: { fontWeight: '600', color: '#000' },
+  value: { fontWeight: '600', color: '#000', textAlign: 'center' },
   divider: { marginVertical: hp(0.8), backgroundColor: '#eee' },
   buttonRow: {
     flexDirection: 'row',
@@ -960,7 +1087,12 @@ const styles = StyleSheet.create({
   tableHeaderIn: { height: hp(6), backgroundColor: '#27ae60' },
   tableHeaderOut: { height: hp(6), backgroundColor: '#e74c3c' },
   headerText: { color: '#fff', fontWeight: '600', textAlign: 'center' },
-  tableRow: { height: hp(8), borderBottomWidth: 1, borderColor: '#eee' },
+  tableRow: {
+    height: hp(8),
+    borderBottomWidth: 1,
+    borderColor: '#eee',
+    textAlign: 'center',
+  },
   dateTypeContainer: { padding: wp(2) },
   cellDate: { fontWeight: '600', color: '#1a1a1a', marginBottom: hp(0.3) },
   cellType: {
@@ -1033,6 +1165,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   webViewLoaderText: { marginTop: hp(2), color: '#666' },
+  horizontalScroll: {
+    marginTop: hp(1),
+  },
 });
 
 export default PaymentPage;

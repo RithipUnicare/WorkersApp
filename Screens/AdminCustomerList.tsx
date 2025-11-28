@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -76,7 +77,7 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [fabOpen, setFabOpen] = useState(false);
+  // const [fabOpen, setFabOpen] = useState(false);
   const [sortAsc, setSortAsc] = useState(true);
   const [fabVisible, setFabVisible] = useState(false);
 
@@ -122,6 +123,23 @@ const CustomerList: React.FC<Props> = ({ navigation }) => {
     },
     [isTamil, translations],
   );
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const openId = await AsyncStorage.getItem('openId');
+        if (!openId) return;
+
+        const res = await CustomerAPI.getById(Number(openId));
+        if (res?.data) {
+          navigation.navigate('CustomerDetail', { customer: res.data });
+          await AsyncStorage.removeItem('openId');
+        }
+      } catch (e) {
+        console.error('Failed to navigate to customer using openId', e);
+      }
+    })();
+  }, [navigation]);
 
   // Load on focus
   useEffect(() => {

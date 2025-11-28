@@ -119,7 +119,7 @@ export default function generateHTML(quotationData) {
       </thead>
       <tbody>
   `;
-
+  console.log(quotationData.item);
   quotationData.items.forEach(item => {
     html += `
         <tr>
@@ -147,15 +147,19 @@ export default function generateHTML(quotationData) {
       <div class="totals-row">
         <div class="total-label">GRAND TOTAL</div>
         <div class="total-value">₹${Number(
-          quotationData.totalAmount + quotationData.discount,
+          quotationData.totalAmount + (quotationData.discount || 0),
         ).toLocaleString('en-IN')}</div>
       </div>
-      <div class="totals-row">
+      ${
+        quotationData.discount
+          ? `<div class="totals-row">
         <div class="total-label">DISCOUNT</div>
         <div class="total-value">₹${Number(
           quotationData.discount,
         ).toLocaleString('en-IN')}</div>
-      </div>
+      </div>`
+          : ''
+      }
       <div class="totals-row">
         <div class="total-label">TOTAL AMOUNT</div>
         <div class="total-value">₹${Number(

@@ -38,6 +38,7 @@ import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { addTextWatermark } from '../utils/Watermarker';
 import { Customer } from './AdminCustomerList';
+import { Quotation } from './QuotationDetail';
 
 const { width, height } = Dimensions.get('window');
 const wp = (p: number) => (width * p) / 100;
@@ -98,6 +99,7 @@ const enToTa: Record<string, string> = {
   Total: 'மொத்தம்',
   Cancel: 'ரத்து செய்',
   Save: 'சேமி',
+  'Advance Amount': 'முன்னேற்ற தொகை',
 
   // Unit Dialog
   'Add New Unit': 'புதிய அலகு சேர்',
@@ -144,6 +146,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
   const [selectedDateObj, setSelectedDateObj] = useState<Date>(new Date());
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [user, setUser] = useState('');
 
   const [customers, setCustomers] = useState<any[]>([]);
   const [selectedCustomerIdx, setSelectedCustomerIdx] = useState<number | null>(
@@ -175,6 +178,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
   >([]);
 
   const [isTamil, setIsTamil] = useState(false);
+  const [advanceAmount, setAdvanceAmount] = useState('');
   const [translations, setTranslations] = useState<Record<string, string>>({});
   const { translate } = useTranslator();
 
@@ -185,7 +189,13 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
       const tamil = saved === 'ta';
       setIsTamil(tamil);
     };
+    const initRole = async () => {
+      const saved = await AsyncStorage.getItem('user');
+      const user = JSON.parse(saved || '{}');
+      setUser(user?.name);
+    };
     initLang();
+    initRole();
   }, []);
 
   // Translate all strings
@@ -488,15 +498,15 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
   const handleSave = async () => {
     if (
       !customerId ||
-      !deliveryDate ||
+      // !deliveryDate ||
       !description ||
       !totalBudget ||
       !items.length
     ) {
       if (!customerId)
         ToastAndroid.show(t('Customer is required'), ToastAndroid.SHORT);
-      if (!deliveryDate)
-        ToastAndroid.show(t('Delivery Date is required'), ToastAndroid.SHORT);
+      // if (!deliveryDate)
+      //   ToastAndroid.show(t('Delivery Date is required'), ToastAndroid.SHORT);
       if (!description)
         ToastAndroid.show(t('Description is required'), ToastAndroid.SHORT);
       if (!totalBudget)
@@ -516,7 +526,9 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
         const payload: any = {
           customerId,
           projectDescription: description,
-          deliveryDate: dayjs(deliveryDate, 'DD-MM-YYYY').format('YYYY-MM-DD'),
+          deliveryDate: deliveryDate
+            ? dayjs(deliveryDate, 'DD-MM-YYYY').format('YYYY-MM-DD')
+            : dayjs().format('YYYY-MM-DD'),
           totalBudget: Number(actualAmount),
           discount: Number(discount),
         };
@@ -549,9 +561,12 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
         const payload: any = {
           customerId,
           projectDescription: description,
-          deliveryDate: dayjs(deliveryDate, 'DD-MM-YYYY').format('YYYY-MM-DD'),
+          deliveryDate: deliveryDate
+            ? dayjs(deliveryDate, 'DD-MM-YYYY').format('YYYY-MM-DD')
+            : dayjs().format('YYYY-MM-DD'),
           totalBudget: Number(actualAmount),
           discount: Number(discount),
+
           items: items.map(item => ({
             itemName: item.itemName,
             itemDescription: item.itemDescription,
@@ -562,6 +577,12 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             hsnSac: item.hsnSac,
           })),
         };
+        if (advanceAmount) {
+          payload.totalAdvance = Number(advanceAmount);
+          payload.advancePaymentDate =
+            dayjs(selectedDateObj).format('YYYY-MM-DD');
+          payload.paymentEnteredBy = user;
+        }
         const res = await QuotationAPI.create(payload);
         currentQuotation = res.data;
         ToastAndroid.show(t('Quotation created!'), ToastAndroid.SHORT);
@@ -907,7 +928,16 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
               />
             </View>
           )}
-
+          <TextInput
+            label={t('Advance Amount')}
+            value={advanceAmount}
+            onChangeText={setAdvanceAmount}
+            mode="outlined"
+            keyboardType="numeric"
+            style={styles.input}
+            theme={{ roundness: wp(2.5) }}
+            editable={true}
+          />
           <TouchableOpacity onPress={() => setDatePickerOpen(true)}>
             <TextInput
               label={t('Delivery Date *')}
@@ -932,13 +962,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
             contentStyle={styles.saveButtonContent}
             buttonColor="#2874b8"
             loading={loading}
-            disabled={
-              loading ||
-              !customerId ||
-              !deliveryDate ||
-              !description ||
-              !totalBudget
-            }
+            disabled={loading || !customerId || !description || !totalBudget}
             icon="content-save"
           >
             {isEditMode ? t('Update Quotation') : t('Save Quotation')}
