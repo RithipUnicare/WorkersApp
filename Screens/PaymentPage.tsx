@@ -301,7 +301,7 @@ const PaymentPage: React.FC<Props> = ({ route, navigation }) => {
       closeModal();
       sendPushPaymentNotification(
         t('Payment Added'),
-        t('Payment added successfully by ' + user + 'amount: ' + amount),
+        t('Payment added successfully by ' + user + ' amount: ' + amount),
         'ProjectList',
         project.id,
       );

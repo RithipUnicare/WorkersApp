@@ -171,7 +171,7 @@ const CustomDrawer: React.FC<CustomDrawerProps> = ({
               //labelStyle={styles.drawerLabel}
             />
             <Drawer.Item
-              label={t('Projected Quotation', '')}
+              label={t('Projected Quotation', 'திட்டமிடப்பட்ட மேற்கோள்')}
               icon={({ size, color }) => (
                 <MaterialCommunityIcons
                   name="file-document"
