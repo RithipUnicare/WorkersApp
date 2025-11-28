@@ -170,7 +170,7 @@ const CustomDrawer: React.FC<CustomDrawerProps> = ({
               style={styles.drawerItem}
               //labelStyle={styles.drawerLabel}
             />
-            <Drawer.Item
+            {/* <Drawer.Item
               label={t('Projected Quotation', 'திட்டமிடப்பட்ட மேற்கோள்')}
               icon={({ size, color }) => (
                 <MaterialCommunityIcons
@@ -185,7 +185,7 @@ const CustomDrawer: React.FC<CustomDrawerProps> = ({
               }}
               style={styles.drawerItem}
               //labelStyle={styles.drawerLabel}
-            />
+            /> */}
           </Drawer.Section>
 
           <Divider style={styles.divider} />
