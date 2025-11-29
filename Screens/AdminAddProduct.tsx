@@ -345,7 +345,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
         ).toString(),
       );
       setAdvanceAmount(rawProject.totalAdvance.toString() || '');
-      setAdvanceAmountDate(rawProject.advanceAmountDate || '');
+      setAdvanceAmountDate(rawProject.advancePaymentDate || '');
       if (rawProject.customerTime) {
         const { hour, minute } = rawProject.customerTime;
         setTime(dayjs().hour(hour).minute(minute).toISOString());
@@ -391,7 +391,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
       }
 
       const projectItems = rawProject.projectItems || rawProject.items || [];
-      console.log(projectItems);
       if (projectItems.length) {
         setItems(
           projectItems.map((it: any) => ({
@@ -660,7 +659,7 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
 
     try {
       if (isEditMode) {
-        const payload = {
+        const payload: any = {
           deliveryDate: dayjs(deliveryDate, 'DD-MM-YYYY').format('YYYY-MM-DD'),
           projectDescription,
           siteStatus: status,
@@ -669,6 +668,13 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           totalBudget: actualAmount,
           totalAmount,
         };
+        if (advanceAmount) {
+          payload.totalAdvance = Number(advanceAmount);
+          payload.advancePaymentDate = advanceAmountDate
+            ? advanceAmountDate
+            : dayjs().format('YYYY-MM-DD');
+          payload.paymentEnteredBy = rawProject?.paymentEnteredBy || user;
+        }
         await ProjectAPI.update(rawProject.id, payload);
         projectId = rawProject.id;
 
@@ -723,7 +729,6 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           setSnackbar({ visible: true, message: t('Enter at least one item') });
           return;
         }
-        console.log(payload);
         const created: any = await ProjectAPI.create(payload);
         projectId = created.data.id || created.data.projectId;
         setCreatedProjectId(projectId);

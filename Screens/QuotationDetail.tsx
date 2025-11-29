@@ -186,7 +186,7 @@ const enToTa: Record<string, string> = {
   'Update Status': 'நிலையைப் புதுப்பிக்கவும்',
   'Status updated': 'நிலை புதுப்பிக்கப்பட்டது',
   'Failed to update status': 'நிலையை புதுப்பிக்க முடியவில்லை',
-
+  'Edit Advance Payment': 'முன்பணம் தொகையைத் திருத்து',
   // Tooltips (optional)
   Edit: 'திருத்து',
   Share: 'பகிரவும்',
@@ -1268,7 +1268,10 @@ const QuotationDetail: React.FC = () => {
         />
         <IconButton
           icon="cash-plus"
-          onPress={() => setAdvanceModalOpen(true)}
+          onPress={() => {
+            setAdvanceAmount(quotationData.totalAdvance?.toString() || '');
+            setAdvanceModalOpen(true);
+          }}
           style={styles.actionButton}
           contentStyle={styles.actionButtonContent}
           iconColor="#075E54"

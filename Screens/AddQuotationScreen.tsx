@@ -288,7 +288,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
                 '',
             );
           }
-
+          setAdvanceAmount(String(quot.totalAdvance || ''));
           setDeliveryDate(dayjs(quot.deliveryDate).format('DD-MM-YYYY'));
           setSelectedDateObj(new Date(quot.deliveryDate));
           setDescription(quot.projectDescription || '');
@@ -532,6 +532,12 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
           totalBudget: Number(actualAmount),
           discount: Number(discount),
         };
+        if (advanceAmount) {
+          payload.totalAdvance = Number(advanceAmount);
+          payload.advancePaymentDate =
+            dayjs(selectedDateObj).format('YYYY-MM-DD');
+          payload.paymentEnteredBy = user;
+        }
         await QuotationAPI.update(rawQuotation.id, payload);
         // Upload any newly added local images
         const localUris = images.filter(img => img.isLocal).map(img => img.uri);

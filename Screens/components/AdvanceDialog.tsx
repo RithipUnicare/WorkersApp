@@ -24,7 +24,7 @@ const AdvanceDialog: React.FC<AdvanceDialogProps> = ({
   return (
     <Portal>
       <Dialog visible={visible} onDismiss={onSkip}>
-        <Dialog.Title>{t('Add Advance Payment')}</Dialog.Title>
+        <Dialog.Title>{t('Edit Advance Payment')}</Dialog.Title>
         <Dialog.Content>
           <TextInput
             label={t('Advance Amount')}

@@ -144,15 +144,11 @@ export default function generateHTML(quotationData) {
     </table>
 
     <div class="totals-section">
-    ${quotationData.totalAdvance?`<div class="totals-row">
-        <div class="total-label">ADVANCE</div>
-        <div class="total-value">₹${Number(
-          quotationData.totalAdvance,
-        ).toLocaleString('en-IN')}</div>
-      </div>`:''}
+    
       <div class="totals-row">
-        <div class="total-label">GRAND TOTAL</div>
-        <div class="total-value">₹${Number(
+        <div class="total-label">TOTAL AMOUNT</div>
+        <div class="total-value">₹
+        ${Number(
           quotationData.totalAmount + (quotationData.discount || 0),
         ).toLocaleString('en-IN')}</div>
       </div>
@@ -165,13 +161,39 @@ export default function generateHTML(quotationData) {
         ).toLocaleString('en-IN')}</div>
       </div>`
           : ''
-      }   
+      } 
+      ${
+        quotationData.discount
+          ? `
       <div class="totals-row">
-        <div class="total-label">TOTAL AMOUNT</div>
+        <div class="total-label">FINAL TOTAL</div>
+        <div class="total-value">₹
+        ${Number(quotationData.totalAmount).toLocaleString('en-IN')}
+        </div>
+      </div>`
+          : ''
+      } 
+
+      ${
+        quotationData.totalAdvance
+          ? `<div class="totals-row">
+        <div class="total-label">ADVANCE PAID</div>
         <div class="total-value">₹${Number(
-          quotationData.totalAmount,
+          quotationData.totalAdvance,
         ).toLocaleString('en-IN')}</div>
-      </div>
+      </div>`
+          : ''
+      }
+    ${
+      quotationData.totalAdvance
+        ? `<div class="totals-row">
+        <div class="total-label">REMAINING AMOUNT</div>
+        <div class="total-value">₹${Number(
+          quotationData.totalAmount - quotationData.totalAdvance,
+        ).toLocaleString('en-IN')}</div>
+      </div>`
+        : ''
+    }
     </div>
 
     <div class="terms-section">
