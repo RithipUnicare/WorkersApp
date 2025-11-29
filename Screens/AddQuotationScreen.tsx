@@ -78,7 +78,7 @@ const enToTa: Record<string, string> = {
   'Mobile No': 'கைப்பேசி எண்',
   Address: 'முகவரி',
   'Project Description *': 'திட்ட விளக்கம் *',
-  'Delivery Date *': 'விநியோக தேதி *',
+  'Delivery Date': 'விநியோக தேதி *',
   'Total Budget *': 'மொத்த பட்ஜெட் *',
   'Total Amount *': 'மொத்த தொகை *',
   Discount: 'தள்ளுபடி',
@@ -946,7 +946,7 @@ const AddQuotation: React.FC<Props> = ({ navigation, route }) => {
           />
           <TouchableOpacity onPress={() => setDatePickerOpen(true)}>
             <TextInput
-              label={t('Delivery Date *')}
+              label={t('Delivery Date')}
               value={deliveryDate}
               mode="outlined"
               editable={false}

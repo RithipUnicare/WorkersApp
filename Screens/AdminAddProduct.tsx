@@ -344,8 +344,8 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
           100
         ).toString(),
       );
-      setAdvanceAmount(rawProject.totalAdvance.toString() || '');
-      setAdvanceAmountDate(rawProject.advancePaymentDate || '');
+      setAdvanceAmount(rawProject?.totalAdvance?.toString() || '');
+      setAdvanceAmountDate(rawProject?.advancePaymentDate || '');
       if (rawProject.customerTime) {
         const { hour, minute } = rawProject.customerTime;
         setTime(dayjs().hour(hour).minute(minute).toISOString());
