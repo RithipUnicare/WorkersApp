@@ -1102,7 +1102,14 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
               />
               <TextInput
                 label={t('Percentage')}
-                value={discountPercentage}
+                value={
+                  discountPercentage === ''
+                    ? ''
+                    : discountPercentage.includes('.') &&
+                      discountPercentage.split('.')[1]?.length > 2
+                    ? parseFloat(discountPercentage).toFixed(2)
+                    : discountPercentage
+                }
                 onChangeText={text => {
                   if (text === '') {
                     setDisCountPercentage('');
@@ -1128,6 +1135,21 @@ const AddProject: React.FC<Props> = ({ navigation, route }) => {
                   const discountValue = (actualAmount * percentValue) / 100;
                   setDiscount(discountValue);
                   setTotalAmount(String(actualAmount - discountValue));
+                }}
+                onBlur={() => {
+                  // Format to 2 decimal places when user finishes editing
+                  if (discountPercentage && discountPercentage !== '') {
+                    const percentValue = parseFloat(
+                      discountPercentage.replace(',', '.'),
+                    );
+                    if (
+                      !isNaN(percentValue) &&
+                      percentValue >= 0 &&
+                      percentValue <= 100
+                    ) {
+                      setDisCountPercentage(percentValue.toFixed(2));
+                    }
+                  }
                 }}
                 mode="outlined"
                 keyboardType="decimal-pad"
