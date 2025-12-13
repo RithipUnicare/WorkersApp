@@ -9,7 +9,7 @@ import { rootStackParamList } from '../navigation/AppNavigation';
 // Type for web event listeners
 type EventHandler = () => void;
 
-const INACTIVITY_TIMEOUT = 24 * 60 * 60 * 1000; // 20 minutes in milliseconds
+const INACTIVITY_TIMEOUT = 2 * 24 * 60 * 60 * 1000; // 20 minutes in milliseconds
 let logoutTimer: ReturnType<typeof setTimeout> | null = null;
 let navigation: NavigationContainerRef<rootStackParamList> | null = null;
 
