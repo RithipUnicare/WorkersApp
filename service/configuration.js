@@ -1,6 +1,6 @@
 // Base URL for API requests
 export const BASE_URL =
-  'http://indian-steel-env.eba-emsdmyth.ap-south-1.elasticbeanstalk.com';
+  'http://indian-steel-company-api.ap-south-1.elasticbeanstalk.com';
 
 export const endpoints = {
   // Auth endpoints
